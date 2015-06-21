@@ -36,7 +36,9 @@ module KlTokenizer =
     let pKlSymbol = regex "[a-zA-Z_]\\w*" |>> SymbolToken
     let pKlCombo = between (pchar '(') (pchar ')') (sepBy pKlToken spaces1) |>> ComboToken
     do pKlTokenRef := choice [pKlBool; pKlNumber; pKlString; pKlSymbol; pKlCombo]
-    let tokenize = pKlToken
+    let tokenize s = run pKlToken s |> function
+                                       | Success(result, _, _) -> result
+                                       | Failure(error, _, _) -> raise <| new System.Exception(error)
 
 type KlExpr = EmptyExpr
             | BoolExpr   of bool
@@ -82,22 +84,22 @@ module KlParser =
         | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (parse body, parse handler)
         | ComboToken (f :: args) -> AppExpr (parse f, List.map parse args)
 
-type Context = System.Collections.Generic.Dictionary<string, KlValue>
+type Context = Map<string, KlValue>
 and Closure = { Context : Context; Paramz : string list; Body : KlExpr }
 and Function(arity : int, f : KlValue list -> KlValue) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
 and KlValue = EmptyValue
-             | BoolValue     of bool
-             | NumberValue   of float
-             | StringValue   of string
-             | SymbolValue   of string
-             | FunctionValue of Function
-             | ClosureValue  of Closure
-             | VectorValue   of KlValue list
-             | ConsValue     of KlValue * KlValue
-             | ErrorValue    of string
-             | StreamValue   of System.IO.Stream
+            | BoolValue     of bool
+            | NumberValue   of float
+            | StringValue   of string
+            | SymbolValue   of string
+            | FunctionValue of Function
+            | ClosureValue  of Closure
+            | VectorValue   of KlValue array
+            | ConsValue     of KlValue * KlValue
+            | ErrorValue    of string
+            | StreamValue   of System.IO.Stream
 
 (* Thunks are used to implement tail calls.
    Position is used to identify if an expression is a tail call candidate.
@@ -110,6 +112,7 @@ type Position = Head | Tail
 
 exception BoolExpected
 exception FunctionExpected
+exception NoClauseMatched
 
 module KlEvaluator =
     let boolTrue = BoolValue true
@@ -117,11 +120,12 @@ module KlEvaluator =
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
-    let getFunc context value =
+    let rec getFunc (context : Context) (value : KlValue) =
         match value with
         | FunctionValue f -> f.Apply
+        | SymbolValue s -> context.[s] |> getFunc context
         | _ -> raise FunctionExpected
-    let closurev context paramz body = ClosureValue { Context = context; Paramz = paramz; Body = body }
+    let closureV context paramz body = ClosureValue { Context = context; Paramz = paramz; Body = body }
     let append context defs =
         context
     let rec eval context expr =
@@ -134,20 +138,20 @@ module KlEvaluator =
         | AndExpr (l, r)      -> if eval context l |> getBool then eval context r else boolFalse
         | OrExpr (l, r)       -> if eval context l |> getBool then boolTrue else eval context r
         | IfExpr (c, t, e)    -> if eval context c |> getBool then eval context t else eval context e
-        | CondExpr (clauses)  -> snd (List.fold
-                                          (fun (found, value) (condition, consequence) ->
-                                              if found || (eval context condition |> getBool |> not) then
-                                                  (found, value)
-                                              else
-                                                  (true, eval context consequence))
-                                          (false, EmptyValue)
-                                          clauses)
+        | CondExpr (clauses)  -> let rec evalClauses = function
+                                             | (condition, consequence) :: rest ->
+                                                 if eval context condition |> getBool then
+                                                     eval context consequence
+                                                 else
+                                                     evalClauses rest
+                                             | [] -> raise NoClauseMatched
+                                 evalClauses clauses
         | LetExpr (s, v, e)   -> eval (append context (s, eval context v)) e
-        | LambdaExpr (s, e)   -> closurev context [s] e
+        | LambdaExpr (s, e)   -> closureV context [s] e
         | DefunExpr (s, a, e) -> EmptyValue
-        | FreezeExpr e        -> closurev context [] e
+        | FreezeExpr e        -> closureV context [] e
         | TrapExpr (t, c)     -> EmptyValue
         | AppExpr (f, args)   -> eval context f |> getFunc context <| List.map (eval context) args
 
 module KlCompiler =
-    let rec compiler = ""
+    let rec compiler = fun (x : KlExpr) -> "fsharp code"

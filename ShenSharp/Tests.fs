@@ -9,7 +9,7 @@ type Tests() =
     [<TestMethod>]
     member this.TokenizerTest() =
         let tryit s = 
-            match run KlTokenizer.tokenize s with
+            match run KlTokenizer.pKlToken s with
                 | Success(result, _, _)   -> printfn "Good"
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
@@ -34,7 +34,7 @@ type Tests() =
     [<TestMethod>]
     member this.ParserTest() =
         let tryit s e = 
-            match run KlTokenizer.tokenize s with
+            match run KlTokenizer.pKlToken s with
                 | Success(result, _, _)   -> Assert.AreEqual(e, KlParser.parse result)
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
@@ -45,13 +45,29 @@ type Tests() =
     [<TestMethod>]
     member this.EvaluatorTest() =
         let tryit s e = 
-            match run KlTokenizer.tokenize s with
-                | Success(result, _, _)   -> Assert.AreEqual(e, result |> KlParser.parse |> KlEvaluator.eval (new Context()))
+            match run KlTokenizer.pKlToken s with
+                | Success(result, _, _)   -> Assert.AreEqual(e, result |> KlParser.parse |> KlEvaluator.eval (Map.empty))
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         tryit "()" EmptyValue
         tryit "true" (BoolValue true)
         tryit "2" (NumberValue 2.0)
+
+        let rec add = new Function(2, function
+                                  | [NumberValue x] -> FunctionValue (new Function(1, function
+                                                                            | [NumberValue y] -> add.Apply([NumberValue x; NumberValue y])
+                                                                            | _ -> raise <| new System.Exception("must be two numbers")))
+                                  | [NumberValue x; NumberValue y] -> NumberValue (x + y)
+                                  | _ -> raise <| new System.Exception("must be two numbers"))
+        Assert.AreEqual(
+            NumberValue 3.0,
+            KlEvaluator.eval (Map.ofList [("+", FunctionValue add)])
+                             (AppExpr (SymbolExpr "+",
+                                      [(NumberExpr 1.0); (NumberExpr 2.0)])))
+        Assert.AreEqual(
+            NumberValue 3.0,
+            KlEvaluator.eval (Map.ofList [("+", FunctionValue add)])
+                             (AppExpr (AppExpr (SymbolExpr "+", [NumberExpr 1.0]), [NumberExpr 2.0])))
 
     [<TestMethod>]
     member this.BasicStuff() =
