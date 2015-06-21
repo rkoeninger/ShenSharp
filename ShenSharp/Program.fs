@@ -43,14 +43,14 @@ type KlExpr = EmptyExpr
             | NumberExpr of float
             | StringExpr of string
             | SymbolExpr of string
-            | AndExpr    of KlExpr * KlExpr
-            | OrExpr     of KlExpr * KlExpr
-            | IfExpr     of KlExpr * KlExpr * KlExpr
-            | CondExpr   of (KlExpr * KlExpr) list
-            | LetExpr    of string * KlExpr * KlExpr
-            | LambdaExpr of string * KlExpr
-            | DefunExpr  of string * string list * KlExpr
-            | FreezeExpr of KlExpr
+            | AndExpr    of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
+            | OrExpr     of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
+            | IfExpr     of KlExpr * KlExpr * KlExpr        // (Bool, a, a) -> a
+            | CondExpr   of (KlExpr * KlExpr) list          // (Bool, a) -> a
+            | LetExpr    of string * KlExpr * KlExpr        // (Symbol, a, Expr) -> a
+            | LambdaExpr of string * KlExpr                 // (Symbol, a) -> (Value -> a)
+            | DefunExpr  of string * string list * KlExpr   // (Symbol, [Symbol], Expr) -> ([Value] -> a)
+            | FreezeExpr of KlExpr                          // Expr -> (() -> Value)
             | TrapExpr   of KlExpr * KlExpr
             | AppExpr    of KlExpr * KlExpr list
 
@@ -82,21 +82,30 @@ module KlParser =
         | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (parse body, parse handler)
         | ComboToken (f :: args) -> AppExpr (parse f, List.map parse args)
 
-
-type KlValue = EmptyValue
+type Context = System.Collections.Generic.Dictionary<string, KlValue>
+and Closure = { Context : Context; Paramz : string list; Body : KlExpr }
+and Function(arity : int, f : KlValue list -> KlValue) =
+    member this.Arity = arity
+    member this.Apply(args : KlValue list) = f args
+and KlValue = EmptyValue
              | BoolValue     of bool
              | NumberValue   of float
              | StringValue   of string
              | SymbolValue   of string
-             | FunctionValue of string list * (KlValue list -> KlValue)
+             | FunctionValue of Function
+             | ClosureValue  of Closure
              | VectorValue   of KlValue list
              | ConsValue     of KlValue * KlValue
+             | ErrorValue    of string
+             | StreamValue   of System.IO.Stream
 
-type Context = System.Collections.Generic.Dictionary<string, KlValue>
-
-(* Thunks are used to implement tail calls. They should be be visible in KL code. *)
+(* Thunks are used to implement tail calls.
+   Position is used to identify if an expression is a tail call candidate.
+   They should not be visible in KL code.
+   Using the type system to separate levels of the runtime.
+   Some values are only for the runtime, some are only for the program.
+   In some cases, never the twain shall meet. *)
 type Thunk = Thunk of (unit -> KlValue)
-
 type Position = Head | Tail
 
 exception BoolExpected
@@ -110,8 +119,9 @@ module KlEvaluator =
         | _ -> raise BoolExpected
     let getFunc context value =
         match value with
-        | FunctionValue (paramz, f) -> f
+        | FunctionValue f -> f.Apply
         | _ -> raise FunctionExpected
+    let closurev context paramz body = ClosureValue { Context = context; Paramz = paramz; Body = body }
     let append context defs =
         context
     let rec eval context expr =
@@ -133,9 +143,9 @@ module KlEvaluator =
                                           (false, EmptyValue)
                                           clauses)
         | LetExpr (s, v, e)   -> eval (append context (s, eval context v)) e
-        | LambdaExpr (s, e)   -> FunctionValue ([s], fun values -> eval (append context [s, values.[0]]) e)
+        | LambdaExpr (s, e)   -> closurev context [s] e
         | DefunExpr (s, a, e) -> EmptyValue
-        | FreezeExpr e        -> FunctionValue ([], fun values -> eval context e)
+        | FreezeExpr e        -> closurev context [] e
         | TrapExpr (t, c)     -> EmptyValue
         | AppExpr (f, args)   -> eval context f |> getFunc context <| List.map (eval context) args
 

@@ -50,7 +50,7 @@ type Tests() =
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         tryit "()" EmptyValue
-        tryit "true" (BoolValue false)
+        tryit "true" (BoolValue true)
         tryit "2" (NumberValue 2.0)
 
     [<TestMethod>]
