@@ -84,7 +84,7 @@ module KlParser =
         | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (parse body, parse handler)
         | ComboToken (f :: args) -> AppExpr (parse f, List.map parse args)
 
-type Context = Map<string, KlValue>
+type Context = System.Collections.Generic.Dictionary<string, KlValue>
 and Closure = { Context : Context; Paramz : string list; Body : KlExpr }
 and Function(arity : int, f : KlValue list -> KlValue) =
     member this.Arity = arity
@@ -115,8 +115,6 @@ exception FunctionExpected
 exception NoClauseMatched
 
 module KlEvaluator =
-    let boolTrue = BoolValue true
-    let boolFalse = BoolValue false
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
@@ -126,7 +124,9 @@ module KlEvaluator =
         | SymbolValue s -> context.[s] |> getFunc context
         | _ -> raise FunctionExpected
     let closureV context paramz body = ClosureValue { Context = context; Paramz = paramz; Body = body }
-    let append context defs =
+    let append (context : Context) (defs : (string * KlValue) list) =
+        for (key, value) in defs do
+            context.Add(key, value)
         context
     let rec eval context expr =
         match expr with
@@ -135,8 +135,8 @@ module KlEvaluator =
         | NumberExpr n        -> NumberValue n
         | StringExpr s        -> StringValue s
         | SymbolExpr s        -> SymbolValue s
-        | AndExpr (l, r)      -> if eval context l |> getBool then eval context r else boolFalse
-        | OrExpr (l, r)       -> if eval context l |> getBool then boolTrue else eval context r
+        | AndExpr (l, r)      -> if eval context l |> getBool then eval context r else BoolValue false
+        | OrExpr (l, r)       -> if eval context l |> getBool then BoolValue true else eval context r
         | IfExpr (c, t, e)    -> if eval context c |> getBool then eval context t else eval context e
         | CondExpr (clauses)  -> let rec evalClauses = function
                                              | (condition, consequence) :: rest ->
@@ -146,7 +146,7 @@ module KlEvaluator =
                                                      evalClauses rest
                                              | [] -> raise NoClauseMatched
                                  evalClauses clauses
-        | LetExpr (s, v, e)   -> eval (append context (s, eval context v)) e
+        | LetExpr (s, v, e)   -> eval (append context [(s, eval context v)]) e
         | LambdaExpr (s, e)   -> closureV context [s] e
         | DefunExpr (s, a, e) -> EmptyValue
         | FreezeExpr e        -> closureV context [] e

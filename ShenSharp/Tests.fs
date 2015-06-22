@@ -10,7 +10,7 @@ type Tests() =
     member this.TokenizerTest() =
         let tryit s = 
             match run KlTokenizer.pKlToken s with
-                | Success(result, _, _)   -> printfn "Good"
+                | Success(result, _, _)   -> ()
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         tryit "abc"
@@ -46,7 +46,7 @@ type Tests() =
     member this.EvaluatorTest() =
         let tryit s e = 
             match run KlTokenizer.pKlToken s with
-                | Success(result, _, _)   -> Assert.AreEqual(e, result |> KlParser.parse |> KlEvaluator.eval (Map.empty))
+                | Success(result, _, _)   -> Assert.AreEqual(e, result |> KlParser.parse |> KlEvaluator.eval (new Context()))
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         tryit "()" EmptyValue
@@ -55,19 +55,24 @@ type Tests() =
 
         let rec add = new Function(2, function
                                   | [NumberValue x] -> FunctionValue (new Function(1, function
-                                                                            | [NumberValue y] -> add.Apply([NumberValue x; NumberValue y])
+                                                                            | [NumberValue y] -> NumberValue (x + y)
                                                                             | _ -> raise <| new System.Exception("must be two numbers")))
                                   | [NumberValue x; NumberValue y] -> NumberValue (x + y)
                                   | _ -> raise <| new System.Exception("must be two numbers"))
+
+        let context = new Context()
+        context.Add("+", FunctionValue add)
+
         Assert.AreEqual(
             NumberValue 3.0,
-            KlEvaluator.eval (Map.ofList [("+", FunctionValue add)])
+            KlEvaluator.eval context
                              (AppExpr (SymbolExpr "+",
                                       [(NumberExpr 1.0); (NumberExpr 2.0)])))
         Assert.AreEqual(
             NumberValue 3.0,
-            KlEvaluator.eval (Map.ofList [("+", FunctionValue add)])
-                             (AppExpr (AppExpr (SymbolExpr "+", [NumberExpr 1.0]), [NumberExpr 2.0])))
+            KlEvaluator.eval context
+                             (AppExpr (AppExpr (SymbolExpr "+", [NumberExpr 1.0]),
+                                               [NumberExpr 2.0])))
 
     [<TestMethod>]
     member this.BasicStuff() =
