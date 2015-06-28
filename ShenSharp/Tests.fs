@@ -78,10 +78,10 @@ type Tests() =
         let symbolP = new Function(1, function
                                       | [SymbolValue _] -> BoolValue true
                                       | _ -> BoolValue false)
-        c2.Add("symbolP", FunctionValue symbolP)
-        Assert.AreEqual(BoolValue true, tpeval2 "(symbolP run)")
+        c2.Add("symbol?", FunctionValue symbolP)
+        Assert.AreEqual(BoolValue true, tpeval2 "(symbol? run)")
         c2.Add("id", FunctionValue (new Function(1, function | [x] -> x; | _ -> raise <| new System.Exception("must be 1 arg"))))
-        Assert.AreEqual(BoolValue true, tpeval2 "(symbolP (id run))")
+        Assert.AreEqual(BoolValue true, tpeval2 "(symbol? (id run))")
 
         // function has partial application built-in; this is not what will be typical
         // partial application needs to be automatic for all functions
@@ -119,7 +119,15 @@ type Tests() =
                              (AppExpr (AppExpr (SymbolExpr "+", [NumberExpr 1.0]),
                                                [NumberExpr 2.0])))
 
-
+    [<TestMethod>]
+    member this.Builtins() =
+        let run = KlTokenizer.tokenize >> KlParser.parse >> KlEvaluator.eval KlBuiltins.baseContext
+        Assert.AreEqual(NumberValue 3.0, run "((+ 1) 2)")
+        Assert.AreEqual(NumberValue 2.0, run "((- 4) 2)")
+        Assert.AreEqual(BoolValue false, run "(cons? ())")
+        Assert.AreEqual(BoolValue false, run "(cons? 0)")
+        Assert.AreEqual(BoolValue true, run "(cons? (cons 0 0))")
+    
     [<TestMethod>]
     member this.SanityChecks() =
         Assert.AreEqual(BoolToken true, BoolToken true)

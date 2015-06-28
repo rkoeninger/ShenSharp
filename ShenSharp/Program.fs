@@ -12,28 +12,12 @@ type KlToken = BoolToken   of bool
 
 (* Tokenizer is strict about spacing. It will not handle extra spaces inside of parens. *)
 module KlTokenizer =
-    let stringLiteral =
-        let escape = anyOf "\"\\/bfnrt" |>> function
-                            | 'b' -> "\b"
-                            | 'f' -> "\u000C"
-                            | 'n' -> "\n"
-                            | 'r' -> "\r"
-                            | 't' -> "\t"
-                            | c   -> string c
-        let unicodeEscape =
-            let hex2int c = (int c &&& 15) + (int c >>> 6)*9
-            pstring "u" >>. pipe4 hex hex hex hex (fun h3 h2 h1 h0 ->
-                (hex2int h3)*4096 + (hex2int h2)*256 + (hex2int h1)*16 + hex2int h0
-                |> char
-                |> string)
-        let escapedCharSnippet = pstring "\\" >>. (escape <|> unicodeEscape)
-        let normalCharSnippet  = manySatisfy (fun c -> c <> '"' && c <> '\\')
-        between (pstring "\"") (pstring "\"") (stringsSepBy normalCharSnippet escapedCharSnippet)
+    let stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
     let pKlToken, pKlTokenRef = createParserForwardedToRef<KlToken, unit>()
     let pKlBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
     let pKlNumber = pfloat |>> NumberToken
     let pKlString = stringLiteral |>> StringToken
-    let pKlSymbol = regex "[a-zA-Z_]\\w*" |>> SymbolToken
+    let pKlSymbol = regex "[a-zA-Z0-9\\x2B\\x2D\\x2F\\x3F\\x5F]+" |>> SymbolToken
     let pKlCombo = between (pchar '(') (pchar ')') (sepBy pKlToken spaces1) |>> ComboToken
     do pKlTokenRef := choice [pKlBool; pKlNumber; pKlString; pKlSymbol; pKlCombo]
     let tokenize s = run pKlToken s |> function
@@ -74,8 +58,8 @@ module KlParser =
         | ComboToken [(SymbolToken "if"); c; t; e] -> IfExpr (parse c, parse t, parse e)
         | ComboToken (SymbolToken "cond" :: clauses) -> CondExpr (List.map
                                                                      (function
-                                                                         | (ComboToken [x; y]) -> (parse x, parse y)
-                                                                         | _ -> raise InvalidCondClause)
+                                                                      | (ComboToken [x; y]) -> (parse x, parse y)
+                                                                      | _ -> raise InvalidCondClause)
                                                                      clauses)
         | ComboToken [(SymbolToken "let"); (SymbolToken s); v; e] -> LetExpr (s, parse v, parse e)
         | ComboToken [(SymbolToken "lambda"); (SymbolToken arg); body] -> LambdaExpr (arg, parse body)
@@ -129,6 +113,10 @@ type Thunk = Thunk of (unit -> KlValue)
 type Position = Head | Tail
 type Uncaught = Uncaught of string
 
+type Result = ValueResult of KlValue
+            | ErrorResult of Uncaught
+            | ThunkResult of Thunk
+
 exception BoolExpected
 exception FunctionExpected
 exception NoClauseMatched
@@ -166,7 +154,6 @@ module KlEvaluator =
         | SymbolExpr s -> match context.TryGetValue(s) with
                           | (true, result) -> result
                           | _ -> SymbolValue s
-        // TODO assert evaluation of second argument expr is a bool?
         | AndExpr (left, right) -> (evalcc left |> getBool && evalcc right |> getBool) |> BoolValue
         | OrExpr  (left, right) -> (evalcc left |> getBool || evalcc right |> getBool) |> BoolValue
         | IfExpr (condition, consequent, alternative) ->
@@ -182,16 +169,14 @@ module KlEvaluator =
                 | [] -> raise NoClauseMatched
             evalClauses clauses
         | LetExpr (symbol, binding, body) -> eval (append context [(symbol, evalcc binding)]) body
-        | LambdaExpr (s, e) -> closureV context [s] e
+        | LambdaExpr (param, body) -> closureV context [param] body
         | DefunExpr (name, paramz, body) -> let f = closureV context paramz body
                                             context.Add(name, f)
                                             f
-        | FreezeExpr e -> ContValue (context, e)
-        | TrapExpr (t, c) -> try
-                                 evalcc t
-                             with
-                                 e -> let (arity, func) = evalcc c |> getFunc context
-                                      apply arity func <| [ErrorValue e.Message]
+        | FreezeExpr expr -> ContValue (context, expr)
+        | TrapExpr (body, handler) -> try  evalcc body
+                                      with e -> let (arity, func) = evalcc handler |> getFunc context
+                                                apply arity func <| [ErrorValue e.Message]
         | AppExpr (f, args) -> let (arity, func) = evalcc f |> getFunc context
                                apply arity func <| List.map (eval context) args
 
@@ -201,8 +186,7 @@ module KlBuiltins =
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
-    let newContext kvs = let d = new Context()
-                         System.Linq.Enumerable.ToDictionary(kvs, fst, snd)
+    let newContext kvs = System.Linq.Enumerable.ToDictionary(kvs, fst, snd)
     let emptyContext : Context = newContext Seq.empty
     let klIntern = function
         | [StringValue s] -> SymbolValue s
@@ -217,7 +201,7 @@ module KlBuiltins =
         | [StringValue x; StringValue y] -> x + y |> StringValue
         | _ -> raise InvalidArgs
     let klToString = function
-        | [x : KlValue] -> x.ToString() |> StringValue
+        | [x : KlValue] -> x.ToString() |> StringValue // TODO this needs cases for each type maybe
         | _ -> raise InvalidArgs
     let klIsString = function
         | [StringValue _] -> BoolValue true
@@ -228,6 +212,18 @@ module KlBuiltins =
         | _ -> raise InvalidArgs
     let klStringToInt = function
         | [StringValue s] -> s.[0] |> int |> float |> NumberValue
+        | _ -> raise InvalidArgs
+    let klSet (context : Context) = function
+        | [SymbolValue s; x] -> context.[s] <- x
+        | _ -> raise InvalidArgs
+    let klValue (context : Context) = function
+        | [SymbolValue s] -> context.[s]
+        | _ -> raise InvalidArgs
+    let klSimpleError = function // TODO needs to be of type (KlValue list -> KlReturn) not just (KlValue list -> KlValue)
+        | [StringValue s] -> EmptyValue
+        | _ -> raise InvalidArgs
+    let klErrorToString = function
+        | [ErrorValue s] -> StringValue s
         | _ -> raise InvalidArgs
     let klNewCons = function
         | [x; y] -> ConsValue (x, y)
@@ -251,10 +247,27 @@ module KlBuiltins =
         | StreamValue x, StreamValue y -> x = y
         | ErrorValue x, ErrorValue y   -> x = y
         | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq (x1, y1) && klEq (x2, y2)
-        | VectorValue x, VectorValue y -> ((x.Length = y.Length) && (Array.zip x y |> Array.fold (fun r (a, b) -> r && klEq (a, b)) true))
+        | VectorValue x, VectorValue y -> ((x.Length = y.Length) && (Array.zip x y |> Array.fold (fun r args -> r && klEq args) true))
         | (_, _) -> false
     let klEquals = function
         | [x; y] -> klEq (x, y) |> BoolValue
+        | _ -> raise InvalidArgs
+    let klEval context = function
+        | [EmptyValue] -> EmptyValue
+        | [BoolValue b] -> BoolValue b
+        | [NumberValue n] -> NumberValue n
+        | [StringValue s] -> StringValue s
+        | [SymbolValue s] -> SymbolValue s
+        | [ConsValue _ as cons] -> let sequ = Seq.unfold (function
+                                                          | ConsValue (head, tail) -> Some(head, tail)
+                                                          | EmptyValue -> None
+                                                          | _ -> raise InvalidArgs)
+                                                         cons
+                                   let expr = EmptyExpr // TODO need expr -> value
+                                   KlEvaluator.eval context expr
+        | _ -> raise InvalidArgs
+    let klType = function
+        | [x; _] -> x // TODO label the type of an expression (what does that mean?)
         | _ -> raise InvalidArgs
     let klNewVector = function
         | [NumberValue length] -> Array.create (int length) EmptyValue |> VectorValue
@@ -270,13 +283,37 @@ module KlBuiltins =
         | [VectorValue _] -> BoolValue true
         | [_] -> BoolValue false
         | _ -> raise InvalidArgs
+    let klWriteByte = function
+        | [NumberValue number; StreamValue stream] ->
+            let i = int number
+            if 0 <= i && i <= 255
+                then let b = byte i
+                     stream.WriteByte(b)
+                     NumberValue (float b)
+                else raise InvalidArgs
+        | _ -> raise InvalidArgs
+    let klReadByte = function
+        | [StreamValue stream] -> stream.ReadByte() |> float |> NumberValue
+        | _ -> raise InvalidArgs
+    let klOpen = function
+        | [StringValue path; SymbolValue "in"] -> System.IO.File.OpenRead(path) :> System.IO.Stream |> StreamValue
+        | [StringValue path; SymbolValue "out"] -> System.IO.File.OpenWrite(path) :> System.IO.Stream |> StreamValue
+        | _ -> raise InvalidArgs
+    let klClose = function
+        | [StreamValue s] -> s.Close()
+                             EmptyValue
+        | _ -> raise InvalidArgs
+    let klGetType = function
+        | [SymbolValue "run"] -> EmptyValue // TODO get the time the runtime started
+        | [SymbolValue "time"] -> EmptyValue
+        | _ -> raise InvalidArgs
     let op f wrapper = function
         | [NumberValue x; NumberValue y] -> f x y |> wrapper
         | _ -> raise InvalidArgs
     let klAdd              = op (+)  NumberValue
     let klSubtract         = op (-)  NumberValue
     let klMultiply         = op (*)  NumberValue
-    let klDivide           = op (/)  NumberValue
+    let klDivide           = op (/)  NumberValue // TODO handle div by zero with an ErrorValue
     let klGreaterThan      = op (>)  BoolValue
     let klLessThan         = op (<)  BoolValue
     let klGreaterThanEqual = op (>=) BoolValue
@@ -285,35 +322,45 @@ module KlBuiltins =
         | [NumberValue _] -> BoolValue true
         | [_] -> BoolValue false
         | _ -> raise InvalidArgs
-    let func n f = FunctionValue (new Function(n, f))
+    let func arity f = FunctionValue (new Function(arity, f))
     let baseContext : Context =
-        newContext [
-            ("intern",     func 1 klIntern);
-            ("pos",        func 2 klStringPos);
-            ("strtl",      func 1 klStringTail);
-            ("cn",         func 2 klStringConcat);
-            ("str",        func 1 klToString);
-            ("string?",    func 1 klIsString);
-            ("n->string",  func 1 klIntToString);
-            ("string->n",  func 1 klStringToInt);
-            ("cons",       func 2 klNewCons);
-            ("hd",         func 1 klHead);
-            ("tl",         func 1 klTail);
-            ("cons?",      func 1 klIsCons);
-            ("absvector",  func 1 klNewVector);
-            ("<-address",  func 2 klReadVector);
-            ("address->",  func 3 klWriteVector);
-            ("absvector?", func 1 klIsVector);
-            ("+",          func 2 klAdd);
-            ("-",          func 2 klSubtract);
-            ("*",          func 2 klMultiply);
-            ("/",          func 2 klDivide);
-            (">",          func 2 klGreaterThan);
-            ("<",          func 2 klLessThan);
-            (">=",         func 2 klGreaterThanEqual);
-            ("<=",         func 2 klLessThanEqual);
-            ("number?",    func 1 klIsNumber)
-        ]
+        let c = newContext [
+                    "intern",          func 1 klIntern;
+                    "pos",             func 2 klStringPos;
+                    "strtl",           func 1 klStringTail;
+                    "cn",              func 2 klStringConcat;
+                    "str",             func 1 klToString;
+                    "string?",         func 1 klIsString;
+                    "n->string",       func 1 klIntToString;
+                    "string->n",       func 1 klStringToInt;
+                    "error-to-string", func 1 klErrorToString;
+                    "cons",            func 2 klNewCons;
+                    "hd",              func 1 klHead;
+                    "tl",              func 1 klTail;
+                    "cons?",           func 1 klIsCons;
+                    "=",               func 2 klEquals;
+                    "absvector",       func 1 klNewVector;
+                    "<-address",       func 2 klReadVector;
+                    "address->",       func 3 klWriteVector;
+                    "absvector?",      func 1 klIsVector;
+                    "write-byte",      func 2 klWriteByte;
+                    "read-byte",       func 1 klReadByte;
+                    "open",            func 2 klOpen;
+                    "close",           func 1 klClose;
+                    "get-time",        func 1 klGetType;
+                    "+",               func 2 klAdd;
+                    "-",               func 2 klSubtract;
+                    "*",               func 2 klMultiply;
+                    "/",               func 2 klDivide;
+                    ">",               func 2 klGreaterThan;
+                    "<",               func 2 klLessThan;
+                    ">=",              func 2 klGreaterThanEqual;
+                    "<=",              func 2 klLessThanEqual;
+                    "number?",         func 1 klIsNumber
+                ]
+        c.Add("eval-kl", func 1 (klEval c))
+        // TODO c.Add("simple-error", klSimpleError)
+        c
 
 module KlCompiler =
     let rec compiler = fun (x : KlExpr) -> "fsharp code"
