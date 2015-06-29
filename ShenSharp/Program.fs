@@ -87,7 +87,7 @@ module KlParser =
 
 type Context = System.Collections.Generic.Dictionary<string, KlValue>
 and Closure = { Paramz : string list; Body : KlExpr }
-and Function(arity : int, f : KlValue list -> KlValue) =
+and Function(arity : int, f : KlValue list -> Result) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
 and KlValue = EmptyValue
@@ -109,13 +109,12 @@ and KlValue = EmptyValue
    Using the type system to separate levels of the runtime.
    Some values are only for the runtime, some are only for the program.
    In some cases, never the twain shall meet. *)
-type Thunk = Thunk of (unit -> KlValue)
-type Position = Head | Tail
-type Uncaught = Uncaught of string
-
-type Result = ValueResult of KlValue
+and Thunk = Thunk of (unit -> KlValue)
+and Position = Head | Tail
+and Uncaught = Uncaught of string
+and Result = ValueResult of KlValue
             | ErrorResult of Uncaught
-            | ThunkResult of Thunk
+            //| ThunkResult of Thunk
 
 exception BoolExpected
 exception FunctionExpected
@@ -123,6 +122,9 @@ exception NoClauseMatched
 exception TooManyArgs
 
 module KlEvaluator =
+    let bind f = function
+        | ValueResult v -> f v
+        | y -> y
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
@@ -132,12 +134,12 @@ module KlEvaluator =
             context.Add(key, value)
         context 
     let rec eval context expr =
-        let rec apply (arity : int) (f : KlValue list -> KlValue) (args : KlValue list) =
+        let rec apply (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
             if args.Length > arity
             then raise TooManyArgs
             else if args.Length < arity
                 then let newArity = arity - args.Length
-                     FunctionValue (new Function(newArity, fun moreArgs -> apply arity f <| List.append args moreArgs))
+                     new Function(newArity, List.append args >> apply arity f) |> FunctionValue |> ValueResult
                 else f args
         let rec getFunc (context : Context) (value : KlValue) =
             match value with
@@ -147,38 +149,68 @@ module KlEvaluator =
             | _ -> raise FunctionExpected
         let evalcc = eval context // evalcc = "eval in the current context"
         match expr with
-        | EmptyExpr    -> EmptyValue
-        | BoolExpr b   -> BoolValue b
-        | NumberExpr n -> NumberValue n
-        | StringExpr s -> StringValue s
+        | EmptyExpr    -> EmptyValue |> ValueResult
+        | BoolExpr b   -> BoolValue b |> ValueResult
+        | NumberExpr n -> NumberValue n |> ValueResult
+        | StringExpr s -> StringValue s |> ValueResult
         | SymbolExpr s -> match context.TryGetValue(s) with
-                          | (true, result) -> result
-                          | _ -> SymbolValue s
-        | AndExpr (left, right) -> (evalcc left |> getBool && evalcc right |> getBool) |> BoolValue
-        | OrExpr  (left, right) -> (evalcc left |> getBool || evalcc right |> getBool) |> BoolValue
+                          | (true, result) -> result |> ValueResult
+                          | _ -> SymbolValue s |> ValueResult
+        | AndExpr (left, right) ->
+            match evalcc left with
+            | ValueResult (BoolValue true) -> evalcc right
+            | ValueResult (BoolValue false) -> false |> BoolValue |> ValueResult
+            | ValueResult _ -> raise BoolExpected
+            | e -> e
+        | OrExpr (left, right) ->
+            match evalcc left with
+            | ValueResult (BoolValue true) -> true |> BoolValue |> ValueResult
+            | ValueResult (BoolValue false) -> evalcc right
+            | ValueResult _ -> raise BoolExpected
+            | e -> e
         | IfExpr (condition, consequent, alternative) ->
-            if evalcc condition |> getBool
-                then evalcc consequent
-                else evalcc alternative
+            match evalcc condition with
+            | ValueResult (BoolValue true) -> evalcc consequent
+            | ValueResult (BoolValue false) -> evalcc alternative
+            | ValueResult _ -> raise BoolExpected
+            | e -> e
         | CondExpr clauses ->
             let rec evalClauses = function
-                | (condition, consequence) :: rest ->
-                    if evalcc condition |> getBool
-                        then evalcc consequence
-                        else evalClauses rest
+                | (condition, consequent) :: rest ->
+                    match evalcc condition with
+                    | ValueResult (BoolValue true) -> evalcc consequent
+                    | ValueResult (BoolValue false) -> evalClauses rest
+                    | ValueResult _ -> raise BoolExpected
+                    | e -> e
                 | [] -> raise NoClauseMatched
             evalClauses clauses
-        | LetExpr (symbol, binding, body) -> eval (append context [(symbol, evalcc binding)]) body
-        | LambdaExpr (param, body) -> closureV context [param] body
+        | LetExpr (symbol, binding, body) ->
+            match evalcc binding with
+            | ValueResult v -> eval (append context [(symbol, v)]) body
+            | e -> e
+        | LambdaExpr (param, body) -> closureV context [param] body |> ValueResult
         | DefunExpr (name, paramz, body) -> let f = closureV context paramz body
                                             context.Add(name, f)
-                                            f
-        | FreezeExpr expr -> ContValue (context, expr)
+                                            ValueResult f
+        | FreezeExpr expr -> ContValue (context, expr) |> ValueResult
         | TrapExpr (body, handler) -> try  evalcc body
-                                      with e -> let (arity, func) = evalcc handler |> getFunc context
-                                                apply arity func <| [ErrorValue e.Message]
-        | AppExpr (f, args) -> let (arity, func) = evalcc f |> getFunc context
-                               apply arity func <| List.map (eval context) args
+                                      with e -> match evalcc handler with
+                                                | ValueResult v -> let (arity, func) = getFunc context v
+                                                                   apply arity func <| [ErrorValue e.Message]
+                                                | e -> e
+        | AppExpr (f, args) ->
+            match evalcc f with
+            | ValueResult v -> let (arity, func) = getFunc context v
+                               let rec evalArgs (args : KlExpr list) (vals : KlValue list) : Choice<KlValue list, Result> =
+                                   match args with
+                                   | [] -> Choice1Of2 vals
+                                   | arg :: args -> match evalcc arg with
+                                                    | ValueResult v -> evalArgs args (List.append vals [v])
+                                                    | e -> Choice2Of2 e
+                               match evalArgs args [] with
+                               | Choice1Of2 vals -> apply arity func vals
+                               | Choice2Of2 e -> e
+            | e -> e
 
 exception InvalidArgs 
 
@@ -252,19 +284,21 @@ module KlBuiltins =
     let klEquals = function
         | [x; y] -> klEq (x, y) |> BoolValue
         | _ -> raise InvalidArgs
+    let rec klConsToToken = function
+        | EmptyValue -> ComboToken []
+        | BoolValue b -> BoolToken b
+        | NumberValue n -> NumberToken n
+        | StringValue s -> StringToken s
+        | SymbolValue s -> SymbolToken s
+        | ConsValue _ as cons -> let sequ = Seq.unfold (function
+                                                        | ConsValue (head, tail) -> Some(klConsToToken head, tail)
+                                                        | EmptyValue -> None
+                                                        | _ -> raise InvalidArgs)
+                                                       cons
+                                 sequ |> Seq.toList |> ComboToken
+        | _ -> raise InvalidArgs
     let klEval context = function
-        | [EmptyValue] -> EmptyValue
-        | [BoolValue b] -> BoolValue b
-        | [NumberValue n] -> NumberValue n
-        | [StringValue s] -> StringValue s
-        | [SymbolValue s] -> SymbolValue s
-        | [ConsValue _ as cons] -> let sequ = Seq.unfold (function
-                                                          | ConsValue (head, tail) -> Some(head, tail)
-                                                          | EmptyValue -> None
-                                                          | _ -> raise InvalidArgs)
-                                                         cons
-                                   let expr = EmptyExpr // TODO need expr -> value
-                                   KlEvaluator.eval context expr
+        | [v] -> klConsToToken v |> KlParser.parse |> KlEvaluator.eval context
         | _ -> raise InvalidArgs
     let klType = function
         | [x; _] -> x // TODO label the type of an expression (what does that mean?)
@@ -322,7 +356,7 @@ module KlBuiltins =
         | [NumberValue _] -> BoolValue true
         | [_] -> BoolValue false
         | _ -> raise InvalidArgs
-    let func arity f = FunctionValue (new Function(arity, f))
+    let func arity f = FunctionValue (new Function(arity, f >> ValueResult))
     let baseContext : Context =
         let c = newContext [
                     "intern",          func 1 klIntern;
@@ -358,7 +392,7 @@ module KlBuiltins =
                     "<=",              func 2 klLessThanEqual;
                     "number?",         func 1 klIsNumber
                 ]
-        c.Add("eval-kl", func 1 (klEval c))
+        c.Add("eval-kl", FunctionValue (new Function(1, klEval c)))
         // TODO c.Add("simple-error", klSimpleError)
         c
 
