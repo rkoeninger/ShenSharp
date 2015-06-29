@@ -17,7 +17,7 @@ module KlTokenizer =
     let pKlBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
     let pKlNumber = pfloat |>> NumberToken
     let pKlString = stringLiteral |>> StringToken
-    let pKlSymbol = regex "[a-zA-Z0-9\\x2B\\x2D\\x2F\\x3F\\x5F]+" |>> SymbolToken
+    let pKlSymbol = regex "[a-zA-Z0-9\\x2B\\x2D\\x2F\\x3E\\x3F\\x5F]+" |>> SymbolToken
     let pKlCombo = between (pchar '(') (pchar ')') (sepBy pKlToken spaces1) |>> ComboToken
     do pKlTokenRef := choice [pKlBool; pKlNumber; pKlString; pKlSymbol; pKlCombo]
     let tokenize s = run pKlToken s |> function
@@ -116,6 +116,9 @@ and Result = ValueResult of KlValue
             | ErrorResult of Uncaught
             //| ThunkResult of Thunk
 
+// both Uncaught/ErrorValue only occur as a result of (simple-error "")
+// any other errors in KL code are raw exceptions that crash the runtime (div by zero, etc)
+
 exception BoolExpected
 exception FunctionExpected
 exception NoClauseMatched
@@ -193,11 +196,13 @@ module KlEvaluator =
                                             context.Add(name, f)
                                             ValueResult f
         | FreezeExpr expr -> ContValue (context, expr) |> ValueResult
-        | TrapExpr (body, handler) -> try  evalcc body
-                                      with e -> match evalcc handler with
-                                                | ValueResult v -> let (arity, func) = getFunc context v
-                                                                   apply arity func <| [ErrorValue e.Message]
-                                                | e -> e
+        | TrapExpr (body, handler) -> 
+            match evalcc body with
+            | ValueResult _ as v -> v
+            | ErrorResult (Uncaught e) -> match evalcc handler with
+                                          | ValueResult v -> let (arity, func) = getFunc context v
+                                                             apply arity func [ErrorValue e]
+                                          | er -> er
         | AppExpr (f, args) ->
             match evalcc f with
             | ValueResult v -> let (arity, func) = getFunc context v
@@ -232,8 +237,23 @@ module KlBuiltins =
     let klStringConcat = function
         | [StringValue x; StringValue y] -> x + y |> StringValue
         | _ -> raise InvalidArgs
-    let klToString = function
-        | [x : KlValue] -> x.ToString() |> StringValue // TODO this needs cases for each type maybe
+    let rec str = function
+        | EmptyValue -> "()"
+        | BoolValue b -> if b then "true" else "false"
+        | NumberValue n -> n.ToString()
+        | StringValue s -> "\"" + s + "\""
+        | SymbolValue s -> s
+        | ConsValue (head, tail) -> let headStr = str head
+                                    let tailStr = str tail
+                                    sprintf "(cons %s %s)" headStr tailStr
+        | VectorValue value -> sprintf "(@v%s)" (System.String.Join("", (Array.map (fun s -> " " + str s) value)))
+        | ErrorValue message -> sprintf "(simple-error \"%s\")" message
+        | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
+        | ClosureValue c -> sprintf "<Closure %s>" (c.ToString())
+        | ContValue (c, e) -> sprintf "<Continuation %s>" (e.ToString())
+        | StreamValue s -> sprintf "<Stream %s>" (s.ToString())
+    let rec klToString = function
+        | [x : KlValue] -> x |> str |> StringValue
         | _ -> raise InvalidArgs
     let klIsString = function
         | [StringValue _] -> BoolValue true
@@ -251,8 +271,8 @@ module KlBuiltins =
     let klValue (context : Context) = function
         | [SymbolValue s] -> context.[s]
         | _ -> raise InvalidArgs
-    let klSimpleError = function // TODO needs to be of type (KlValue list -> KlReturn) not just (KlValue list -> KlValue)
-        | [StringValue s] -> EmptyValue
+    let klSimpleError = function
+        | [StringValue s] -> ErrorResult (Uncaught s)
         | _ -> raise InvalidArgs
     let klErrorToString = function
         | [ErrorValue s] -> StringValue s
@@ -337,9 +357,12 @@ module KlBuiltins =
         | [StreamValue s] -> s.Close()
                              EmptyValue
         | _ -> raise InvalidArgs
-    let klGetType = function
-        | [SymbolValue "run"] -> EmptyValue // TODO get the time the runtime started
-        | [SymbolValue "time"] -> EmptyValue
+    let epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, System.DateTimeKind.Utc)
+    let startTime = System.DateTime.UtcNow
+    let stopwatch = System.Diagnostics.Stopwatch.StartNew()
+    let klGetTime = function
+        | [SymbolValue "run"] -> stopwatch.ElapsedTicks * 100L |> float |> NumberValue // TODO run time in picoseconds?
+        | [SymbolValue "unix"] -> (System.DateTime.UtcNow - epoch).TotalSeconds |> float |> NumberValue
         | _ -> raise InvalidArgs
     let op f wrapper = function
         | [NumberValue x; NumberValue y] -> f x y |> wrapper
@@ -347,7 +370,7 @@ module KlBuiltins =
     let klAdd              = op (+)  NumberValue
     let klSubtract         = op (-)  NumberValue
     let klMultiply         = op (*)  NumberValue
-    let klDivide           = op (/)  NumberValue // TODO handle div by zero with an ErrorValue
+    let klDivide           = op (/)  NumberValue
     let klGreaterThan      = op (>)  BoolValue
     let klLessThan         = op (<)  BoolValue
     let klGreaterThanEqual = op (>=) BoolValue
@@ -381,7 +404,7 @@ module KlBuiltins =
                     "read-byte",       func 1 klReadByte;
                     "open",            func 2 klOpen;
                     "close",           func 1 klClose;
-                    "get-time",        func 1 klGetType;
+                    "get-time",        func 1 klGetTime;
                     "+",               func 2 klAdd;
                     "-",               func 2 klSubtract;
                     "*",               func 2 klMultiply;
@@ -393,7 +416,7 @@ module KlBuiltins =
                     "number?",         func 1 klIsNumber
                 ]
         c.Add("eval-kl", FunctionValue (new Function(1, klEval c)))
-        // TODO c.Add("simple-error", klSimpleError)
+        c.Add("simple-error", FunctionValue (new Function(1, klSimpleError)))
         c
 
 module KlCompiler =

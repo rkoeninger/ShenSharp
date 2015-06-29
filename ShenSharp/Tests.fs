@@ -6,6 +6,14 @@ open FParsec
 [<TestClass>]
 type Tests() =
 
+    let runit = KlTokenizer.tokenize >> KlParser.parse >> KlEvaluator.eval KlBuiltins.baseContext
+    let getValue = function
+        | ValueResult v -> v
+        | _ -> raise (new System.Exception("not a ValueResults"))
+    let getError = function
+        | ErrorResult e -> e
+        | _ -> raise (new System.Exception("not an ErrorResult"))
+
     [<TestMethod>]
     member this.TokenizerTest() =
         let tryit s = 
@@ -121,16 +129,45 @@ type Tests() =
 
     [<TestMethod>]
     member this.Builtins() =
-        let run = KlTokenizer.tokenize >> KlParser.parse >> KlEvaluator.eval KlBuiltins.baseContext
-        Assert.AreEqual(NumberValue 3.0 |> ValueResult, run "((+ 1) 2)")
-        Assert.AreEqual(NumberValue 2.0 |> ValueResult, run "((- 4) 2)")
-        Assert.AreEqual(BoolValue false |> ValueResult, run "(cons? ())")
-        Assert.AreEqual(BoolValue false |> ValueResult, run "(cons? 0)")
-        Assert.AreEqual(BoolValue true |> ValueResult, run "(cons? (cons 0 0))")
+        Assert.AreEqual(NumberValue 3.0 |> ValueResult, runit "((+ 1) 2)")
+        Assert.AreEqual(NumberValue 2.0 |> ValueResult, runit "((- 4) 2)")
+        Assert.AreEqual(BoolValue false |> ValueResult, runit "(cons? ())")
+        Assert.AreEqual(BoolValue false |> ValueResult, runit "(cons? 0)")
+        Assert.AreEqual(BoolValue true |> ValueResult, runit "(cons? (cons 0 0))")
     
+    [<TestMethod>]
+    member this.StringFunctions() =
+        Assert.AreEqual(StringValue "Hello, World!" |> ValueResult, runit "(cn \"Hello, \" \"World!\")")
+
     [<TestMethod>]
     member this.SanityChecks() =
         Assert.AreEqual(BoolToken true, BoolToken true)
         Assert.AreEqual(BoolExpr true, BoolExpr true)
         Assert.AreEqual(BoolValue true, BoolValue true) // this was failing when KlValue had a case containing a function type
         Assert.AreEqual(BoolValue true |> ValueResult, BoolValue true |> ValueResult) // this might start failing for the same reason
+
+    [<TestMethod>]
+    member this.SimpleError() =
+        let (Uncaught s) = getError (runit "(simple-error \"whoops\")")
+        Assert.AreEqual("whoops", s)
+
+    [<TestMethod>]
+    member this.PrintStuff() =
+        let (ValueResult (NumberValue u)) = runit "(get-time unix)"
+        printf "Unix time: %f" u
+        printf "\r\n"
+        let (ValueResult (NumberValue r)) = runit "(get-time run)"
+        printf "Run time: %f" r
+        printf "\r\n"
+        let (ValueResult (StringValue s)) = runit "(str (cons 1 (cons 2 (cons 3 ()))))"
+        printf "Cons: %s" s
+        printf "\r\n"
+        let (ValueResult (StringValue s)) = runit "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))"
+        printf "Vector: %s" s
+        printf "\r\n"
+        let (ValueResult (ErrorValue s)) = runit "(trap-error (simple-error \"whoops\") (lambda E E))"
+        printf "Error: %s" s
+        printf "\r\n"
+        let (ValueResult (StringValue s)) = runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))"
+        printf "Error-string: %s" s
+        printf "\r\n"
