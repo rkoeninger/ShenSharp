@@ -101,8 +101,7 @@ and KlValue = EmptyValue
             | ConsValue     of KlValue * KlValue
             | ErrorValue    of string
             | StreamValue   of System.IO.Stream
-            | ContValue     of Context * KlExpr
-
+            
 (* Thunks are used to implement tail calls.
    Position is used to identify if an expression is a tail call candidate.
    They should not be visible in KL code.
@@ -113,8 +112,8 @@ and Thunk = Thunk of (unit -> KlValue)
 and Position = Head | Tail
 and Uncaught = Uncaught of string
 and Result = ValueResult of KlValue
-            | ErrorResult of Uncaught
-            //| ThunkResult of Thunk
+           | ErrorResult of Uncaught
+           //| ThunkResult of Thunk
 
 // both Uncaught/ErrorValue only occur as a result of (simple-error "")
 // any other errors in KL code are raw exceptions that crash the runtime (div by zero, etc)
@@ -156,7 +155,15 @@ module KlEvaluator =
         | BoolExpr b   -> BoolValue b |> ValueResult
         | NumberExpr n -> NumberValue n |> ValueResult
         | StringExpr s -> StringValue s |> ValueResult
-        | SymbolExpr s -> match context.TryGetValue(s) with
+        | SymbolExpr s -> match context.TryGetValue(s) with // TODO what exactly is the prescribed evaluation of a symbol?
+                                                            // when the first expr in an App, it gets cast as a func and applied
+                                                            // when not in App position, it gets eval'd
+                                                                                       // if already defined, return value
+                                                                                       // if not already defined, return symbol
+                                                            // but in Shen.Net (C#), i had it return a symbol and a symbol
+                                                            // could get applied as a function (it implemented IFunction)
+                                                            // and would cast it's value to IFunction
+                                                            // and the symbol would apply it's args to it's assigned value
                           | (true, result) -> result |> ValueResult
                           | _ -> SymbolValue s |> ValueResult
         | AndExpr (left, right) ->
@@ -195,7 +202,7 @@ module KlEvaluator =
         | DefunExpr (name, paramz, body) -> let f = closureV context paramz body
                                             context.Add(name, f)
                                             ValueResult f
-        | FreezeExpr expr -> ContValue (context, expr) |> ValueResult
+        | FreezeExpr expr -> closureV context [] expr |> ValueResult
         | TrapExpr (body, handler) -> 
             match evalcc body with
             | ValueResult _ as v -> v
@@ -217,7 +224,7 @@ module KlEvaluator =
                                | Choice2Of2 e -> e
             | e -> e
 
-exception InvalidArgs 
+exception InvalidArgs
 
 module KlBuiltins =
     let getBool = function
@@ -250,7 +257,6 @@ module KlBuiltins =
         | ErrorValue message -> sprintf "(simple-error \"%s\")" message
         | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
         | ClosureValue c -> sprintf "<Closure %s>" (c.ToString())
-        | ContValue (c, e) -> sprintf "<Continuation %s>" (e.ToString())
         | StreamValue s -> sprintf "<Stream %s>" (s.ToString())
     let rec klToString = function
         | [x : KlValue] -> x |> str |> StringValue
@@ -316,7 +322,7 @@ module KlBuiltins =
                                                         | _ -> raise InvalidArgs)
                                                        cons
                                  sequ |> Seq.toList |> ComboToken
-        | _ -> raise InvalidArgs
+        | x -> invalidArg "x" (x.ToString())
     let klEval context = function
         | [v] -> klConsToToken v |> KlParser.parse |> KlEvaluator.eval context
         | _ -> raise InvalidArgs

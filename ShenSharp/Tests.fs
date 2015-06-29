@@ -7,12 +7,18 @@ open FParsec
 type Tests() =
 
     let runit = KlTokenizer.tokenize >> KlParser.parse >> KlEvaluator.eval KlBuiltins.baseContext
-    let getValue = function
-        | ValueResult v -> v
-        | _ -> raise (new System.Exception("not a ValueResults"))
     let getError = function
-        | ErrorResult e -> e
-        | _ -> raise (new System.Exception("not an ErrorResult"))
+        | ValueResult (ErrorValue e) -> e
+        | _ -> raise (new System.Exception("not an Error"))
+    let getNumber = function
+        | ValueResult (NumberValue n) -> n
+        | _ -> raise (new System.Exception("not a Number"))
+    let getString = function
+        | ValueResult (StringValue s) -> s
+        | _ -> raise (new System.Exception("not a String"))
+    let getUncaught = function
+        | ErrorResult (Uncaught s) -> s
+        | _ -> raise (new System.Exception("not an Uncaught"))
 
     [<TestMethod>]
     member this.TokenizerTest() =
@@ -137,7 +143,13 @@ type Tests() =
     
     [<TestMethod>]
     member this.StringFunctions() =
-        Assert.AreEqual(StringValue "Hello, World!" |> ValueResult, runit "(cn \"Hello, \" \"World!\")")
+        Assert.AreEqual("Hello, World!", runit "(cn \"Hello, \" \"World!\")" |> getString)
+        Assert.AreEqual("Hello", runit "(cn (n->string (string->n \"Hello\")) (strtl \"Hello\"))" |> getString)
+        Assert.AreEqual("1", runit "(str 1)" |> getString)
+
+    [<TestMethod>]
+    member this.EvalFunction() =
+        Assert.AreEqual(3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))" |> getNumber) // the atom `/` is evaluating to a function instead of a symbol
 
     [<TestMethod>]
     member this.SanityChecks() =
@@ -148,26 +160,26 @@ type Tests() =
 
     [<TestMethod>]
     member this.SimpleError() =
-        let (Uncaught s) = getError (runit "(simple-error \"whoops\")")
+        let s = runit "(simple-error \"whoops\")" |> getUncaught
         Assert.AreEqual("whoops", s)
 
     [<TestMethod>]
     member this.PrintStuff() =
-        let (ValueResult (NumberValue u)) = runit "(get-time unix)"
+        let u = runit "(get-time unix)" |> getNumber
         printf "Unix time: %f" u
         printf "\r\n"
-        let (ValueResult (NumberValue r)) = runit "(get-time run)"
+        let r = runit "(get-time run)" |> getNumber
         printf "Run time: %f" r
         printf "\r\n"
-        let (ValueResult (StringValue s)) = runit "(str (cons 1 (cons 2 (cons 3 ()))))"
+        let s = runit "(str (cons 1 (cons 2 (cons 3 ()))))" |> getString
         printf "Cons: %s" s
         printf "\r\n"
-        let (ValueResult (StringValue s)) = runit "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))"
+        let s = runit "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> getString
         printf "Vector: %s" s
         printf "\r\n"
-        let (ValueResult (ErrorValue s)) = runit "(trap-error (simple-error \"whoops\") (lambda E E))"
+        let s = runit "(trap-error (simple-error \"whoops\") (lambda E E))" |> getError
         printf "Error: %s" s
         printf "\r\n"
-        let (ValueResult (StringValue s)) = runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))"
+        let s = runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> getString
         printf "Error-string: %s" s
         printf "\r\n"
