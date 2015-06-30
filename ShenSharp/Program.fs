@@ -79,14 +79,18 @@ module KlParser =
 //8. functions
 //9. lists
 //10. tuples
-//11. closures
-//12. continuations
+//11. closures (subset of functions)
+//12. continuations (subset of closures)
 
 // TODO are there multiple numeric types in KL/Shen?
 // what is the result of `(/ 1 2)`? is it 0 or 0.5?
 
+// TODO need to implement nested scoping for proper closures and symbol resolution
+//type Scope = System.Collections.Generic.Dictionary<string, KlValue>
+//type Env = Global of Scope
+//         | Local  of Scope * Env
+
 type Context = System.Collections.Generic.Dictionary<string, KlValue>
-and Closure = { Paramz : string list; Body : KlExpr }
 and Function(arity : int, f : KlValue list -> Result) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
@@ -96,7 +100,6 @@ and KlValue = EmptyValue
             | StringValue   of string
             | SymbolValue   of string
             | FunctionValue of Function
-            | ClosureValue  of Closure
             | VectorValue   of KlValue array
             | ConsValue     of KlValue * KlValue
             | ErrorValue    of string
@@ -130,12 +133,13 @@ module KlEvaluator =
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
-    let closureV context paramz body = ClosureValue { Paramz = paramz; Body = body }
     let append (context : Context) (defs : (string * KlValue) list) =
         for (key, value) in defs do
             context.Add(key, value)
         context 
     let rec eval context expr =
+        let closure context (paramz : string list) body =
+            new Function(paramz.Length, fun args -> eval (append context (List.zip paramz args)) body) |> FunctionValue
         let rec apply (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
             if args.Length > arity
             then raise TooManyArgs
@@ -146,7 +150,6 @@ module KlEvaluator =
         let rec getFunc (context : Context) (value : KlValue) =
             match value with
             | FunctionValue f -> (f.Arity, f.Apply)
-            | ClosureValue c -> (c.Paramz.Length, fun args -> eval (append context (List.zip c.Paramz args)) c.Body)
             | SymbolValue s -> context.[s] |> getFunc context
             | _ -> raise FunctionExpected
         let evalcc = eval context // evalcc = "eval in the current context"
@@ -198,11 +201,11 @@ module KlEvaluator =
             match evalcc binding with
             | ValueResult v -> eval (append context [(symbol, v)]) body
             | e -> e
-        | LambdaExpr (param, body) -> closureV context [param] body |> ValueResult
-        | DefunExpr (name, paramz, body) -> let f = closureV context paramz body
+        | LambdaExpr (param, body) -> closure context [param] body |> ValueResult
+        | DefunExpr (name, paramz, body) -> let f = closure context paramz body
                                             context.Add(name, f)
                                             ValueResult f
-        | FreezeExpr expr -> closureV context [] expr |> ValueResult
+        | FreezeExpr expr -> closure context [] expr |> ValueResult
         | TrapExpr (body, handler) -> 
             match evalcc body with
             | ValueResult _ as v -> v
@@ -256,7 +259,6 @@ module KlBuiltins =
         | VectorValue value -> sprintf "(@v%s)" (System.String.Join("", (Array.map (fun s -> " " + str s) value)))
         | ErrorValue message -> sprintf "(simple-error \"%s\")" message
         | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
-        | ClosureValue c -> sprintf "<Closure %s>" (c.ToString())
         | StreamValue s -> sprintf "<Stream %s>" (s.ToString())
     let rec klToString = function
         | [x : KlValue] -> x |> str |> StringValue
