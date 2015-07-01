@@ -60,7 +60,7 @@ type Tests() =
     member this.EvaluatorTest() =
         let tryit s e = 
             match run KlTokenizer.pKlToken s with
-                | Success(result, _, _)   -> Assert.AreEqual(ValueResult e, result |> KlParser.parse |> KlEvaluator.eval (new Context()))
+                | Success(result, _, _)   -> Assert.AreEqual(ValueResult e, result |> KlParser.parse |> KlEvaluator.eval (KlBuiltins.emptyContext ()))
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         // some basic expressions using special forms and literals only
@@ -77,24 +77,24 @@ type Tests() =
         tryit "(or false false)" (BoolValue false)
 
         // testing defun and resolution of defined functions
-        let c = new Context()
+        let (g, s) as c = KlBuiltins.emptyContext ()
         let tpeval s = s |> KlTokenizer.tokenize |> KlParser.parse |> KlEvaluator.eval c
 
-        c.Add("not", FunctionValue (new Function(1, function
+        g.Add("not", FunctionValue (new Function(1, function
                                                     | [BoolValue b] -> not b |> BoolValue |> ValueResult
                                                     | _ -> raise <| new System.Exception("must be bool"))))
         tpeval "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(BoolValue true |> ValueResult, tpeval "(xor true false)")
 
         // testing symbol resolution
-        let c2 = new Context()
+        let (g2, s2) as c2 = KlBuiltins.emptyContext ()
         let tpeval2 s = s |> KlTokenizer.tokenize |> KlParser.parse |> KlEvaluator.eval c2
         let symbolP = new Function(1, function
                                       | [SymbolValue _] -> BoolValue true |> ValueResult
                                       | _ -> BoolValue false |> ValueResult)
-        c2.Add("symbol?", FunctionValue symbolP)
+        g2.Add("symbol?", FunctionValue symbolP)
         Assert.AreEqual(BoolValue true |> ValueResult, tpeval2 "(symbol? run)")
-        c2.Add("id", FunctionValue (new Function(1, function | [x] -> ValueResult x; | _ -> raise <| new System.Exception("must be 1 arg"))))
+        g2.Add("id", FunctionValue (new Function(1, function | [x] -> ValueResult x; | _ -> raise <| new System.Exception("must be 1 arg"))))
         Assert.AreEqual(BoolValue true |> ValueResult, tpeval2 "(symbol? (id run))")
 
         // function has partial application built-in; this is not what will be typical
@@ -106,8 +106,8 @@ type Tests() =
                                   | [NumberValue x; NumberValue y] -> NumberValue (x + y) |> ValueResult
                                   | _ -> raise <| new System.Exception("must be two numbers"))
 
-        let context = new Context()
-        context.Add("+", FunctionValue add)
+        let (globals, scope) as context = KlBuiltins.emptyContext ()
+        globals.Add("+", FunctionValue add)
 
         Assert.AreEqual(
             NumberValue 3.0 |> ValueResult,
@@ -149,7 +149,7 @@ type Tests() =
 
     [<TestMethod>]
     member this.EvalFunction() =
-        Assert.AreEqual(3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))" |> getNumber) // the atom `/` is evaluating to a function instead of a symbol
+        Assert.AreEqual(3.0, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))" |> getNumber) // the atom `/` is evaluating to a function instead of a symbol
 
     [<TestMethod>]
     member this.SanityChecks() =

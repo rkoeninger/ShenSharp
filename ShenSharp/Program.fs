@@ -85,12 +85,9 @@ module KlParser =
 // TODO are there multiple numeric types in KL/Shen?
 // what is the result of `(/ 1 2)`? is it 0 or 0.5?
 
-// TODO need to implement nested scoping for proper closures and symbol resolution
-//type Scope = System.Collections.Generic.Dictionary<string, KlValue>
-//type Env = Global of Scope
-//         | Local  of Scope * Env
-
-type Context = System.Collections.Generic.Dictionary<string, KlValue>
+type Globals = System.Collections.Generic.Dictionary<string, KlValue>
+and Scope = Map<string, KlValue> list
+and Env = Globals * Scope
 and Function(arity : int, f : KlValue list -> Result) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
@@ -133,13 +130,15 @@ module KlEvaluator =
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
-    let append (context : Context) (defs : (string * KlValue) list) =
-        for (key, value) in defs do
-            context.Add(key, value)
-        context 
-    let rec eval context expr =
-        let closure context (paramz : string list) body =
-            new Function(paramz.Length, fun args -> eval (append context (List.zip paramz args)) body) |> FunctionValue
+    let append (globals, scope) defs = globals, List.Cons(Map.ofList defs, scope)
+    let append1 (globals, scope) k v = globals, List.Cons(Map.ofList [(k, v)], scope)
+    let rec eval env expr =
+        let closure env (paramz : string list) body =
+            new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
+        let lookup ((globals, scope) : Env) symbolName =
+            match List.fold (fun r m -> if Option.isSome r then r else Map.tryFind symbolName m) None scope with
+            | Some l -> l
+            | None -> SymbolValue symbolName
         let rec apply (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
             if args.Length > arity
             then raise TooManyArgs
@@ -147,28 +146,18 @@ module KlEvaluator =
                 then let newArity = arity - args.Length
                      new Function(newArity, List.append args >> apply arity f) |> FunctionValue |> ValueResult
                 else f args
-        let rec getFunc (context : Context) (value : KlValue) =
+        let rec getFunc ((globals, scope) as env : Env) (value : KlValue) =
             match value with
             | FunctionValue f -> (f.Arity, f.Apply)
-            | SymbolValue s -> context.[s] |> getFunc context
+            | SymbolValue s -> globals.[s] |> getFunc env
             | _ -> raise FunctionExpected
-        let evalcc = eval context // evalcc = "eval in the current context"
+        let evalcc = eval env // evalcc = "eval in the current context"
         match expr with
         | EmptyExpr    -> EmptyValue |> ValueResult
         | BoolExpr b   -> BoolValue b |> ValueResult
         | NumberExpr n -> NumberValue n |> ValueResult
         | StringExpr s -> StringValue s |> ValueResult
-        | SymbolExpr s -> match context.TryGetValue(s) with // TODO what exactly is the prescribed evaluation of a symbol?
-                                                            // when the first expr in an App, it gets cast as a func and applied
-                                                            // when not in App position, it gets eval'd
-                                                                                       // if already defined, return value
-                                                                                       // if not already defined, return symbol
-                                                            // but in Shen.Net (C#), i had it return a symbol and a symbol
-                                                            // could get applied as a function (it implemented IFunction)
-                                                            // and would cast it's value to IFunction
-                                                            // and the symbol would apply it's args to it's assigned value
-                          | (true, result) -> result |> ValueResult
-                          | _ -> SymbolValue s |> ValueResult
+        | SymbolExpr s -> lookup env s |> ValueResult
         | AndExpr (left, right) ->
             match evalcc left with
             | ValueResult (BoolValue true) -> evalcc right
@@ -199,23 +188,24 @@ module KlEvaluator =
             evalClauses clauses
         | LetExpr (symbol, binding, body) ->
             match evalcc binding with
-            | ValueResult v -> eval (append context [(symbol, v)]) body
+            | ValueResult v -> eval (append1 env symbol v) body
             | e -> e
-        | LambdaExpr (param, body) -> closure context [param] body |> ValueResult
-        | DefunExpr (name, paramz, body) -> let f = closure context paramz body
-                                            context.Add(name, f)
+        | LambdaExpr (param, body) -> closure env [param] body |> ValueResult
+        | DefunExpr (name, paramz, body) -> let f = closure env paramz body
+                                            let (globals, _) = env
+                                            globals.Add(name, f)
                                             ValueResult f
-        | FreezeExpr expr -> closure context [] expr |> ValueResult
-        | TrapExpr (body, handler) -> 
+        | FreezeExpr expr -> closure env [] expr |> ValueResult
+        | TrapExpr (body, handler) ->
             match evalcc body with
             | ValueResult _ as v -> v
             | ErrorResult (Uncaught e) -> match evalcc handler with
-                                          | ValueResult v -> let (arity, func) = getFunc context v
+                                          | ValueResult v -> let (arity, func) = getFunc env v
                                                              apply arity func [ErrorValue e]
                                           | er -> er
         | AppExpr (f, args) ->
             match evalcc f with
-            | ValueResult v -> let (arity, func) = getFunc context v
+            | ValueResult v -> let (arity, func) = getFunc env v
                                let rec evalArgs (args : KlExpr list) (vals : KlValue list) : Choice<KlValue list, Result> =
                                    match args with
                                    | [] -> Choice1Of2 vals
@@ -233,8 +223,8 @@ module KlBuiltins =
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
-    let newContext kvs = System.Linq.Enumerable.ToDictionary(kvs, fst, snd)
-    let emptyContext : Context = newContext Seq.empty
+    let newContext kvs = System.Linq.Enumerable.ToDictionary(kvs, fst, snd), []
+    let emptyContext () = newContext Seq.empty
     let klIntern = function
         | [StringValue s] -> SymbolValue s
         | _ -> raise InvalidArgs
@@ -273,11 +263,11 @@ module KlBuiltins =
     let klStringToInt = function
         | [StringValue s] -> s.[0] |> int |> float |> NumberValue
         | _ -> raise InvalidArgs
-    let klSet (context : Context) = function
-        | [SymbolValue s; x] -> context.[s] <- x
+    let klSet (globals : Globals, _) = function
+        | [SymbolValue s; x] -> globals.[s] <- x
         | _ -> raise InvalidArgs
-    let klValue (context : Context) = function
-        | [SymbolValue s] -> context.[s]
+    let klValue (globals : Globals, _) = function
+        | [SymbolValue s] -> globals.[s]
         | _ -> raise InvalidArgs
     let klSimpleError = function
         | [StringValue s] -> ErrorResult (Uncaught s)
@@ -388,44 +378,45 @@ module KlBuiltins =
         | [_] -> BoolValue false
         | _ -> raise InvalidArgs
     let func arity f = FunctionValue (new Function(arity, f >> ValueResult))
-    let baseContext : Context =
-        let c = newContext [
-                    "intern",          func 1 klIntern;
-                    "pos",             func 2 klStringPos;
-                    "strtl",           func 1 klStringTail;
-                    "cn",              func 2 klStringConcat;
-                    "str",             func 1 klToString;
-                    "string?",         func 1 klIsString;
-                    "n->string",       func 1 klIntToString;
-                    "string->n",       func 1 klStringToInt;
-                    "error-to-string", func 1 klErrorToString;
-                    "cons",            func 2 klNewCons;
-                    "hd",              func 1 klHead;
-                    "tl",              func 1 klTail;
-                    "cons?",           func 1 klIsCons;
-                    "=",               func 2 klEquals;
-                    "absvector",       func 1 klNewVector;
-                    "<-address",       func 2 klReadVector;
-                    "address->",       func 3 klWriteVector;
-                    "absvector?",      func 1 klIsVector;
-                    "write-byte",      func 2 klWriteByte;
-                    "read-byte",       func 1 klReadByte;
-                    "open",            func 2 klOpen;
-                    "close",           func 1 klClose;
-                    "get-time",        func 1 klGetTime;
-                    "+",               func 2 klAdd;
-                    "-",               func 2 klSubtract;
-                    "*",               func 2 klMultiply;
-                    "/",               func 2 klDivide;
-                    ">",               func 2 klGreaterThan;
-                    "<",               func 2 klLessThan;
-                    ">=",              func 2 klGreaterThanEqual;
-                    "<=",              func 2 klLessThanEqual;
-                    "number?",         func 1 klIsNumber
-                ]
-        c.Add("eval-kl", FunctionValue (new Function(1, klEval c)))
-        c.Add("simple-error", FunctionValue (new Function(1, klSimpleError)))
-        c
+    let baseContext : Env =
+        let (globals, scope) as env =
+            newContext [
+                "intern",          func 1 klIntern;
+                "pos",             func 2 klStringPos;
+                "strtl",           func 1 klStringTail;
+                "cn",              func 2 klStringConcat;
+                "str",             func 1 klToString;
+                "string?",         func 1 klIsString;
+                "n->string",       func 1 klIntToString;
+                "string->n",       func 1 klStringToInt;
+                "error-to-string", func 1 klErrorToString;
+                "cons",            func 2 klNewCons;
+                "hd",              func 1 klHead;
+                "tl",              func 1 klTail;
+                "cons?",           func 1 klIsCons;
+                "=",               func 2 klEquals;
+                "absvector",       func 1 klNewVector;
+                "<-address",       func 2 klReadVector;
+                "address->",       func 3 klWriteVector;
+                "absvector?",      func 1 klIsVector;
+                "write-byte",      func 2 klWriteByte;
+                "read-byte",       func 1 klReadByte;
+                "open",            func 2 klOpen;
+                "close",           func 1 klClose;
+                "get-time",        func 1 klGetTime;
+                "+",               func 2 klAdd;
+                "-",               func 2 klSubtract;
+                "*",               func 2 klMultiply;
+                "/",               func 2 klDivide;
+                ">",               func 2 klGreaterThan;
+                "<",               func 2 klLessThan;
+                ">=",              func 2 klGreaterThanEqual;
+                "<=",              func 2 klLessThanEqual;
+                "number?",         func 1 klIsNumber
+            ]
+        globals.Add("eval-kl", FunctionValue (new Function(1, klEval env)))
+        globals.Add("simple-error", FunctionValue (new Function(1, klSimpleError)))
+        env
 
 module KlCompiler =
     let rec compiler = fun (x : KlExpr) -> "fsharp code"
