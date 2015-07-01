@@ -223,8 +223,8 @@ module KlBuiltins =
     let getBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
-    let newContext kvs = System.Linq.Enumerable.ToDictionary(kvs, fst, snd), []
-    let emptyContext () = newContext Seq.empty
+    let newEnv kvs = System.Linq.Enumerable.ToDictionary(kvs, fst, snd), []
+    let emptyEnv () = newEnv Seq.empty
     let klIntern = function
         | [StringValue s] -> SymbolValue s
         | _ -> raise InvalidArgs
@@ -315,8 +315,8 @@ module KlBuiltins =
                                                        cons
                                  sequ |> Seq.toList |> ComboToken
         | x -> invalidArg "x" (x.ToString())
-    let klEval context = function
-        | [v] -> klConsToToken v |> KlParser.parse |> KlEvaluator.eval context
+    let klEval env = function
+        | [v] -> klConsToToken v |> KlParser.parse |> KlEvaluator.eval env
         | _ -> raise InvalidArgs
     let klType = function
         | [x; _] -> x // TODO label the type of an expression (what does that mean?)
@@ -378,9 +378,9 @@ module KlBuiltins =
         | [_] -> BoolValue false
         | _ -> raise InvalidArgs
     let func arity f = FunctionValue (new Function(arity, f >> ValueResult))
-    let baseContext : Env =
+    let baseEnv () =
         let (globals, scope) as env =
-            newContext [
+            newEnv [
                 "intern",          func 1 klIntern;
                 "pos",             func 2 klStringPos;
                 "strtl",           func 1 klStringTail;
