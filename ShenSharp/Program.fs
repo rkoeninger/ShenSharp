@@ -86,8 +86,8 @@ module KlParser =
 // what is the result of `(/ 1 2)`? is it 0 or 0.5?
 
 type Globals = System.Collections.Generic.Dictionary<string, KlValue>
-and Scope = Map<string, KlValue> list
-and Env = Globals * Scope
+and Locals = Map<string, KlValue> list
+and Env = Globals * Locals
 and Function(arity : int, f : KlValue list -> Result) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
@@ -124,19 +124,17 @@ exception NoClauseMatched
 exception TooManyArgs
 
 module KlEvaluator =
-    let bind f = function
-        | ValueResult v -> f v
-        | y -> y
-    let getBool = function
-        | BoolValue b -> b
-        | _ -> raise BoolExpected
-    let append (globals, scope) defs = globals, List.Cons(Map.ofList defs, scope)
-    let append1 (globals, scope) k v = globals, List.Cons(Map.ofList [(k, v)], scope)
+    let append (globals, locals) defs = globals, List.Cons(Map.ofList defs, locals)
+    let append1 (globals, locals) k v = globals, List.Cons(Map.ofList [(k, v)], locals)
     let rec eval env expr =
         let closure env (paramz : string list) body =
             new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
-        let lookup ((globals, scope) : Env) symbolName =
-            match List.fold (fun r m -> if Option.isSome r then r else Map.tryFind symbolName m) None scope with
+        let flatten (x : 'a option option) =
+            match x with
+            | Some y -> y
+            | None -> None
+        let lookup (_, locals : Locals) (symbolName : string) =
+            match Seq.map (Map.tryFind symbolName) locals |> Seq.tryFind Option.isSome |> flatten with
             | Some l -> l
             | None -> SymbolValue symbolName
         let rec apply (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
@@ -146,7 +144,7 @@ module KlEvaluator =
                 then let newArity = arity - args.Length
                      new Function(newArity, List.append args >> apply arity f) |> FunctionValue |> ValueResult
                 else f args
-        let rec getFunc ((globals, scope) as env : Env) (value : KlValue) =
+        let rec getFunc ((globals, _) as env : Env) (value : KlValue) =
             match value with
             | FunctionValue f -> (f.Arity, f.Apply)
             | SymbolValue s -> globals.[s] |> getFunc env
@@ -192,7 +190,7 @@ module KlEvaluator =
             | e -> e
         | LambdaExpr (param, body) -> closure env [param] body |> ValueResult
         | DefunExpr (name, paramz, body) -> let f = closure env paramz body
-                                            let (globals, _) = env
+                                            let (globals : Globals, _) = env
                                             globals.Add(name, f)
                                             ValueResult f
         | FreezeExpr expr -> closure env [] expr |> ValueResult
@@ -220,9 +218,6 @@ module KlEvaluator =
 exception InvalidArgs
 
 module KlBuiltins =
-    let getBool = function
-        | BoolValue b -> b
-        | _ -> raise BoolExpected
     let newEnv kvs = System.Linq.Enumerable.ToDictionary(kvs, fst, snd), []
     let emptyEnv () = newEnv Seq.empty
     let klIntern = function
@@ -308,12 +303,11 @@ module KlBuiltins =
         | NumberValue n -> NumberToken n
         | StringValue s -> StringToken s
         | SymbolValue s -> SymbolToken s
-        | ConsValue _ as cons -> let sequ = Seq.unfold (function
-                                                        | ConsValue (head, tail) -> Some(klConsToToken head, tail)
-                                                        | EmptyValue -> None
-                                                        | _ -> raise InvalidArgs)
-                                                       cons
-                                 sequ |> Seq.toList |> ComboToken
+        | ConsValue _ as cons ->
+            let generator = function | ConsValue (head, tail) -> Some(klConsToToken head, tail)
+                                     | EmptyValue -> None
+                                     | _ -> raise InvalidArgs
+            cons |> Seq.unfold generator |> Seq.toList |> ComboToken
         | x -> invalidArg "x" (x.ToString())
     let klEval env = function
         | [v] -> klConsToToken v |> KlParser.parse |> KlEvaluator.eval env
@@ -379,7 +373,7 @@ module KlBuiltins =
         | _ -> raise InvalidArgs
     let func arity f = FunctionValue (new Function(arity, f >> ValueResult))
     let baseEnv () =
-        let (globals, scope) as env =
+        let (globals, _) as env =
             newEnv [
                 "intern",          func 1 klIntern;
                 "pos",             func 2 klStringPos;
@@ -412,8 +406,7 @@ module KlBuiltins =
                 "<",               func 2 klLessThan;
                 ">=",              func 2 klGreaterThanEqual;
                 "<=",              func 2 klLessThanEqual;
-                "number?",         func 1 klIsNumber
-            ]
+                "number?",         func 1 klIsNumber]
         globals.Add("eval-kl", FunctionValue (new Function(1, klEval env)))
         globals.Add("simple-error", FunctionValue (new Function(1, klSimpleError)))
         env

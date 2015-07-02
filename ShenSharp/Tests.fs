@@ -86,7 +86,7 @@ type Tests() =
 
     [<TestMethod>]
     member this.DefunAndResolutionOfDefinedFunctions() =
-        let (globals, scope) as env = KlBuiltins.emptyEnv ()
+        let (globals, locals) as env = KlBuiltins.emptyEnv ()
         let tpeval s = s |> KlTokenizer.tokenize |> KlParser.parse |> KlEvaluator.eval env
 
         globals.Add("not", FunctionValue (new Function(1, function
@@ -97,7 +97,7 @@ type Tests() =
 
     [<TestMethod>]
     member this.SymbolResolution() =
-        let (globals, scope) as env = KlBuiltins.emptyEnv ()
+        let (globals, locals) as env = KlBuiltins.emptyEnv ()
         let tpeval2 s = s |> KlTokenizer.tokenize |> KlParser.parse |> KlEvaluator.eval env
         let symbolP = new Function(1, function
                                       | [SymbolValue _] -> BoolValue true |> ValueResult
@@ -143,8 +143,8 @@ type Tests() =
 
     [<TestMethod>]
     member this.EvalFunction() =
-        Assert.AreEqual(3.0, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))" |> getNumber)
-        let inc = runit "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" |> getFunc
+        Assert.AreEqual(3.0, (runit >> getNumber) "(eval-kl (cons + (cons 1 (cons 2 ()))))")
+        let inc = (runit >> getFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
         Assert.AreEqual(5.0, inc .Apply [NumberValue 4.0] |> getNumber)
 
     [<TestMethod>]
