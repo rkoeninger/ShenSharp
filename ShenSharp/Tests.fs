@@ -2,36 +2,53 @@
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
 open FParsec
+open KlTokenizer
+open KlParser
+open KlEvaluator
+open KlBuiltins
 
 [<TestClass>]
 type Tests() =
 
-    let runit = KlTokenizer.tokenize >> KlParser.parse >> KlEvaluator.eval (KlBuiltins.baseEnv ())
+    let runInEnv env = tokenize >> parse >> eval env
+    let runit = runInEnv (baseEnv ())
     let getError = function
         | ValueResult (ErrorValue e) -> e
-        | _ -> raise (new System.Exception("not an Error"))
+        | _ -> invalidArg "_" "not an Error"
     let getNumber = function
         | ValueResult (NumberValue n) -> n
-        | _ -> raise (new System.Exception("not a Number"))
+        | _ -> invalidArg "_" "not a Number"
     let getString = function
         | ValueResult (StringValue s) -> s
-        | _ -> raise (new System.Exception("not a String"))
+        | _ -> invalidArg "_" "not a String"
     let getVector = function
         | ValueResult (VectorValue s) -> s
-        | _ -> raise (new System.Exception("not a Vector"))
+        | _ -> invalidArg "_" "not a Vector"
     let getUncaught = function
         | ErrorResult (Uncaught s) -> s
-        | _ -> raise (new System.Exception("not an Uncaught"))
+        | _ -> invalidArg "_" "not an Uncaught"
     let arrayEqual (xs : 'a[]) (ys : 'a[]) =
         xs.Length = ys.Length && Array.forall2 (=) xs ys
     let getFunc = function
         | ValueResult (FunctionValue f) -> f
-        | _ -> raise (new System.Exception("not a Function"))
+        | _ -> invalidArg "_" "not a Function"
+    let trueV = BoolValue true
+    let falseV = BoolValue false
+    let trueR = BoolValue true |> ValueResult
+    let falseR = BoolValue false |> ValueResult
+    let eApp1 f arg1 = AppExpr(f, [arg1])
+    let symApp1 sym arg1 = AppExpr (SymbolExpr sym, [arg1])
+    let symApp2 sym arg1 arg2 = AppExpr (SymbolExpr sym, [arg1; arg2])
+    let symApp3 sym arg1 arg2 arg3 = AppExpr (SymbolExpr sym, [arg1; arg2; arg3])
+    let intE i = NumberExpr (float i)
+    let intV i = NumberValue (float i)
+    let intR i = i |> float |> NumberValue |> ValueResult
+    let funcV n f = FunctionValue <| new Function(1, f)
 
     [<TestMethod>]
     member this.TokenizerTest() =
         let tryit s = 
-            match run KlTokenizer.pKlToken s with
+            match run pKlToken s with
                 | Success(result, _, _)   -> ()
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
@@ -55,79 +72,66 @@ type Tests() =
 
     [<TestMethod>]
     member this.ParserTest() =
-        let tryit s e = 
-            match run KlTokenizer.pKlToken s with
-                | Success(result, _, _)   -> Assert.AreEqual(e, KlParser.parse result)
+        let tryit syntax expr = 
+            match run pKlToken syntax with
+                | Success(result, _, _)   -> Assert.AreEqual(expr, parse result)
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
-        tryit "2" (NumberExpr 2.0)
+        tryit "2" (intE 2)
         tryit "()" EmptyExpr
-        tryit "(add 1 2)" (AppExpr (SymbolExpr "add", [NumberExpr 1.0; NumberExpr 2.0]))
+        tryit "(add 1 2)" (symApp2 "add" (intE 1) (intE 2))
 
     [<TestMethod>]
     member this.EvaluatorTest() =
-        let tryit s e = 
-            match run KlTokenizer.pKlToken s with
-                | Success(result, _, _)   -> Assert.AreEqual(ValueResult e, result |> KlParser.parse |> KlEvaluator.eval (KlBuiltins.emptyEnv ()))
+        let tryit syntax expr = 
+            match run pKlToken syntax with
+                | Success(result, _, _)   -> Assert.AreEqual(ValueResult expr, result |> parse |> eval (emptyEnv ()))
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         // some basic expressions using special forms and literals only
         tryit "()" EmptyValue
-        tryit "true" (BoolValue true)
-        tryit "2" (NumberValue 2.0)
-        tryit "(and true true)" (BoolValue true)
-        tryit "(and true false)" (BoolValue false)
-        tryit "(and false true)" (BoolValue false)
-        tryit "(and false false)" (BoolValue false)
-        tryit "(or true true)" (BoolValue true)
-        tryit "(or true false)" (BoolValue true)
-        tryit "(or false true)" (BoolValue true)
-        tryit "(or false false)" (BoolValue false)
+        tryit "true" trueV
+        tryit "2" (intV 2)
+        tryit "(and true true)" trueV
+        tryit "(and true false)" falseV
+        tryit "(and false true)" falseV
+        tryit "(and false false)" falseV
+        tryit "(or true true)" trueV
+        tryit "(or true false)" trueV
+        tryit "(or false true)" trueV
+        tryit "(or false false)" falseV
 
     [<TestMethod>]
     member this.DefunAndResolutionOfDefinedFunctions() =
-        let (globals, locals) as env = KlBuiltins.emptyEnv ()
-        let tpeval s = s |> KlTokenizer.tokenize |> KlParser.parse |> KlEvaluator.eval env
-
-        globals.Add("not", FunctionValue (new Function(1, function
-                                                    | [BoolValue b] -> not b |> BoolValue |> ValueResult
-                                                    | _ -> raise <| new System.Exception("must be bool"))))
-        tpeval "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
-        Assert.AreEqual(BoolValue true |> ValueResult, tpeval "(xor true false)")
+        let (globals, locals) as env = emptyEnv ()
+        globals.Add("not", funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult
+                                             | _             -> invalidArg "args" "must be bool"))
+        runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
+        Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
     [<TestMethod>]
     member this.SymbolResolution() =
-        let (globals, locals) as env = KlBuiltins.emptyEnv ()
-        let tpeval2 s = s |> KlTokenizer.tokenize |> KlParser.parse |> KlEvaluator.eval env
-        let symbolP = new Function(1, function
-                                      | [SymbolValue _] -> BoolValue true |> ValueResult
-                                      | _ -> BoolValue false |> ValueResult)
-        globals.Add("symbol?", FunctionValue symbolP)
-        Assert.AreEqual(BoolValue true |> ValueResult, tpeval2 "(symbol? run)")
-        globals.Add("id", FunctionValue (new Function(1, function | [x] -> ValueResult x; | _ -> raise <| new System.Exception("must be 1 arg"))))
-        Assert.AreEqual(BoolValue true |> ValueResult, tpeval2 "(symbol? (id run))")
+        let (globals, locals) as env = emptyEnv ()
+        globals.Add("symbol?", funcV 1 (function | [SymbolValue _] -> trueR
+                                                 | _               -> falseR))
+        Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
+        globals.Add("id", funcV 1 (function | [x] -> ValueResult x
+                                            | _   -> invalidArg "args" "must be 1 arg"))
+        Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<TestMethod>]
     member this.PartialApplicationForBuiltins() =
-        let env = KlBuiltins.baseEnv ()
-        Assert.AreEqual(
-            NumberValue 3.0 |> ValueResult,
-            KlEvaluator.eval env
-                             (AppExpr (SymbolExpr "+",
-                                      [(NumberExpr 1.0); (NumberExpr 2.0)])))
-        Assert.AreEqual(
-            NumberValue 3.0 |> ValueResult,
-            KlEvaluator.eval env
-                             (AppExpr (AppExpr (SymbolExpr "+", [NumberExpr 1.0]),
-                                               [NumberExpr 2.0])))
+        let env = baseEnv ()
+        Assert.AreEqual(intR 3, eval env (symApp2 "+" (intE 1) (intE 2)))
+        Assert.AreEqual(intR 3, eval env (eApp1 (symApp1 "+" (intE 1)) (intE 2)))
 
     [<TestMethod>]
     member this.Builtins() =
-        Assert.AreEqual(NumberValue 3.0 |> ValueResult, runit "((+ 1) 2)")
-        Assert.AreEqual(NumberValue 2.0 |> ValueResult, runit "((- 4) 2)")
-        Assert.AreEqual(BoolValue false |> ValueResult, runit "(cons? ())")
-        Assert.AreEqual(BoolValue false |> ValueResult, runit "(cons? 0)")
-        Assert.AreEqual(BoolValue true |> ValueResult, runit "(cons? (cons 0 0))")
+        Assert.AreEqual(intR 3, runit "((+ 1) 2)")
+        Assert.AreEqual(intR 2, runit "((- 4) 2)")
+        Assert.AreEqual(falseR, runit "(cons? ())")
+        Assert.AreEqual(falseR, runit "(cons? 0)")
+        Assert.AreEqual(trueR, runit "(cons? (cons 0 0))")
     
     [<TestMethod>]
     member this.StringFunctions() =
@@ -143,9 +147,9 @@ type Tests() =
 
     [<TestMethod>]
     member this.EvalFunction() =
-        Assert.AreEqual(3.0, (runit >> getNumber) "(eval-kl (cons + (cons 1 (cons 2 ()))))")
+        Assert.AreEqual(intR 3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))")
         let inc = (runit >> getFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
-        Assert.AreEqual(5.0, inc .Apply [NumberValue 4.0] |> getNumber)
+        Assert.AreEqual(intR 5, inc .Apply [NumberValue 4.0])
 
     [<TestMethod>]
     member this.SanityChecks() =

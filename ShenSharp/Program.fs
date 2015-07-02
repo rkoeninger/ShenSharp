@@ -292,7 +292,7 @@ module KlBuiltins =
         | StreamValue x, StreamValue y -> x = y
         | ErrorValue x, ErrorValue y   -> x = y
         | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq (x1, y1) && klEq (x2, y2)
-        | VectorValue x, VectorValue y -> ((x.Length = y.Length) && (Array.zip x y |> Array.fold (fun r args -> r && klEq args) true))
+        | VectorValue xs, VectorValue ys -> xs.Length = ys.Length && Array.forall2 (=) xs ys
         | (_, _) -> false
     let klEquals = function
         | [x; y] -> klEq (x, y) |> BoolValue
@@ -308,7 +308,7 @@ module KlBuiltins =
                                      | EmptyValue -> None
                                      | _ -> raise InvalidArgs
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
-        | x -> invalidArg "x" (x.ToString())
+        | x -> invalidArg "_" <| x.ToString()
     let klEval env = function
         | [v] -> klConsToToken v |> KlParser.parse |> KlEvaluator.eval env
         | _ -> raise InvalidArgs
