@@ -16,9 +16,17 @@ type Tests() =
     let getString = function
         | ValueResult (StringValue s) -> s
         | _ -> raise (new System.Exception("not a String"))
+    let getVector = function
+        | ValueResult (VectorValue s) -> s
+        | _ -> raise (new System.Exception("not a Vector"))
     let getUncaught = function
         | ErrorResult (Uncaught s) -> s
         | _ -> raise (new System.Exception("not an Uncaught"))
+    let arrayEqual (xs : 'a[]) (ys : 'a[]) =
+        xs.Length = ys.Length && Array.forall2 (=) xs ys
+    let getFunc = function
+        | ValueResult (FunctionValue f) -> f
+        | _ -> raise (new System.Exception("not a Function"))
 
     [<TestMethod>]
     member this.TokenizerTest() =
@@ -126,10 +134,18 @@ type Tests() =
         Assert.AreEqual("Hello, World!", runit "(cn \"Hello, \" \"World!\")" |> getString)
         Assert.AreEqual("Hello", runit "(cn (n->string (string->n \"Hello\")) (strtl \"Hello\"))" |> getString)
         Assert.AreEqual("1", runit "(str 1)" |> getString)
+        
+    [<TestMethod>]
+    member this.Vectors() =
+        Assert.IsTrue(arrayEqual Array.empty<KlValue> (runit "(absvector 0)" |> getVector))
+        Assert.IsTrue(arrayEqual [|EmptyValue|] (runit "(absvector 1)" |> getVector))
+        Assert.IsTrue(arrayEqual [|BoolValue true|] (runit "(address-> (absvector 1) 0 true)" |> getVector))
 
     [<TestMethod>]
     member this.EvalFunction() =
         Assert.AreEqual(3.0, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))" |> getNumber)
+        let inc = runit "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" |> getFunc
+        Assert.AreEqual(5.0, inc .Apply [NumberValue 4.0] |> getNumber)
 
     [<TestMethod>]
     member this.SanityChecks() =
