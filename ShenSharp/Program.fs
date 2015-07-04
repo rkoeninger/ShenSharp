@@ -6,7 +6,7 @@ open FParsec
 open FSharpx.Option
 
 type KlToken = BoolToken   of bool
-             | NumberToken of float
+             | NumberToken of decimal
              | StringToken of string
              | SymbolToken of string
              | ComboToken  of KlToken list
@@ -15,7 +15,7 @@ type KlToken = BoolToken   of bool
 module KlTokenizer =
     let pKlToken, pKlTokenRef = createParserForwardedToRef<KlToken, unit>()
     let pKlBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
-    let pKlNumber = pfloat |>> NumberToken
+    let pKlNumber = pfloat |>> (decimal >> NumberToken)
     let stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
     let pKlString = stringLiteral |>> StringToken
     let pKlSymbol = regex "[a-zA-Z0-9\\x2B\\x2D\\x2F\\x3E\\x3F\\x5F]+" |>> SymbolToken
@@ -27,7 +27,7 @@ module KlTokenizer =
 
 type KlExpr = EmptyExpr
             | BoolExpr   of bool
-            | NumberExpr of float
+            | NumberExpr of decimal
             | StringExpr of string
             | SymbolExpr of string
             | AndExpr    of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
@@ -80,7 +80,7 @@ and Function(arity : int, f : KlValue list -> Result) =
     member this.Apply(args : KlValue list) = f args
 and KlValue = EmptyValue
             | BoolValue     of bool
-            | NumberValue   of float
+            | NumberValue   of decimal
             | StringValue   of string
             | SymbolValue   of string
             | FunctionValue of Function
@@ -224,7 +224,7 @@ module KlBuiltins =
         | [NumberValue n] -> int n |> char |> string |> StringValue
         | _ -> raise InvalidArgs
     let klStringToInt = function
-        | [StringValue s] -> s.[0] |> int |> float |> NumberValue
+        | [StringValue s] -> s.[0] |> int |> decimal |> NumberValue
         | _ -> raise InvalidArgs
     let klSet (globals : Globals, _) = function
         | [SymbolValue s; x] -> globals.[s] <- x
@@ -303,11 +303,11 @@ module KlBuiltins =
             if 0 <= i && i <= 255
                 then let b = byte i
                      stream.WriteByte(b)
-                     NumberValue (float b)
+                     b |> decimal |> NumberValue
                 else raise InvalidArgs
         | _ -> raise InvalidArgs
     let klReadByte = function
-        | [StreamValue stream] -> stream.ReadByte() |> float |> NumberValue
+        | [StreamValue stream] -> stream.ReadByte() |> decimal |> NumberValue
         | _ -> raise InvalidArgs
     let klOpen = function
         | [StringValue path; SymbolValue "in"] -> System.IO.File.OpenRead(path) :> System.IO.Stream |> StreamValue
@@ -321,8 +321,8 @@ module KlBuiltins =
     let startTime = System.DateTime.UtcNow
     let stopwatch = System.Diagnostics.Stopwatch.StartNew()
     let klGetTime = function
-        | [SymbolValue "run"] -> stopwatch.ElapsedTicks * 100L |> float |> NumberValue // TODO run time in picoseconds?
-        | [SymbolValue "unix"] -> (System.DateTime.UtcNow - epoch).TotalSeconds |> float |> NumberValue
+        | [SymbolValue "run"] -> stopwatch.ElapsedTicks * 100L |> decimal |> NumberValue // TODO run time in picoseconds?
+        | [SymbolValue "unix"] -> (System.DateTime.UtcNow - epoch).TotalSeconds |> decimal |> NumberValue
         | _ -> raise InvalidArgs
     let op f wrapper = function
         | [NumberValue x; NumberValue y] -> f x y |> wrapper

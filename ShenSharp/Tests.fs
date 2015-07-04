@@ -40,9 +40,9 @@ type Tests() =
     let symApp1 sym arg1 = AppExpr (SymbolExpr sym, [arg1])
     let symApp2 sym arg1 arg2 = AppExpr (SymbolExpr sym, [arg1; arg2])
     let symApp3 sym arg1 arg2 arg3 = AppExpr (SymbolExpr sym, [arg1; arg2; arg3])
-    let intE i = NumberExpr (float i)
-    let intV i = NumberValue (float i)
-    let intR i = i |> float |> NumberValue |> ValueResult
+    let intE = decimal >> NumberExpr
+    let intV = decimal >> NumberValue
+    let intR = intV >> ValueResult
     let funcV n f = FunctionValue <| new Function(1, f)
 
     [<TestMethod>]
@@ -149,7 +149,7 @@ type Tests() =
     member this.EvalFunction() =
         Assert.AreEqual(intR 3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))")
         let inc = (runit >> getFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
-        Assert.AreEqual(intR 5, inc .Apply [NumberValue 4.0])
+        Assert.AreEqual(intR 5, inc .Apply [intV 4])
 
     [<TestMethod>]
     member this.SanityChecks() =
