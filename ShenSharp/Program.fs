@@ -18,13 +18,14 @@ module KlTokenizer =
     let pKlNumber = pfloat |>> (decimal >> NumberToken)
     let stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
     let pKlString = stringLiteral |>> StringToken
-    let pKlSymbol = regex "[a-zA-Z0-9\\x2B\\x2D\\x2F\\x3E\\x3F\\x5F]+" |>> SymbolToken
+    let pKlSymbol = regex "[a-zA-Z0-9\\x2B\\x2D\\x2F\\x3D\\x3E\\x3F\\x5F]+" |>> SymbolToken
     let pKlCombo = between (pchar '(') (pchar ')') (sepBy pKlToken spaces1) |>> ComboToken
     do pKlTokenRef := choice [pKlBool; pKlNumber; pKlString; pKlSymbol; pKlCombo]
     let tokenize s = run pKlToken s |> function
                                        | Success(result, _, _) -> result
                                        | Failure(error, _, _) -> raise <| new System.Exception(error)
 
+type Position = Head | Tail
 type KlExpr = EmptyExpr
             | BoolExpr   of bool
             | NumberExpr of decimal
@@ -38,36 +39,36 @@ type KlExpr = EmptyExpr
             | LambdaExpr of string * KlExpr                 // (Symbol, a) -> (Value -> a)
             | DefunExpr  of string * string list * KlExpr   // (Symbol, [Symbol], Expr) -> ([Value] -> a)
             | FreezeExpr of KlExpr                          // Expr -> (() -> Value)
-            | TrapExpr   of KlExpr * KlExpr
-            | AppExpr    of KlExpr * KlExpr list
+            | TrapExpr   of Position * KlExpr * KlExpr
+            | AppExpr    of Position * KlExpr * KlExpr list
 
 exception SymbolExpected
 exception InvalidCondClause
 
 module KlParser =
-    let sym = function
+    let tSymbol = function
         | (SymbolToken s) -> s
         | _ -> raise SymbolExpected
-    let rec parse = function
+    let rec parse pos = function
         | ComboToken [] -> EmptyExpr
         | BoolToken b -> BoolExpr b
         | NumberToken n -> NumberExpr n
         | StringToken s -> StringExpr s
         | SymbolToken s -> SymbolExpr s
-        | ComboToken [(SymbolToken "and"); left; right] -> AndExpr (parse left, parse right)
-        | ComboToken [(SymbolToken "or"); left; right] -> OrExpr (parse left, parse right)
+        | ComboToken [(SymbolToken "and"); left; right] -> AndExpr (parse Head left, parse pos right)
+        | ComboToken [(SymbolToken "or");  left; right] -> OrExpr  (parse Head left, parse pos right)
         | ComboToken [(SymbolToken "if"); condition; consequent; alternative] ->
-            IfExpr (parse condition, parse consequent, parse alternative)
+            IfExpr (parse Head condition, parse pos consequent, parse pos alternative)
         | ComboToken (SymbolToken "cond" :: clauses) ->
-            clauses |> List.map (function | ComboToken [x; y] -> (parse x, parse y)
+            clauses |> List.map (function | ComboToken [condition; consequent] -> (parse Head condition, parse pos consequent)
                                           | _ -> raise InvalidCondClause)
                     |> CondExpr
-        | ComboToken [(SymbolToken "let"); (SymbolToken name); binding; body] -> LetExpr (name, parse binding, parse body)
-        | ComboToken [(SymbolToken "lambda"); (SymbolToken arg); body] -> LambdaExpr (arg, parse body)
-        | ComboToken [(SymbolToken "defun"); (SymbolToken name); (ComboToken paramz); body] -> DefunExpr (name, List.map sym paramz, parse body)
-        | ComboToken [(SymbolToken "freeze"); expr] -> FreezeExpr (parse expr)
-        | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (parse body, parse handler)
-        | ComboToken (f :: args) -> AppExpr (parse f, List.map parse args)
+        | ComboToken [(SymbolToken "let"); (SymbolToken name); binding; body] -> LetExpr (name, parse Head binding, parse pos body)
+        | ComboToken [(SymbolToken "lambda"); (SymbolToken arg); body] -> LambdaExpr (arg, parse Tail body)
+        | ComboToken [(SymbolToken "defun"); (SymbolToken name); (ComboToken paramz); body] -> DefunExpr (name, List.map tSymbol paramz, parse Tail body)
+        | ComboToken [(SymbolToken "freeze"); expr] -> FreezeExpr (parse Tail expr)
+        | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (pos, parse Head body, parse pos handler)
+        | ComboToken (f :: args) -> AppExpr (pos, parse Head f, List.map (parse Head) args)
 
 // TODO are there multiple numeric types in KL/Shen?
 // what is the result of `(/ 1 2)`? is it 0 or 0.5?
@@ -96,32 +97,35 @@ and KlValue = EmptyValue
    Some values are only for the runtime, some are only for the program.
    In some cases, never the twain shall meet. *)
 and Thunk(cont : unit -> Result) =
-    member this.Run() = cont ()
-and Position = Head | Tail
+    member this.Run() =
+        match cont () with
+        | ThunkResult thunk -> thunk.Run()
+        | result -> result
 and Uncaught = Uncaught of string
 and Result = ValueResult of KlValue
            | ErrorResult of Uncaught
-           //| ThunkResult of Thunk
+           | ThunkResult of Thunk
+// TODO break the distinction between Pending and Complete(Value|Error) into another level of DU?
+// TODO use `inherits` to re-use DU cases and prevent nested boxing?
 
 // both Uncaught/ErrorValue only occur as a result of (simple-error "")
 // any other errors in KL code are raw exceptions that crash the runtime (div by zero, etc)
 
 exception BoolExpected
 exception FunctionExpected
+exception UnexpectedThunk
 exception NoClauseMatched
 exception TooManyArgs
 
 module KlEvaluator =
-    let bindR result f =
-        match result with
-        | ValueResult value -> f value
-        | ErrorResult _ as error -> error
     let vBool = function
         | BoolValue b -> b
         | _ -> raise BoolExpected
     let boolR = BoolValue >> ValueResult
     let trueR = boolR true
     let falseR = boolR false
+    let thunkR f = new Thunk(f) |> ThunkResult
+    let funcR arity f = new Function(arity, f) |> FunctionValue |> ValueResult
     let append (globals, locals) defs = globals, List.Cons(Map.ofList defs, locals)
     let append1 env k v = append env [(k, v)]
     let closure eval env (paramz : string list) body =
@@ -130,16 +134,32 @@ module KlEvaluator =
         match value with
         | FunctionValue f -> (f.Arity, f.Apply)
         | SymbolValue s -> match globals.[s] with
-                            | FunctionValue f -> (f.Arity, f.Apply)
-                            | _ -> raise FunctionExpected
+                           | FunctionValue f -> (f.Arity, f.Apply)
+                           | _ -> raise FunctionExpected
         | _ -> raise FunctionExpected
-    let rec apply (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
+    let rec apply (pos : Position) (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
         if args.Length > arity
         then raise TooManyArgs
+        //else match pos with
+        //     | Head -> if args.Length < arity
+        //               then funcR (arity - args.Length) (List.append args >> apply pos arity f)
+        //               else f args
+        //     | Tail -> thunkR (fun () -> if args.Length < arity
+        //                                 then funcR (arity - args.Length) (List.append args >> apply pos arity f)
+        //                                 else f args)
         else if args.Length < arity
-             then let newArity = arity - args.Length
-                  new Function(newArity, List.append args >> apply arity f) |> FunctionValue |> ValueResult
-             else f args
+             then funcR (arity - args.Length) (List.append args >> apply pos arity f)
+             else match pos with
+                  | Head -> f args
+                  | Tail -> thunkR (fun () -> f args)
+    let go = function
+        | ThunkResult thunk -> thunk.Run()
+        | result -> result
+    let rec bindR result f =
+        match go result with
+        | ValueResult value -> f value
+        | ErrorResult _ as error -> error
+        | _ -> raise UnexpectedThunk
     let resolve (_, locals : Locals) symbolName =
         Seq.map (Map.tryFind symbolName) locals
         |> Seq.tryFind Option.isSome
@@ -169,21 +189,21 @@ module KlEvaluator =
                                             globals.Add(name, f)
                                             ValueResult f
         | FreezeExpr expr -> closure eval env [] expr |> ValueResult
-        | TrapExpr (body, handler) ->
-            match eval env body with
-            | ValueResult _ as v -> v
+        | TrapExpr (pos, body, handler) ->
+            match eval env body |> go with
             | ErrorResult (Uncaught e) ->
                 eval env handler |> bindR <| (fun v -> let (arity, func) = vFunc env v
-                                                       apply arity func [ErrorValue e])
-        | AppExpr (f, args) ->
+                                                       apply pos arity func [ErrorValue e])
+            | _ as r -> go r
+        | AppExpr (pos, f, args) ->
             eval env f |> bindR <| (fun v -> let (arity, func) = vFunc env v
                                              let rec evalArgs (args : KlExpr list) (vals : KlValue list) : Choice<KlValue list, Result> =
                                                  match args with
                                                  | [] -> Choice1Of2 vals
-                                                 | arg :: args -> match eval env arg with
+                                                 | arg :: args -> match eval env arg |> go with
                                                                   | ValueResult v -> evalArgs args (List.append vals [v])
                                                                   | e -> Choice2Of2 e
-                                             FSharpx.Choice.choice (apply arity func) (fun x -> x) (evalArgs args []))
+                                             FSharpx.Choice.choice (apply pos arity func) (fun x -> x) (evalArgs args []))
 
 exception InvalidArgs
 
@@ -258,6 +278,7 @@ module KlBuiltins =
         | StringValue x, StringValue y -> x = y
         | SymbolValue x, SymbolValue y -> x = y
         | StreamValue x, StreamValue y -> x = y
+        //| FunctionValue x, FunctionValue y -> x = y
         | ErrorValue x, ErrorValue y   -> x = y
         | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq (x1, y1) && klEq (x2, y2)
         | VectorValue xs, VectorValue ys -> xs.Length = ys.Length && Array.forall2 (=) xs ys
@@ -278,7 +299,7 @@ module KlBuiltins =
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
         | x -> invalidArg "_" <| x.ToString()
     let klEval env = function
-        | [v] -> klValueToToken v |> KlParser.parse |> KlEvaluator.eval env
+        | [v] -> klValueToToken v |> KlParser.parse Head |> KlEvaluator.eval env
         | _ -> raise InvalidArgs
     let klType = function
         | [x; _] -> x // TODO label the type of an expression (what does that mean?)

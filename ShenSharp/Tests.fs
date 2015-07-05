@@ -10,7 +10,7 @@ open KlBuiltins
 [<TestClass>]
 type Tests() =
 
-    let runInEnv env = tokenize >> parse >> eval env
+    let runInEnv env = tokenize >> parse Head >> eval env
     let runit = runInEnv (baseEnv ())
     let getError = function
         | ValueResult (ErrorValue e) -> e
@@ -36,10 +36,10 @@ type Tests() =
     let falseV = BoolValue false
     let trueR = BoolValue true |> ValueResult
     let falseR = BoolValue false |> ValueResult
-    let eApp1 f arg1 = AppExpr(f, [arg1])
-    let symApp1 sym arg1 = AppExpr (SymbolExpr sym, [arg1])
-    let symApp2 sym arg1 arg2 = AppExpr (SymbolExpr sym, [arg1; arg2])
-    let symApp3 sym arg1 arg2 arg3 = AppExpr (SymbolExpr sym, [arg1; arg2; arg3])
+    let eApp1 f arg1 = AppExpr(Head, f, [arg1])
+    let symApp1 sym arg1 = AppExpr (Head, SymbolExpr sym, [arg1])
+    let symApp2 sym arg1 arg2 = AppExpr (Head, SymbolExpr sym, [arg1; arg2])
+    let symApp3 sym arg1 arg2 arg3 = AppExpr (Head, SymbolExpr sym, [arg1; arg2; arg3])
     let intE = decimal >> NumberExpr
     let intV = decimal >> NumberValue
     let intR = intV >> ValueResult
@@ -74,7 +74,7 @@ type Tests() =
     member this.ParserTest() =
         let tryit syntax expr = 
             match run pKlToken syntax with
-                | Success(result, _, _)   -> Assert.AreEqual(expr, parse result)
+                | Success(result, _, _)   -> Assert.AreEqual(expr, parse Head result)
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         tryit "2" (intE 2)
@@ -85,7 +85,7 @@ type Tests() =
     member this.EvaluatorTest() =
         let tryit syntax expr = 
             match run pKlToken syntax with
-                | Success(result, _, _)   -> Assert.AreEqual(ValueResult expr, result |> parse |> eval (emptyEnv ()))
+                | Success(result, _, _)   -> Assert.AreEqual(ValueResult expr, result |> parse Head |> eval (emptyEnv ()))
                 | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
 
         // some basic expressions using special forms and literals only
@@ -157,6 +157,13 @@ type Tests() =
         Assert.AreEqual(BoolExpr true, BoolExpr true)
         Assert.AreEqual(BoolValue true, BoolValue true) // this was failing when KlValue had a case containing a function type
         Assert.AreEqual(BoolValue true |> ValueResult, BoolValue true |> ValueResult) // this might start failing for the same reason
+
+    [<TestMethod>]
+    member this.TailRecursionOptimization() =
+        let env = baseEnv ()
+        runInEnv env "(defun fill (vec start stop val) (if (= stop start) (address-> vec start val) (fill (address-> vec start val) (+ 1 start) stop val)))" |> ignore
+        let x = runInEnv env "(fill (absvector 20000) 0 19999 0)" |> go
+        ignore 0
 
     [<TestMethod>]
     member this.SimpleError() =
