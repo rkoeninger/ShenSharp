@@ -137,24 +137,17 @@ module KlEvaluator =
                            | FunctionValue f -> (f.Arity, f.Apply)
                            | _ -> raise FunctionExpected
         | _ -> raise FunctionExpected
-    let rec apply (pos : Position) (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
-        if args.Length > arity
-        then raise TooManyArgs
-        //else match pos with
-        //     | Head -> if args.Length < arity
-        //               then funcR (arity - args.Length) (List.append args >> apply pos arity f)
-        //               else f args
-        //     | Tail -> thunkR (fun () -> if args.Length < arity
-        //                                 then funcR (arity - args.Length) (List.append args >> apply pos arity f)
-        //                                 else f args)
-        else if args.Length < arity
-             then funcR (arity - args.Length) (List.append args >> apply pos arity f)
-             else match pos with
-                  | Head -> f args
-                  | Tail -> thunkR (fun () -> f args)
     let go = function
         | ThunkResult thunk -> thunk.Run()
         | result -> result
+    let rec apply (pos : Position) (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
+        if args.Length > arity
+        then raise TooManyArgs
+        else if args.Length < arity
+             then funcR (arity - args.Length) (List.append args >> apply pos arity f)
+             else match pos with
+                  | Head -> f args |> go
+                  | Tail -> thunkR (fun () -> f args)
     let rec bindR result f =
         match go result with
         | ValueResult value -> f value

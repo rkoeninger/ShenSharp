@@ -10,8 +10,8 @@ open KlBuiltins
 [<TestClass>]
 type Tests() =
 
-    let runInEnv env = tokenize >> parse Head >> eval env
-    let runit = runInEnv (baseEnv ())
+    let runInEnv env = tokenize >> parse Head >> eval env >> go
+    let runit = runInEnv (baseEnv ()) >> go
     let getError = function
         | ValueResult (ErrorValue e) -> e
         | _ -> invalidArg "_" "not an Error"
@@ -149,7 +149,7 @@ type Tests() =
     member this.EvalFunction() =
         Assert.AreEqual(intR 3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))")
         let inc = (runit >> getFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
-        Assert.AreEqual(intR 5, inc .Apply [intV 4])
+        Assert.AreEqual(intR 5, (inc .Apply [intV 4]) |> go)
 
     [<TestMethod>]
     member this.SanityChecks() =
@@ -162,7 +162,7 @@ type Tests() =
     member this.TailRecursionOptimization() =
         let env = baseEnv ()
         runInEnv env "(defun fill (vec start stop val) (if (= stop start) (address-> vec start val) (fill (address-> vec start val) (+ 1 start) stop val)))" |> ignore
-        let x = runInEnv env "(fill (absvector 20000) 0 19999 0)" |> go
+        let x = runInEnv env "(fill (absvector 20000) 0 19999 0)"
         ignore 0
 
     [<TestMethod>]
