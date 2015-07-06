@@ -14,24 +14,24 @@ type Tests() =
     let runit = runInEnv (baseEnv ()) >> go
     let getError = function
         | ValueResult (ErrorValue e) -> e
-        | _ -> invalidArg "_" "not an Error"
+        | _ -> failwith "not an Error"
     let getNumber = function
         | ValueResult (NumberValue n) -> n
-        | _ -> invalidArg "_" "not a Number"
+        | _ -> failwith "not a Number"
     let getString = function
         | ValueResult (StringValue s) -> s
-        | _ -> invalidArg "_" "not a String"
+        | _ -> failwith "not a String"
     let getVector = function
         | ValueResult (VectorValue s) -> s
-        | _ -> invalidArg "_" "not a Vector"
+        | _ -> failwith "not a Vector"
     let getUncaught = function
         | ErrorResult (Uncaught s) -> s
-        | _ -> invalidArg "_" "not an Uncaught"
+        | _ -> failwith "not an Uncaught"
     let arrayEqual (xs : 'a[]) (ys : 'a[]) =
         xs.Length = ys.Length && Array.forall2 (=) xs ys
     let getFunc = function
         | ValueResult (FunctionValue f) -> f
-        | _ -> invalidArg "_" "not a Function"
+        | _ -> failwith "not a Function"
     let trueV = BoolValue true
     let falseV = BoolValue false
     let trueR = BoolValue true |> ValueResult
@@ -105,7 +105,7 @@ type Tests() =
     member this.DefunAndResolutionOfDefinedFunctions() =
         let (globals, locals) as env = emptyEnv ()
         globals.Add("not", funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult
-                                             | _             -> invalidArg "args" "must be bool"))
+                                             | _             -> failwith "must be bool"))
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
@@ -116,7 +116,7 @@ type Tests() =
                                                  | _               -> falseR))
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
         globals.Add("id", funcV 1 (function | [x] -> ValueResult x
-                                            | _   -> invalidArg "args" "must be 1 arg"))
+                                            | _   -> failwith "must be 1 arg"))
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<TestMethod>]
