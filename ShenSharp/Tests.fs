@@ -190,3 +190,44 @@ type Tests() =
         let s = runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> getString
         printf "Error-string: %s" s
         printf "\r\n"
+
+    [<TestMethod>]
+    member this.LoadKlFiles() =
+        let files = [
+                        "toplevel.kl"
+                        "core.kl"
+                        "sys.kl"
+                        "sequent.kl"
+                        "yacc.kl"
+                        "reader.kl"
+                        "prolog.kl"
+                        "track.kl"
+                        "load.kl"
+                        "writer.kl"
+                        "macros.kl"
+                        "declarations.kl"
+                        "types.kl"
+                        "t-star.kl"
+                    ]
+        let klFolder = @"..\..\..\KLambda"
+        let rec astToStr = function
+            | ComboToken tokens -> sprintf "(%s)" <| String.concat " " (Seq.map astToStr tokens)
+            | BoolToken b -> if b then "true" else "false"
+            | NumberToken n -> n.ToString()
+            | StringToken s -> "\"" + s + "\""
+            | SymbolToken s -> s
+        let env = baseEnv ()
+        for file in (List.map (fun f -> System.IO.Path.Combine(klFolder, f)) files) do
+            printfn "Loading %s" file
+            printfn ""
+            stdout.Flush()
+            let text = System.IO.File.ReadAllText(file)
+            for ast in tokenizeAll text do
+                match ast with
+                | ComboToken _ -> printfn "%s" <| astToStr ast
+                                  printfn ""
+                                  stdout.Flush()
+                                  let expr = parse Head ast
+                                  eval env expr |> ignore
+                | _ -> ()
+        printf "Loading done"

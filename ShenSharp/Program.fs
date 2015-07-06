@@ -17,13 +17,13 @@ module KlTokenizer =
     let pKlNumber = pfloat |>> (decimal >> NumberToken)
     let stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
     let pKlString = stringLiteral |>> StringToken
-    let pKlSymbol = regex "[a-zA-Z0-9\\x2B\\x2D\\x2F\\x3D\\x3E\\x3F\\x5F]+" |>> SymbolToken
+    let pKlSymbol = regex "[^\\s\\x28\\x29]+" |>> SymbolToken
     let pKlCombo = between (pchar '(') (pchar ')') (sepBy pKlToken spaces1) |>> ComboToken
     do pKlTokenRef := choice [pKlBool; pKlNumber; pKlString; pKlSymbol; pKlCombo]
     let tokenize s = run pKlToken s |> function
                                        | Success(result, _, _) -> result
                                        | Failure(error, _, _) -> failwith error
-    let pKlTokens = sepBy pKlToken spaces1
+    let pKlTokens = spaces >>. (many (pKlToken .>> spaces))
     let tokenizeAll s = run pKlTokens s |> function
                                            | Success(result, _, _) -> result
                                            | Failure(error, _, _) -> failwith error
@@ -121,9 +121,10 @@ module KlEvaluator =
     let vFunc ((globals, _) as env : Env) value =
         match value with
         | FunctionValue f -> (f.Arity, f.Apply)
-        | SymbolValue s -> match globals.[s] with
-                           | FunctionValue f -> (f.Arity, f.Apply)
-                           | _ -> failwith "Symbol does not represent function"
+        | SymbolValue s -> match globals.TryGetValue(s) with
+                           | (true, FunctionValue f) -> (f.Arity, f.Apply)
+                           | (false, _) -> failwithf "Symbol \"%s\" is undefined" s
+                           | _ -> failwithf "Symbol \"%s\" does not represent function" s
         | _ -> failwith "Function value expected"
     let go = function
         | ThunkResult thunk -> thunk.Run()
@@ -187,6 +188,8 @@ module KlEvaluator =
 
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
+    let trueV = BoolValue true
+    let falseV = BoolValue false
     let newEnv kvs = System.Linq.Enumerable.ToDictionary(kvs, fst, snd), []
     let emptyEnv () = newEnv Seq.empty
     let klIntern = function
@@ -216,8 +219,8 @@ module KlBuiltins =
         | [x : KlValue] -> x |> klStr |> StringValue
         | _ -> invalidArgs ()
     let klIsString = function
-        | [StringValue _] -> BoolValue true
-        | [_] -> BoolValue false
+        | [StringValue _] -> trueV
+        | [_] -> falseV
         | _ -> invalidArgs ()
     let klIntToString = function
         | [NumberValue n] -> int n |> char |> string |> StringValue
@@ -225,11 +228,14 @@ module KlBuiltins =
     let klStringToInt = function
         | [StringValue s] -> s.[0] |> int |> decimal |> NumberValue
         | _ -> invalidArgs ()
-    let klSet (globals : Globals, _) = function
+    let klSet ((globals, _) : Env) = function
         | [SymbolValue s; x] -> globals.[s] <- x
+                                x
         | _ -> invalidArgs ()
-    let klValue (globals : Globals, _) = function
-        | [SymbolValue s] -> globals.[s]
+    let klValue ((globals, _) : Env) = function
+        | [SymbolValue s] -> match globals.TryGetValue(s) with
+                             | (true, v) -> v
+                             | (false, _) -> failwithf "Symbol \"%s\" is undefined" s
         | _ -> invalidArgs ()
     let klSimpleError = function
         | [StringValue s] -> ErrorResult (Uncaught s)
@@ -247,8 +253,8 @@ module KlBuiltins =
         | [ConsValue (_, y)] -> y
         | _ -> invalidArgs ()
     let klIsCons = function
-        | [ConsValue _] -> BoolValue true
-        | [_] -> BoolValue false
+        | [ConsValue _] -> trueV
+        | [_] -> falseV
         | _ -> invalidArgs ()
     let rec klEq = function
         | EmptyValue, EmptyValue                 -> true
@@ -294,8 +300,8 @@ module KlBuiltins =
                                                             VectorValue vector
         | _ -> invalidArgs ()
     let klIsVector = function
-        | [VectorValue _] -> BoolValue true
-        | [_] -> BoolValue false
+        | [VectorValue _] -> trueV
+        | [_] -> falseV
         | _ -> invalidArgs ()
     let klWriteByte = function
         | [NumberValue number; StreamValue stream] ->
@@ -336,45 +342,47 @@ module KlBuiltins =
     let klGreaterThanEqual = op (>=) BoolValue
     let klLessThanEqual    = op (<=) BoolValue
     let klIsNumber = function
-        | [NumberValue _] -> BoolValue true
-        | [_] -> BoolValue false
+        | [NumberValue _] -> trueV
+        | [_] -> falseV
         | _ -> invalidArgs ()
     let func arity f = FunctionValue (new Function(arity, f >> ValueResult))
     let baseEnv () =
         let (globals, _) as env =
             newEnv [
-                "intern",          func 1 klIntern;
-                "pos",             func 2 klStringPos;
-                "strtl",           func 1 klStringTail;
-                "cn",              func 2 klStringConcat;
-                "str",             func 1 klToString;
-                "string?",         func 1 klIsString;
-                "n->string",       func 1 klIntToString;
-                "string->n",       func 1 klStringToInt;
-                "error-to-string", func 1 klErrorToString;
-                "cons",            func 2 klNewCons;
-                "hd",              func 1 klHead;
-                "tl",              func 1 klTail;
-                "cons?",           func 1 klIsCons;
-                "=",               func 2 klEquals;
-                "absvector",       func 1 klNewVector;
-                "<-address",       func 2 klReadVector;
-                "address->",       func 3 klWriteVector;
-                "absvector?",      func 1 klIsVector;
-                "write-byte",      func 2 klWriteByte;
-                "read-byte",       func 1 klReadByte;
-                "open",            func 2 klOpen;
-                "close",           func 1 klClose;
-                "get-time",        func 1 klGetTime;
-                "+",               func 2 klAdd;
-                "-",               func 2 klSubtract;
-                "*",               func 2 klMultiply;
-                "/",               func 2 klDivide;
-                ">",               func 2 klGreaterThan;
-                "<",               func 2 klLessThan;
-                ">=",              func 2 klGreaterThanEqual;
-                "<=",              func 2 klLessThanEqual;
+                "intern",          func 1 klIntern
+                "pos",             func 2 klStringPos
+                "strtl",           func 1 klStringTail
+                "cn",              func 2 klStringConcat
+                "str",             func 1 klToString
+                "string?",         func 1 klIsString
+                "n->string",       func 1 klIntToString
+                "string->n",       func 1 klStringToInt
+                "error-to-string", func 1 klErrorToString
+                "cons",            func 2 klNewCons
+                "hd",              func 1 klHead
+                "tl",              func 1 klTail
+                "cons?",           func 1 klIsCons
+                "=",               func 2 klEquals
+                "absvector",       func 1 klNewVector
+                "<-address",       func 2 klReadVector
+                "address->",       func 3 klWriteVector
+                "absvector?",      func 1 klIsVector
+                "write-byte",      func 2 klWriteByte
+                "read-byte",       func 1 klReadByte
+                "open",            func 2 klOpen
+                "close",           func 1 klClose
+                "get-time",        func 1 klGetTime
+                "+",               func 2 klAdd
+                "-",               func 2 klSubtract
+                "*",               func 2 klMultiply
+                "/",               func 2 klDivide
+                ">",               func 2 klGreaterThan
+                "<",               func 2 klLessThan
+                ">=",              func 2 klGreaterThanEqual
+                "<=",              func 2 klLessThanEqual
                 "number?",         func 1 klIsNumber]
+        globals.Add("set", func 2 (klSet env))
+        globals.Add("value", func 1 (klValue env))
         globals.Add("eval-kl", FunctionValue (new Function(1, klEval env)))
         globals.Add("simple-error", FunctionValue (new Function(1, klSimpleError)))
         env
