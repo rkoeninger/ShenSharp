@@ -1,4 +1,4 @@
-﻿namespace ShenPOF
+﻿namespace Kl
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
 open FParsec
@@ -43,14 +43,11 @@ type Tests() =
     let intE = decimal >> NumberExpr
     let intV = decimal >> NumberValue
     let intR = intV >> ValueResult
-    let funcV n f = FunctionValue <| new Function(1, f)
+    let funcV n f = FunctionValue <| new Function(n, f)
 
     [<TestMethod>]
     member this.TokenizerTest() =
-        let tryit s = 
-            match run pKlToken s with
-                | Success(result, _, _)   -> ()
-                | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
+        let tryit = tokenize >> ignore
 
         tryit "abc"
         tryit "123"
@@ -59,7 +56,10 @@ type Tests() =
         tryit "(a b)"
         tryit "((a b) c (d e f) ((a) ()) c (d f))"
         tryit "(a     b)"
-
+        tryit "(a   \" b c \"  d)"
+        let all = tokenizeAll "\"long copyright string\n\rwith line breaks\r\n\"\r\n\r\n(defun form () (stuff 0))\r\n\r\n(defun form2 (a b) (+ a b))"
+        Assert.AreEqual(3, all.Length)
+        
         // extra space tests
         // these aren't working
         // parse fails when there is extra space between

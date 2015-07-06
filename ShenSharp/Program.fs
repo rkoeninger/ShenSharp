@@ -1,9 +1,8 @@
 ﻿#light
 
-namespace ShenPOF
+namespace Kl
 
 open FParsec
-open FSharpx.Option
 
 type KlToken = BoolToken   of bool
              | NumberToken of decimal
@@ -24,6 +23,10 @@ module KlTokenizer =
     let tokenize s = run pKlToken s |> function
                                        | Success(result, _, _) -> result
                                        | Failure(error, _, _) -> raise <| new System.Exception(error)
+    let pKlTokens = sepBy pKlToken spaces1
+    let tokenizeAll s = run pKlTokens s |> function
+                                           | Success(result, _, _) -> result
+                                           | Failure(error, _, _) -> raise <| new System.Exception(error)
 
 type Position = Head | Tail
 type KlExpr = EmptyExpr
@@ -89,13 +92,6 @@ and KlValue = EmptyValue
             | ConsValue     of KlValue * KlValue
             | ErrorValue    of string
             | StreamValue   of System.IO.Stream
-            
-(* Thunks are used to implement tail calls.
-   Position is used to identify if an expression is a tail call candidate.
-   They should not be visible in KL code.
-   Using the type system to separate levels of the runtime.
-   Some values are only for the runtime, some are only for the program.
-   In some cases, never the twain shall meet. *)
 and Thunk(cont : unit -> Result) =
     member this.Run() =
         match cont () with
@@ -156,8 +152,14 @@ module KlEvaluator =
     let resolve (_, locals : Locals) symbolName =
         Seq.map (Map.tryFind symbolName) locals
         |> Seq.tryFind Option.isSome
-        |> concat
-        |> getOrElse (SymbolValue symbolName)
+        |> FSharpx.Option.concat
+        |> FSharpx.Option.getOrElse (SymbolValue symbolName)
+    let rec evalArgs evalE vals args =
+        match args with
+        | [] -> Choice1Of2 vals
+        | arg :: args -> match evalE arg |> go with
+                         | ValueResult v -> evalArgs evalE (List.append vals [v]) args
+                         | e -> Choice2Of2 e
     let rec eval env = function
         | EmptyExpr    -> EmptyValue |> ValueResult
         | BoolExpr b   -> boolR b
@@ -190,13 +192,7 @@ module KlEvaluator =
             | _ as r -> go r
         | AppExpr (pos, f, args) ->
             eval env f |> bindR <| (fun v -> let (arity, func) = vFunc env v
-                                             let rec evalArgs (args : KlExpr list) (vals : KlValue list) : Choice<KlValue list, Result> =
-                                                 match args with
-                                                 | [] -> Choice1Of2 vals
-                                                 | arg :: args -> match eval env arg |> go with
-                                                                  | ValueResult v -> evalArgs args (List.append vals [v])
-                                                                  | e -> Choice2Of2 e
-                                             FSharpx.Choice.choice (apply pos arity func) (fun x -> x) (evalArgs args []))
+                                             FSharpx.Choice.choice (apply pos arity func) (fun x -> x) (evalArgs (eval env) [] args))
 
 exception InvalidArgs
 
@@ -265,16 +261,16 @@ module KlBuiltins =
         | [_] -> BoolValue false
         | _ -> raise InvalidArgs
     let rec klEq = function
-        | EmptyValue, EmptyValue       -> true
-        | BoolValue x, BoolValue y     -> x = y
-        | NumberValue x, NumberValue y -> x = y
-        | StringValue x, StringValue y -> x = y
-        | SymbolValue x, SymbolValue y -> x = y
-        | StreamValue x, StreamValue y -> x = y
-        //| FunctionValue x, FunctionValue y -> x = y
-        | ErrorValue x, ErrorValue y   -> x = y
+        | EmptyValue, EmptyValue                 -> true
+        | BoolValue x, BoolValue y               -> x = y
+        | NumberValue x, NumberValue y           -> x = y
+        | StringValue x, StringValue y           -> x = y
+        | SymbolValue x, SymbolValue y           -> x = y
+        | StreamValue x, StreamValue y           -> x = y
+        | FunctionValue x, FunctionValue y       -> x = y
+        | ErrorValue x, ErrorValue y             -> x = y
         | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq (x1, y1) && klEq (x2, y2)
-        | VectorValue xs, VectorValue ys -> xs.Length = ys.Length && Array.forall2 (=) xs ys
+        | VectorValue xs, VectorValue ys         -> xs.Length = ys.Length && Array.forall2 (=) xs ys
         | (_, _) -> false
     let klEquals = function
         | [x; y] -> klEq (x, y) |> BoolValue
