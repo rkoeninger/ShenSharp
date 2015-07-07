@@ -25,8 +25,8 @@ type Tests() =
         | ValueResult (VectorValue s) -> s
         | _ -> failwith "not a Vector"
     let getUncaught = function
-        | ErrorResult (Uncaught s) -> s
-        | _ -> failwith "not an Uncaught"
+        | ErrorResult s -> s
+        | _ -> failwith "not an Error"
     let arrayEqual (xs : 'a[]) (ys : 'a[]) =
         xs.Length = ys.Length && Array.forall2 (=) xs ys
     let getFunc = function
@@ -206,8 +206,9 @@ type Tests() =
                         "writer.kl"
                         "macros.kl"
                         "declarations.kl"
+                        "t-star.kl" // TODO contrary to spec, this gets loaded before types.kl?
+                                    // it contains (defun shen.typecheck ...) which types.kl uses
                         "types.kl"
-                        "t-star.kl"
                     ]
         let klFolder = @"..\..\..\KLambda"
         let rec astToStr = function
