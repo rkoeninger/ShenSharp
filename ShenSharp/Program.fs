@@ -14,7 +14,7 @@ type KlToken = BoolToken   of bool
 module KlTokenizer =
     let pKlToken, pKlTokenRef = createParserForwardedToRef<KlToken, unit>()
     let pKlBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
-    let pKlNumber = pfloat |>> (decimal >> NumberToken)
+    let pKlNumber = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> (decimal >> NumberToken)
     let stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
     let pKlString = stringLiteral |>> StringToken
     let pKlSymbol = regex "[^\\s\\x28\\x29]+" |>> SymbolToken
@@ -351,7 +351,7 @@ module KlBuiltins =
             newEnv [
                 "intern",          func 1 klIntern
                 "pos",             func 2 klStringPos
-                "strtl",           func 1 klStringTail
+                "tlstr",           func 1 klStringTail
                 "cn",              func 2 klStringConcat
                 "str",             func 1 klToString
                 "string?",         func 1 klIsString

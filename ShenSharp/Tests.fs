@@ -136,7 +136,7 @@ type Tests() =
     [<TestMethod>]
     member this.StringFunctions() =
         Assert.AreEqual("Hello, World!", runit "(cn \"Hello, \" \"World!\")" |> getString)
-        Assert.AreEqual("Hello", runit "(cn (n->string (string->n \"Hello\")) (strtl \"Hello\"))" |> getString)
+        Assert.AreEqual("Hello", runit "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))" |> getString)
         Assert.AreEqual("1", runit "(str 1)" |> getString)
         
     [<TestMethod>]
