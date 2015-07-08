@@ -217,7 +217,8 @@ type Tests() =
             | NumberToken n -> n.ToString()
             | StringToken s -> "\"" + s + "\""
             | SymbolToken s -> s
-        let env = baseEnv ()
+        let (globals, _) as env = baseEnv ()
+        runInEnv env "(defun shen.demod (X) X)" |> ignore
         for file in (List.map (fun f -> System.IO.Path.Combine(klFolder, f)) files) do
             printfn "Loading %s" file
             printfn ""
