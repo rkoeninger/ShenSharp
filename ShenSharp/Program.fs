@@ -175,6 +175,7 @@ module KlEvaluator =
         | TrapExpr (pos, body, handler) ->
             match eval env body |> go with
             | ErrorResult e ->
+                eprintfn "Error trapped: %s" e
                 eval env handler |> bindR <| (fun v -> let (arity, func) = vFunc env v
                                                        apply pos arity func [ErrorValue e])
             | _ as r -> go r
@@ -190,7 +191,11 @@ module KlBuiltins =
         | [StringValue s] -> SymbolValue s
         | _ -> invalidArgs ()
     let klStringPos = function
-        | [StringValue s; NumberValue index] -> s.[int index] |> string |> StringValue
+        | [StringValue s; NumberValue index] ->
+            let i = int index
+            if i >= 0 && i < s.Length
+                then s.[i] |> string |> StringValue |> ValueResult
+                else "string index out of bounds" |> ErrorResult
         | _ -> invalidArgs ()
     let klStringTail = function
         | [StringValue s] -> s.Substring(1) |> StringValue
@@ -359,7 +364,7 @@ module KlBuiltins =
                 install defs
         install [
             "intern",          funV 1 klIntern
-            "pos",             funV 2 klStringPos
+            "pos",             funR 2 klStringPos
             "tlstr",           funV 1 klStringTail
             "cn",              funV 2 klStringConcat
             "str",             funV 1 klToString
@@ -375,6 +380,7 @@ module KlBuiltins =
             "tl",              funV 1 klTail
             "cons?",           funV 1 klIsCons
             "=",               funV 2 klEquals
+            "type",            funV 1 klType
             "eval-kl",         funR 1 (klEval env)
             "absvector",       funV 1 klNewVector
             "<-address",       funR 2 klReadVector
@@ -393,7 +399,17 @@ module KlBuiltins =
             "<",               funV 2 klLessThan
             ">=",              funV 2 klGreaterThanEqual
             "<=",              funV 2 klLessThanEqual
-            "number?",         funV 1 klIsNumber]
+            "number?",         funV 1 klIsNumber
+            "*language*",      "F#" |> StringValue
+            "*implementation*","CLR " + System.Environment.Version.ToString() |> StringValue
+            "*release*",       "0" |> StringValue
+            "*port*",          "0" |> StringValue
+            "*porters*",       "Robert Koeninger" |> StringValue
+            "*version*",       "19.1" |> StringValue
+            "*stinput*",       System.Console.OpenStandardInput() |> StreamValue
+            "*stoutput*",      System.Console.OpenStandardOutput() |> StreamValue
+            "*home-directory*",System.Environment.CurrentDirectory |> StringValue
+            ]
         env
 
 module KlCompiler =

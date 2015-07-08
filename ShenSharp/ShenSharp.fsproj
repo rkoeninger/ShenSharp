@@ -6,7 +6,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>24903340-789d-4419-ac4b-c2c1f8000c54</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <RootNamespace>ShenPOF</RootNamespace>
     <AssemblyName>ShenPOF</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
@@ -54,10 +54,11 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
+    <Compile Include="Program.fs" />
     <Compile Include="Tests.fs" />
+    <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">

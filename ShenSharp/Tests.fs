@@ -191,8 +191,10 @@ type Tests() =
         printf "Error-string: %s" s
         printf "\r\n"
 
+    [<Ignore>]
     [<TestMethod>]
     member this.LoadKlFiles() =
+        let stopwatch = System.Diagnostics.Stopwatch.StartNew()
         let files = [
                         "toplevel.kl"
                         "core.kl"
@@ -232,4 +234,5 @@ type Tests() =
                                   let expr = parse Head ast
                                   eval env expr |> ignore
                 | _ -> ()
-        printf "Loading done"
+        printfn "Loading done"
+        printfn "Time: %s" <| stopwatch.Elapsed.ToString()
