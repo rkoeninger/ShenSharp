@@ -1,11 +1,9 @@
-﻿#light
-
-namespace Kl
+﻿namespace Kl
 
 open FParsec
 
 type KlToken = BoolToken   of bool
-             | NumberToken of decimal
+             | NumberToken of decimal // TODO numbers broken into ints and floats
              | StringToken of string
              | SymbolToken of string
              | ComboToken  of KlToken list
@@ -148,7 +146,7 @@ module KlEvaluator =
         | arg :: args -> match evalE arg |> go with
                          | ValueResult v -> evalArgs evalE (List.append vals [v]) args
                          | e -> Choice2Of2 e
-    let rec eval env = function
+    let rec eval env = function // have `eval` call `eval0` and run thunks, `eval0` runs `eval` on other exprs
         | EmptyExpr    -> EmptyValue |> ValueResult
         | BoolExpr b   -> boolR b
         | NumberExpr n -> NumberValue n |> ValueResult
@@ -334,8 +332,11 @@ module KlBuiltins =
     let startTime = System.DateTime.UtcNow
     let stopwatch = System.Diagnostics.Stopwatch.StartNew()
     let klGetTime = function
-        | [SymbolValue "run"] -> stopwatch.ElapsedTicks * 100L |> decimal |> NumberValue // TODO run time in picoseconds?
+        // Both run and unix time are in milliseconds
+        // ElapsedTicks is in 100 picoseconds/0.1 microseconds
+        | [SymbolValue "run"] -> stopwatch.ElapsedTicks * 10000L |> decimal |> NumberValue
         | [SymbolValue "unix"] -> (System.DateTime.UtcNow - epoch).TotalSeconds |> decimal |> NumberValue
+        // TODO support "real" time?
         | _ -> invalidArgs ()
     let op f wrapper = function
         | [NumberValue x; NumberValue y] -> f x y |> wrapper
@@ -400,7 +401,7 @@ module KlBuiltins =
             ">=",              funV 2 klGreaterThanEqual
             "<=",              funV 2 klLessThanEqual
             "number?",         funV 1 klIsNumber
-            "*language*",      "F#" |> StringValue
+            "*language*",      "F# 3.1" |> StringValue
             "*implementation*","CLR " + System.Environment.Version.ToString() |> StringValue
             "*release*",       "0" |> StringValue
             "*port*",          "0" |> StringValue
