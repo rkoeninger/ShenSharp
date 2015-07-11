@@ -106,6 +106,8 @@ module KlEvaluator =
     let boolR = BoolValue >> ValueResult
     let trueR = boolR true
     let falseR = boolR false
+    let branch f g x y v = if vBool v then f x else g y
+    let branch1 f = branch f f
     let thunkR f = new Thunk(f) |> ThunkResult
     let funcR arity f = new Function(arity, f) |> FunctionValue |> ValueResult
     let append (globals, locals) defs = globals, List.Cons(Map.ofList defs, locals)
@@ -114,23 +116,23 @@ module KlEvaluator =
         new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
     let vFunc ((globals, _) as env : Env) value =
         match value with
-        | FunctionValue f -> (f.Arity, f.Apply)
+        | FunctionValue f -> f
         | SymbolValue s -> match globals.TryGetValue(s) with
-                           | (true, FunctionValue f) -> (f.Arity, f.Apply)
+                           | (true, FunctionValue f) -> f
                            | (false, _) -> failwithf "Symbol \"%s\" is undefined" s
                            | _ -> failwithf "Symbol \"%s\" does not represent function" s
         | _ -> failwith "Function value expected"
     let go = function
         | ThunkResult thunk -> thunk.Run()
         | result -> result
-    let rec apply (pos : Position) (arity : int) (f : KlValue list -> Result) (args : KlValue list) : Result =
-        match args.Length, arity with
+    let rec apply (pos : Position) (f : Function) (args : KlValue list) : Result =
+        match args.Length, f.Arity with
         | Greater -> failwith "Too many arguments"
-        | Lesser -> funcR (arity - args.Length) (List.append args >> apply pos arity f)
+        | Lesser -> funcR (f.Arity - args.Length) (List.append args >> apply pos f)
         | Equal -> match pos with
-                   | Head -> f args |> go
-                   | Tail -> thunkR (fun () -> f args)
-    let rec bindR result f =
+                   | Head -> f.Apply args |> go
+                   | Tail -> thunkR (fun () -> f.Apply args)
+    let rec (>>=) result f =
         match go result with
         | ValueResult value -> f value
         | ErrorResult _ as error -> error
@@ -152,20 +154,18 @@ module KlEvaluator =
         | NumberExpr n -> NumberValue n |> ValueResult
         | StringExpr s -> StringValue s |> ValueResult
         | SymbolExpr s -> resolve env s |> ValueResult
-        | AndExpr (left, right) -> eval env left |> bindR <| (vBool >> (fun b -> if b then eval env right else falseR))
-        | OrExpr  (left, right) -> eval env left |> bindR <| (vBool >> (fun b -> if b then trueR else eval env right))
-        | IfExpr (condition, consequent, alternative) ->
-            eval env condition |> bindR <| (vBool >> (fun b -> eval env <| if b then consequent else alternative))
+        | AndExpr (left, right) -> eval env left >>= branch (eval env) id right falseR
+        | OrExpr  (left, right) -> eval env left >>= branch id (eval env) trueR right
+        | IfExpr (condition, ifTrue, ifFalse) -> eval env condition >>= branch1 (eval env) ifTrue ifFalse
         | CondExpr clauses ->
             let rec evalClauses = function
-                | (condition, consequent) :: rest ->
-                    eval env condition |> bindR <| (vBool >> (fun b -> if b then eval env consequent else evalClauses rest))
-                | [] -> failwith "No clause matched"
+                | (condition, ifTrue) :: rest -> eval env condition >>= branch (eval env) evalClauses ifTrue rest
+                | [] -> failwith "No condition was true"
             evalClauses clauses
         | LetExpr (symbol, binding, body) ->
-            eval env binding |> bindR <| (fun v -> eval (append1 env symbol v) body)
+            eval env binding >>= (fun v -> eval (append1 env symbol v) body)
         | LambdaExpr (param, body) -> closure eval env [param] body |> ValueResult
-        | DefunExpr (name, paramz, body) -> let f = closure eval env paramz body // TODO not really a closure?
+        | DefunExpr (name, paramz, body) -> let f = closure eval env paramz body
                                             let (globals : Globals, _) = env
                                             globals.Add(name, f)
                                             ValueResult f
@@ -174,12 +174,16 @@ module KlEvaluator =
             match eval env body |> go with
             | ErrorResult e ->
                 eprintfn "Error trapped: %s" e
-                eval env handler |> bindR <| (fun v -> let (arity, func) = vFunc env v
-                                                       apply pos arity func [ErrorValue e])
-            | _ as r -> go r
+                eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
+            | r -> go r
         | AppExpr (pos, f, args) ->
-            eval env f |> bindR <| (fun v -> let (arity, func) = vFunc env v
-                                             FSharpx.Choice.choice (apply pos arity func) (fun x -> x) (evalArgs (eval env) [] args))
+            let show = function
+                        | SymbolExpr s -> s
+                        | _ -> "unknown"
+            eprintfn "Enter app %s" (show f) |> ignore
+            let r = eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (eval env) [] args))
+            eprintfn "Exit app %s" (show f) |> ignore
+            r
 
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"

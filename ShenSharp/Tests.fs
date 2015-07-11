@@ -147,7 +147,7 @@ type Tests() =
 
     [<TestMethod>]
     member this.EvalFunction() =
-        Assert.AreEqual(intR 3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))")
+        Assert.AreEqual(intR 3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
         let inc = (runit >> getFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
         Assert.AreEqual(intR 5, (inc .Apply [intV 4]) |> go)
 
