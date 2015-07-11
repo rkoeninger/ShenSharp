@@ -124,6 +124,8 @@ type Tests() =
         let env = baseEnv ()
         Assert.AreEqual(intR 3, eval env (symApp2 "+" (intE 1) (intE 2)))
         Assert.AreEqual(intR 3, eval env (eApp1 (symApp1 "+" (intE 1)) (intE 2)))
+        runInEnv env "(defun add4 (a b c d) (+ a (+ b (+ c d))))" |> ignore
+        Assert.AreEqual(intR 10, runInEnv env "(((add4 1) 2 3) 4)")
 
     [<TestMethod>]
     member this.Builtins() =
