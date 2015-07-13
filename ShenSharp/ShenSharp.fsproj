@@ -7,8 +7,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>24903340-789d-4419-ac4b-c2c1f8000c54</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ShenPOF</RootNamespace>
-    <AssemblyName>ShenPOF</AssemblyName>
+    <RootNamespace>Shen</RootNamespace>
+    <AssemblyName>shen</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
@@ -23,7 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\ShenPOF.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\shen.xml</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
