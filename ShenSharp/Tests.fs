@@ -32,6 +32,9 @@ type Tests() =
     let getFunc = function
         | ValueResult (FunctionValue f) -> f
         | _ -> failwith "not a Function"
+    let isThunk = function
+        | ThunkResult _ -> true
+        | _ -> false
     let trueV = BoolValue true
     let falseV = BoolValue false
     let trueR = BoolValue true |> ValueResult
@@ -103,20 +106,20 @@ type Tests() =
 
     [<TestMethod>]
     member this.DefunAndResolutionOfDefinedFunctions() =
-        let (globals, locals) as env = emptyEnv ()
-        globals.Add("not", funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult
-                                             | _             -> failwith "must be bool"))
+        let env = emptyEnv ()
+        env.Globals.Add("not", funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult
+                                                 | _             -> failwith "must be bool"))
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
     [<TestMethod>]
     member this.SymbolResolution() =
-        let (globals, locals) as env = emptyEnv ()
-        globals.Add("symbol?", funcV 1 (function | [SymbolValue _] -> trueR
-                                                 | _               -> falseR))
+        let env = emptyEnv ()
+        env.Globals.Add("symbol?", funcV 1 (function | [SymbolValue _] -> trueR
+                                                     | _               -> falseR))
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
-        globals.Add("id", funcV 1 (function | [x] -> ValueResult x
-                                            | _   -> failwith "must be 1 arg"))
+        env.Globals.Add("id", funcV 1 (function | [x] -> ValueResult x
+                                                | _   -> failwith "must be 1 arg"))
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<TestMethod>]
@@ -165,7 +168,29 @@ type Tests() =
         let env = baseEnv ()
         runInEnv env "(defun fill (vec start stop val) (if (= stop start) (address-> vec start val) (fill (address-> vec start val) (+ 1 start) stop val)))" |> ignore
         let x = runInEnv env "(fill (absvector 20000) 0 19999 0)"
-        ignore 0
+        ()
+    
+    [<TestMethod>]
+    member this.HeadTailPositionsParsed() =
+        let e = "(defun ! (acc n) (if (= 0 n) acc (! (* n acc) (- n 1))))" |> tokenize |> parse Head
+        let e0 = DefunExpr ("!",
+                            ["acc"; "n"],
+                            IfExpr (AppExpr (Head,
+                                             SymbolExpr "=",
+                                             [NumberExpr 0m; SymbolExpr "n"]),
+                                    SymbolExpr "acc",
+                                    AppExpr (Tail,
+                                             SymbolExpr "!",
+                                             [symApp2 "*" (SymbolExpr "n") (SymbolExpr "acc")
+                                              symApp2 "-" (SymbolExpr "n") (NumberExpr 1m)])))
+        Assert.AreEqual(e0, e)
+
+    [<Ignore>]
+    [<TestMethod>]
+    member this.ThunksGetEvaled() =
+        let env = baseEnv ()
+        runInEnv env "(defun fill (vec start stop val) (if (= stop start) (address-> vec start val) (fill (address-> vec start val) (+ 1 start) stop val)))" |> ignore
+        Assert.IsTrue(runInEnv env "(fill (absvector 5) 0 4 0)" |> isThunk)
 
     [<TestMethod>]
     member this.SimpleError() =
@@ -221,7 +246,7 @@ type Tests() =
             | NumberToken n -> n.ToString()
             | StringToken s -> "\"" + s + "\""
             | SymbolToken s -> s
-        let (globals, _) as env = baseEnv ()
+        let env = baseEnv ()
         runInEnv env "(defun shen.demod (X) X)" |> ignore
         for file in (List.map (fun f -> System.IO.Path.Combine(klFolder, f)) files) do
             printfn "Loading %s" file

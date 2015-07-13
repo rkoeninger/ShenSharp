@@ -73,7 +73,7 @@ module KlParser =
 
 type Globals = System.Collections.Generic.Dictionary<string, KlValue>
 and Locals = Map<string, KlValue> list
-and Env = Globals * Locals
+and Env = { Globals : Globals; Locals : Locals }
 and Function(arity : int, f : KlValue list -> Result) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
@@ -99,6 +99,8 @@ and Result = ValueResult of KlValue
 // TODO use `inherits` to re-use DU cases and prevent nested boxing?
 
 module KlEvaluator =
+    let mutable logging = false
+    let mutable depth = 0
     let (|Greater|Equal|Lesser|) (x, y) = if x > y then Greater elif x < y then Lesser else Equal
     let vBool = function
         | BoolValue b -> b
@@ -110,14 +112,14 @@ module KlEvaluator =
     let branch1 f = branch f f
     let thunkR f = new Thunk(f) |> ThunkResult
     let funcR arity f = new Function(arity, f) |> FunctionValue |> ValueResult
-    let append (globals, locals) defs = globals, List.Cons(Map.ofList defs, locals)
+    let append env defs = { env with Locals = List.Cons(Map.ofList defs, env.Locals) }
     let append1 env k v = append env [(k, v)]
     let closure eval env (paramz : string list) body =
         new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
-    let vFunc ((globals, _) as env : Env) value =
+    let vFunc (env : Env) value =
         match value with
         | FunctionValue f -> f
-        | SymbolValue s -> match globals.TryGetValue(s) with
+        | SymbolValue s -> match env.Globals.TryGetValue(s) with
                            | (true, FunctionValue f) -> f
                            | (false, _) -> failwithf "Symbol \"%s\" is undefined" s
                            | _ -> failwithf "Symbol \"%s\" does not represent function" s
@@ -137,8 +139,8 @@ module KlEvaluator =
         | ValueResult value -> f value
         | ErrorResult _ as error -> error
         | _ -> failwith "Unexpected thunk"
-    let resolve (_, locals : Locals) symbolName =
-        Seq.map (Map.tryFind symbolName) locals
+    let resolve (env : Env) symbolName =
+        Seq.map (Map.tryFind symbolName) env.Locals
         |> Seq.tryFind Option.isSome
         |> FSharpx.Option.concat
         |> FSharpx.Option.getOrElse (SymbolValue symbolName)
@@ -166,23 +168,23 @@ module KlEvaluator =
             eval env binding >>= (fun v -> eval (append1 env symbol v) body)
         | LambdaExpr (param, body) -> closure eval env [param] body |> ValueResult
         | DefunExpr (name, paramz, body) -> let f = closure eval env paramz body
-                                            let (globals : Globals, _) = env
-                                            globals.Add(name, f)
+                                            env.Globals.Add(name, f)
                                             ValueResult f
         | FreezeExpr expr -> closure eval env [] expr |> ValueResult
         | TrapExpr (pos, body, handler) ->
             match eval env body |> go with
             | ErrorResult e ->
-                eprintfn "Error trapped: %s" e
+                if logging then eprintfn "Error trapped: %s" e
                 eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
             | r -> go r
         | AppExpr (pos, f, args) ->
             let show = function
                         | SymbolExpr s -> s
                         | _ -> "unknown"
-            eprintfn "Enter app %s" (show f) |> ignore
+            if logging then eprintfn "%s%s" (String.replicate depth " ") (show f) |> ignore
+            depth <- depth + 1
             let r = eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (eval env) [] args))
-            eprintfn "Exit app %s" (show f) |> ignore
+            depth <- depth - 1
             r
 
 module KlBuiltins =
@@ -229,12 +231,12 @@ module KlBuiltins =
     let klStringToInt = function
         | [StringValue s] -> s.[0] |> int |> decimal |> NumberValue
         | _ -> invalidArgs ()
-    let klSet ((globals, _) : Env) = function
-        | [SymbolValue s; x] -> globals.[s] <- x
+    let klSet env = function
+        | [SymbolValue s; x] -> env.Globals.[s] <- x
                                 x
         | _ -> invalidArgs ()
-    let klValue ((globals, _) : Env) = function
-        | [SymbolValue s] -> match globals.TryGetValue(s) with
+    let klValue env = function
+        | [SymbolValue s] -> match env.Globals.TryGetValue(s) with
                              | (true, v) -> v
                              | (false, _) -> failwithf "Symbol \"%s\" is undefined" s
         | _ -> invalidArgs ()
@@ -359,13 +361,13 @@ module KlBuiltins =
         | _ -> invalidArgs ()
     let funR arity f = FunctionValue (new Function (arity, f))
     let funV arity f = funR arity (f >> ValueResult)
-    let emptyEnv () = new Globals(), []
+    let emptyEnv () = { Globals = new Globals(); Locals = [] }
     let baseEnv () =
-        let (globals, _) as env = emptyEnv ()
+        let env = emptyEnv ()
         let rec install = function
             | [] -> ()
             | (name, value) :: defs ->
-                globals.Add(name, value)
+                env.Globals.Add(name, value)
                 install defs
         install [
             "intern",          funV 1 klIntern
