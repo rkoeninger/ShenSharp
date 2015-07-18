@@ -43,13 +43,65 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 
 (defun it () (value shen.*it*))
 
-(defun shen.read-loop (V2193 V2194 V2195) (cond ((= 94 V2194) (simple-error "read aborted")) ((= -1 V2194) (if (empty? V2195) (simple-error "error: empty stream") (compile (lambda X (shen.<st_input> X)) V2195 (lambda E E)))) ((shen.terminator? V2194) (let AllBytes (append V2195 (cons V2194 ())) (let It (shen.record-it AllBytes) (let Read (compile (lambda X (shen.<st_input> X)) AllBytes (lambda E shen.nextbyte)) (if (or (= Read shen.nextbyte) (empty? Read)) (shen.read-loop V2193 (read-byte V2193) AllBytes) Read))))) (true (shen.read-loop V2193 (read-byte V2193) (append V2195 (cons V2194 ()))))))
+(defun shen.read-loop (V2193 V2194 V2195)
+	(cond
+		((= 94 V2194)
+			(simple-error "read aborted"))
+		((= -1 V2194)
+			(if (empty? V2195)
+				(simple-error "error: empty stream")
+				(compile (lambda X (shen.<st_input> X)) V2195 (lambda E E))))
+		((= 13 V2194)
+			(shen.read-loop V2193 (read-byte V2193) V2195 V2194))
+		((shen.terminator? V2194)
+			(let AllBytes (append V2195 (cons V2194 ()))
+			(let It (shen.record-it AllBytes)
+			(let Read (compile
+						(lambda X (shen.<st_input> X))
+						AllBytes
+						(lambda E shen.nextbyte))
+				(if (or (= Read shen.nextbyte) (empty? Read))
+					(shen.read-loop V2193 (read-byte V2193) AllBytes)
+					Read)))))
+		(true (shen.read-loop V2193 (read-byte V2193) (append V2195 (cons V2194 ()))))))
 
 (defun shen.terminator? (V2197) (element? V2197 (cons 9 (cons 10 (cons 13 (cons 32 (cons 34 (cons 41 (cons 93 ())))))))))
 
 (defun lineread (V2199) (shen.lineread-loop (read-byte V2199) () V2199))
 
-(defun shen.lineread-loop (V2204 V2205 V2206) (cond ((= -1 V2204) (if (empty? V2205) (simple-error "empty stream") (compile (lambda X (shen.<st_input> X)) V2205 (lambda E E)))) ((= V2204 (shen.hat)) (simple-error "line read aborted")) ((element? V2204 (cons (shen.newline) (cons (shen.carriage-return) ()))) (let Line (compile (lambda X (shen.<st_input> X)) V2205 (lambda E shen.nextline)) (let It (shen.record-it V2205) (if (or (= Line shen.nextline) (empty? Line)) (shen.lineread-loop (read-byte V2206) (append V2205 (cons V2204 ())) V2206) Line)))) (true (shen.lineread-loop (read-byte V2206) (append V2205 (cons V2204 ())) V2206))))
+(defun shen.lineread-loop (CharV2204 LineV2205 StreamV2206)
+	(cond
+		((= -1 CharV2204)
+			(if (empty? LineV2205)
+				(simple-error "empty stream")
+				(compile
+					(lambda X (shen.<st_input> X))
+					LineV2205
+					(lambda E E))))
+		((= CharV2204 (shen.hat))
+			(simple-error "line read aborted"))
+		((= CharV2204 (shen.newline))
+			(let Line (compile
+				(lambda X (shen.<st_input> X))
+				LineV2205
+				(lambda E shen.nextline))
+			(let It (shen.record-it LineV2205)
+				(if (or (= Line shen.nextline) (empty? Line))
+					(shen.lineread-loop
+						(read-byte StreamV2206)
+						(append LineV2205 (cons CharV2204 ()))
+						StreamV2206)
+					Line))))
+		((= CharV2204 (shen.carriage-return))
+			(shen.lineread-loop
+				(read-byte StreamV2206)
+				LineV2205
+				StreamV2206))
+		(true
+			(shen.lineread-loop
+				(read-byte StreamV2206)
+				(append LineV2205 (cons CharV2204 ()))
+				StreamV2206))))
 
 (defun shen.record-it (V2208) (let TrimLeft (shen.trim-whitespace V2208) (let TrimRight (shen.trim-whitespace (reverse TrimLeft)) (let Trimmed (reverse TrimRight) (shen.record-it-h Trimmed)))))
 

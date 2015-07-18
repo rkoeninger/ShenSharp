@@ -34,9 +34,19 @@ Shen, copyright (C) 2010-2015 Mark Tarver
 port " (shen.app (value *port*) (cn " ported by " (shen.app (value *porters*) "
 " shen.a)) shen.a)) (stoutput))))))
 
-(defun shen.initialise_environment () (shen.multiple-set (cons shen.*call* (cons 0 (cons shen.*infs* (cons 0 (cons shen.*process-counter* (cons 0 (cons shen.*catch* (cons 0 ()))))))))))
+(defun shen.initialise_environment ()
+	(shen.multiple-set
+		(cons shen.*call* (cons 0
+		(cons shen.*infs* (cons 0
+		(cons shen.*process-counter* (cons 0
+		(cons shen.*catch* (cons 0 ()))))))))))
 
-(defun shen.multiple-set (V3668) (cond ((= () V3668) ()) ((and (cons? V3668) (cons? (tl V3668))) (do (set (hd V3668) (hd (tl V3668))) (shen.multiple-set (tl (tl V3668))))) (true (shen.f_error shen.multiple-set))))
+(defun shen.multiple-set (V3668)
+	(cond
+		((= () V3668) ())
+		((and (cons? V3668) (cons? (tl V3668)))
+			(do (set (hd V3668) (hd (tl V3668))) (shen.multiple-set (tl (tl V3668)))))
+		(true (shen.f_error shen.multiple-set))))
 
 (defun destroy (V3670) (declare V3670 symbol))
 

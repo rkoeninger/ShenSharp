@@ -187,6 +187,23 @@ module KlEvaluator =
             depth <- depth - 1
             r
 
+type StreamDec(s : System.IO.Stream) =
+    inherit System.IO.Stream()
+    override this.CanRead with get() = s.CanRead
+    override this.CanSeek with get() = s.CanSeek
+    override this.CanWrite with get() = s.CanWrite
+    override this.Length with get() = s.Length
+    override this.Position with get() = s.Position
+                           and set(p) = s.Position <- p
+    override this.Flush() = s.Flush()
+    override this.Seek(p, o) = s.Seek(p, o)
+    override this.SetLength(l) = s.SetLength(l)
+    override this.Read(buf, o, l) = s.Read(buf, o, l)
+    override this.Write(buf, o, l) = s.Write(buf, o, l)
+    override this.ReadByte() =
+        let b = s.ReadByte()
+        if b = 13 then this.ReadByte() else b
+
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
     let trueV = BoolValue true
@@ -413,7 +430,7 @@ module KlBuiltins =
             "*port*",          "0" |> StringValue
             "*porters*",       "Robert Koeninger" |> StringValue
             "*version*",       "19.1" |> StringValue
-            "*stinput*",       System.Console.OpenStandardInput() |> StreamValue
+            "*stinput*",       new StreamDec(System.Console.OpenStandardInput()) :> System.IO.Stream |> StreamValue
             "*stoutput*",      System.Console.OpenStandardOutput() |> StreamValue
             "*home-directory*",System.Environment.CurrentDirectory |> StringValue
             ]

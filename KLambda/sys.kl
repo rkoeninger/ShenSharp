@@ -109,7 +109,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 
 (defun tuple? (V2723) (trap-error (and (absvector? V2723) (= shen.tuple (<-address V2723 0))) (lambda E false)))
 
-(defun append (V2726 V2727) (cond ((= () V2726) V2727) ((cons? V2726) (cons (hd V2726) (append (tl V2726) V2727))) (true (shen.f_error append))))
+(defun append (V2726 V2727)
+	(cond ((= () V2726) V2727)
+		((cons? V2726)
+			(cons (hd V2726) (append (tl V2726) V2727)))
+		(true (shen.f_error append))))
 
 (defun @v (V2730 V2731) (let Limit (limit V2731) (let NewVector (vector (+ Limit 1)) (let X+NewVector (vector-> NewVector 1 V2730) (if (= Limit 0) X+NewVector (shen.@v-help V2731 1 Limit X+NewVector))))))
 
