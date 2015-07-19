@@ -1,42 +1,5 @@
 ﻿open Kl
 
-//module Shen =
-//    [<EntryPoint>]
-//    let main args =
-//        let files = [
-//                "toplevel.kl"
-//                "core.kl"
-//                "sys.kl"
-//                "sequent.kl"
-//                "yacc.kl"
-//                "reader.kl"
-//                "prolog.kl"
-//                "track.kl"
-//                "load.kl"
-//                "writer.kl"
-//                "macros.kl"
-//                "declarations.kl"
-//            ]
-//        let klFolder = @"..\..\..\KLambda"
-//        let env = KlBuiltins.baseEnv ()
-//        let run = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env
-//        run "(defun shen.demod (X) X)" |> ignore
-//        for file in (List.map (fun f -> System.IO.Path.Combine(klFolder, f)) files) do
-//            stdout.Flush()
-//            let text = System.IO.File.ReadAllText(file)
-//            for ast in KlTokenizer.tokenizeAll text do
-//                let expr = KlParser.parse Head ast
-//                KlEvaluator.eval env expr |> ignore
-//        printf ">>> "
-//        match run "(str (lineread (value *stinput*)))" with
-//        | ValueResult (StringValue s) -> printfn "%s" s
-//        | ValueResult v -> printfn "%s" (v.ToString())
-//        | ErrorResult e -> printfn "error %s" e
-//        | ThunkResult t -> printfn "THUNK"
-//        printf "press any key to exit..."
-//        System.Console.ReadKey() |> ignore
-//        0
-
 module Shen =
     [<EntryPoint>]
     let main args =
