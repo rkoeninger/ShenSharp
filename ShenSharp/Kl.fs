@@ -69,26 +69,30 @@ module KlParser =
         | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (pos, parse Head body, parse pos handler)
         | ComboToken (f :: args) -> AppExpr (pos, parse Head f, List.map (parse Head) args)
 
-// TODO are there multiple numeric types in KL/Shen?
-// what is the result of `(/ 1 2)`? is it 0 or 0.5?
-
 type Globals = System.Collections.Generic.Dictionary<string, KlValue>
 and Locals = Map<string, KlValue> list
 and Env = { Globals : Globals; Locals : Locals }
 and Function(arity : int, f : KlValue list -> Result) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
+and InStream(read : unit -> int, close : unit -> unit) =
+    member this.Read() = read()
+    member this.Close() = close()
+and OutStream(write: byte -> unit, close: unit -> unit) =
+    member this.Write(b: byte) = write b
+    member this.Close() = close()
 and KlValue = EmptyValue
-            | BoolValue     of bool
-            | IntValue      of int
-            | DecimalValue  of decimal
-            | StringValue   of string
-            | SymbolValue   of string
-            | FunctionValue of Function
-            | VectorValue   of KlValue array
-            | ConsValue     of KlValue * KlValue
-            | ErrorValue    of string
-            | StreamValue   of System.IO.Stream
+            | BoolValue      of bool
+            | IntValue       of int
+            | DecimalValue   of decimal
+            | StringValue    of string
+            | SymbolValue    of string
+            | FunctionValue  of Function
+            | VectorValue    of KlValue array
+            | ConsValue      of KlValue * KlValue
+            | ErrorValue     of string
+            | InStreamValue  of InStream
+            | OutStreamValue of OutStream
 and Thunk(cont : unit -> Result) =
     member this.Run() =
         match cont () with
@@ -152,7 +156,7 @@ module KlEvaluator =
         | arg :: args -> match evalE arg |> go with
                          | ValueResult v -> evalArgs evalE (List.append vals [v]) args
                          | e -> Choice2Of2 e
-    let rec eval env = function // have `eval` call `eval0` and run thunks, `eval0` runs `eval` on other exprs
+    let rec eval env = function // TODO have `eval` call `eval0` and run thunks, `eval0` runs `eval` on other exprs
         | EmptyExpr    -> EmptyValue |> ValueResult
         | BoolExpr b   -> boolR b
         | IntExpr n    -> IntValue n |> ValueResult
@@ -252,7 +256,8 @@ module KlBuiltins =
         | VectorValue value -> sprintf "(@v%s)" (System.String.Join("", (Array.map (fun s -> " " + klStr s) value)))
         | ErrorValue message -> sprintf "(simple-error \"%s\")" message
         | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
-        | StreamValue s -> sprintf "<Stream %s>" (s.ToString())
+        | InStreamValue s -> sprintf "<InStream %s>" (s.ToString())
+        | OutStreamValue s -> sprintf "<OutStream %s>" (s.ToString())
     let rec klToString = function
         | [x : KlValue] -> x |> klStr |> StringValue
         | _ -> invalidArgs ()
@@ -303,7 +308,8 @@ module KlBuiltins =
         | DecimalValue x, IntValue y             -> x = decimal y
         | StringValue x, StringValue y           -> x = y
         | SymbolValue x, SymbolValue y           -> x = y
-        | StreamValue x, StreamValue y           -> x = y
+        | InStreamValue x, InStreamValue y       -> x = y
+        | OutStreamValue x, OutStreamValue y     -> x = y
         | FunctionValue x, FunctionValue y       -> x = y
         | ErrorValue x, ErrorValue y             -> x = y
         | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq (x1, y1) && klEq (x2, y2)
@@ -352,23 +358,29 @@ module KlBuiltins =
         | [_] -> falseV
         | _ -> invalidArgs ()
     let klWriteByte = function
-        | [IntValue i; StreamValue stream] ->
+        | [IntValue i; OutStreamValue stream] ->
             if 0 <= i && i <= 255
                 then let b = byte i
-                     stream.WriteByte(b)
+                     stream.Write(b)
                      b |> int |> IntValue
                 else invalidArgs ()
         | _ -> invalidArgs ()
     let klReadByte = function
-        | [StreamValue stream] -> stream.ReadByte() |> IntValue
+        | [InStreamValue stream] -> stream.Read() |> IntValue
         | _ -> invalidArgs ()
     let klOpen = function
-        | [StringValue path; SymbolValue "in"] -> System.IO.File.OpenRead(path) :> System.IO.Stream |> StreamValue
-        | [StringValue path; SymbolValue "out"] -> System.IO.File.OpenWrite(path) :> System.IO.Stream |> StreamValue
+        | [StringValue path; SymbolValue "in"] ->
+            let stream = System.IO.File.OpenRead(path)
+            new InStream(stream.ReadByte, stream.Close) |> InStreamValue
+        | [StringValue path; SymbolValue "out"] ->
+            let stream = System.IO.File.OpenWrite(path)
+            new OutStream(stream.WriteByte, stream.Close) |> OutStreamValue
         | _ -> invalidArgs ()
     let klClose = function
-        | [StreamValue stream] -> stream.Close()
-                                  EmptyValue
+        | [InStreamValue stream] -> stream.Close()
+                                    EmptyValue
+        | [OutStreamValue stream] -> stream.Close()
+                                     EmptyValue
         | _ -> invalidArgs ()
     let epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, System.DateTimeKind.Utc)
     let startTime = System.DateTime.UtcNow
@@ -437,6 +449,10 @@ module KlBuiltins =
     let funV arity f = funR arity (f >> ValueResult)
     let emptyEnv () = { Globals = new Globals(); Locals = [] }
     let baseEnv () =
+        let consoleInStream = new StreamDec(System.Console.OpenStandardInput())
+        let consoleOutStream = System.Console.OpenStandardOutput()
+        let stinput = new InStream(consoleInStream.ReadByte, consoleInStream.Close) |> InStreamValue
+        let stoutput = new OutStream(consoleOutStream.WriteByte, consoleOutStream.Close) |> OutStreamValue
         let env = emptyEnv ()
         let rec install = function
             | [] -> ()
@@ -444,51 +460,51 @@ module KlBuiltins =
                 env.Globals.[name] <- value
                 install defs
         install [
-            "intern",          funV 1 klIntern
-            "pos",             funR 2 klStringPos
-            "tlstr",           funV 1 klStringTail
-            "cn",              funV 2 klStringConcat
-            "str",             funV 1 klToString
-            "string?",         funV 1 klIsString
-            "n->string",       funV 1 klIntToString
-            "string->n",       funV 1 klStringToInt
-            "set",             funV 2 (klSet env)
-            "value",           funV 1 (klValue env)
-            "simple-error",    funR 1 klSimpleError
-            "error-to-string", funV 1 klErrorToString
-            "cons",            funV 2 klNewCons
-            "hd",              funV 1 klHead
-            "tl",              funV 1 klTail
-            "cons?",           funV 1 klIsCons
-            "=",               funV 2 klEquals
-            "type",            funV 1 klType
-            "eval-kl",         funR 1 (klEval env)
-            "absvector",       funV 1 klNewVector
-            "<-address",       funR 2 klReadVector
-            "address->",       funR 3 klWriteVector
-            "absvector?",      funV 1 klIsVector
-            "write-byte",      funV 2 klWriteByte
-            "read-byte",       funV 1 klReadByte
-            "open",            funV 2 klOpen
-            "close",           funV 1 klClose
-            "get-time",        funV 1 klGetTime
-            "+",               funV 2 klAdd
-            "-",               funV 2 klSubtract
-            "*",               funV 2 klMultiply
-            "/",               funV 2 klDivide
-            ">",               funV 2 klGreaterThan
-            "<",               funV 2 klLessThan
-            ">=",              funV 2 klGreaterThanEqual
-            "<=",              funV 2 klLessThanEqual
-            "number?",         funV 1 klIsNumber
-            "*language*",      "F# 3.1" |> StringValue
-            "*implementation*","CLR " + System.Environment.Version.ToString() |> StringValue
-            "*port*",          "0.1" |> StringValue
-            "*porters*",       "Robert Koeninger" |> StringValue
-            "*version*",       "19.2" |> StringValue
-            "*stinput*",       new StreamDec(System.Console.OpenStandardInput()) :> System.IO.Stream |> StreamValue
-            "*stoutput*",      System.Console.OpenStandardOutput() |> StreamValue
-            "*home-directory*",System.Environment.CurrentDirectory |> StringValue
+            "intern",           funV 1 klIntern
+            "pos",              funR 2 klStringPos
+            "tlstr",            funV 1 klStringTail
+            "cn",               funV 2 klStringConcat
+            "str",              funV 1 klToString
+            "string?",          funV 1 klIsString
+            "n->string",        funV 1 klIntToString
+            "string->n",        funV 1 klStringToInt
+            "set",              funV 2 (klSet env)
+            "value",            funV 1 (klValue env)
+            "simple-error",     funR 1 klSimpleError
+            "error-to-string",  funV 1 klErrorToString
+            "cons",             funV 2 klNewCons
+            "hd",               funV 1 klHead
+            "tl",               funV 1 klTail
+            "cons?",            funV 1 klIsCons
+            "=",                funV 2 klEquals
+            "type",             funV 1 klType
+            "eval-kl",          funR 1 (klEval env)
+            "absvector",        funV 1 klNewVector
+            "<-address",        funR 2 klReadVector
+            "address->",        funR 3 klWriteVector
+            "absvector?",       funV 1 klIsVector
+            "write-byte",       funV 2 klWriteByte
+            "read-byte",        funV 1 klReadByte
+            "open",             funV 2 klOpen
+            "close",            funV 1 klClose
+            "get-time",         funV 1 klGetTime
+            "+",                funV 2 klAdd
+            "-",                funV 2 klSubtract
+            "*",                funV 2 klMultiply
+            "/",                funV 2 klDivide
+            ">",                funV 2 klGreaterThan
+            "<",                funV 2 klLessThan
+            ">=",               funV 2 klGreaterThanEqual
+            "<=",               funV 2 klLessThanEqual
+            "number?",          funV 1 klIsNumber
+            "*language*",       "F# 3.1" |> StringValue
+            "*implementation*", "CLR " + System.Environment.Version.ToString() |> StringValue
+            "*port*",           "0.1" |> StringValue
+            "*porters*",        "Robert Koeninger" |> StringValue
+            "*version*",        "19.2" |> StringValue
+            "*stinput*",        stinput
+            "*stoutput*",       stoutput
+            "*home-directory*", System.Environment.CurrentDirectory |> StringValue
             ]
         env
 
