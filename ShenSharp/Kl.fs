@@ -105,8 +105,6 @@ and Result = ValueResult of KlValue
 // TODO use `inherits` to re-use DU cases and prevent nested boxing?
 
 module KlEvaluator =
-    let mutable logging = false
-    let mutable depth = 0
     let (|Greater|Equal|Lesser|) (x, y) = if x > y then Greater elif x < y then Lesser else Equal
     let vBool = function
         | BoolValue b -> b
@@ -122,8 +120,7 @@ module KlEvaluator =
     let append1 env k v = append env [(k, v)]
     let closure eval env (paramz : string list) body =
         new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
-    let vFunc (env : Env) value =
-        match value with
+    let vFunc (env : Env) = function
         | FunctionValue f -> f
         | SymbolValue s -> match env.Globals.TryGetValue(s) with
                            | (true, FunctionValue f) -> f
@@ -174,25 +171,17 @@ module KlEvaluator =
         | LetExpr (symbol, binding, body) ->
             eval env binding >>= (fun v -> eval (append1 env symbol v) body)
         | LambdaExpr (param, body) -> closure eval env [param] body |> ValueResult
-        | DefunExpr (name, paramz, body) -> let f = closure eval env paramz body
-                                            env.Globals.[name] <- f
-                                            ValueResult f
+        | DefunExpr (name, paramz, body) ->
+            let f = closure eval env paramz body
+            env.Globals.[name] <- f
+            ValueResult f
         | FreezeExpr expr -> closure eval env [] expr |> ValueResult
         | TrapExpr (pos, body, handler) ->
             match eval env body |> go with
-            | ErrorResult e ->
-                if logging then eprintfn "Error trapped: %s" e
-                eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
-            | r -> go r
+            | ErrorResult e -> eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
+            | r -> r
         | AppExpr (pos, f, args) ->
-            let show = function
-                        | SymbolExpr s -> s
-                        | _ -> "unknown"
-            if logging then eprintfn "%s%s" (String.replicate depth " ") (show f) |> ignore
-            depth <- depth + 1
-            let r = eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (eval env) [] args))
-            depth <- depth - 1
-            r
+            eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (eval env) [] args))
 
 type ConsoleIn(stream: System.IO.Stream) =
     let reader = new System.IO.StreamReader(stream)

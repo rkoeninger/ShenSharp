@@ -49,7 +49,6 @@ module Shen =
         printfn ""
         printfn "Starting shen repl..."
         printfn ""
-        KlEvaluator.logging = true |> ignore
         "(shen.shen)" |> KlTokenizer.tokenize
                       |> KlParser.parse Head
                       |> KlEvaluator.eval env
