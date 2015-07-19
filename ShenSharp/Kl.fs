@@ -441,10 +441,9 @@ module KlBuiltins =
             "number?",         funV 1 klIsNumber
             "*language*",      "F# 3.1" |> StringValue
             "*implementation*","CLR " + System.Environment.Version.ToString() |> StringValue
-            "*release*",       "0" |> StringValue
-            "*port*",          "0" |> StringValue
+            "*port*",          "0.1" |> StringValue
             "*porters*",       "Robert Koeninger" |> StringValue
-            "*version*",       "19.1" |> StringValue
+            "*version*",       "19.2" |> StringValue
             "*stinput*",       new StreamDec(System.Console.OpenStandardInput()) :> System.IO.Stream |> StreamValue
             "*stoutput*",      System.Console.OpenStandardOutput() |> StreamValue
             "*home-directory*",System.Environment.CurrentDirectory |> StringValue
