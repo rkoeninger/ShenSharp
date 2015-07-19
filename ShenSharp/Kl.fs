@@ -189,6 +189,9 @@ module KlEvaluator =
 
 type StreamDec(s : System.IO.Stream) =
     inherit System.IO.Stream()
+    let reader = new System.IO.StreamReader(s, System.Text.Encoding.UTF8)
+    let mutable currentLine = ""
+    let mutable currentPos = 0
     override this.CanRead with get() = s.CanRead
     override this.CanSeek with get() = s.CanSeek
     override this.CanWrite with get() = s.CanWrite
@@ -198,12 +201,23 @@ type StreamDec(s : System.IO.Stream) =
     override this.Flush() = s.Flush()
     override this.Seek(p, o) = s.Seek(p, o)
     override this.SetLength(l) = s.SetLength(l)
-    override this.Read(buf, o, l) = s.Read(buf, o, l)
+    override this.Read(buf, o, l) = failwith "I didn't think you'd call this"
     override this.Write(buf, o, l) = s.Write(buf, o, l)
     override this.ReadByte() =
-        let b = s.ReadByte()
-        if b = 13 then this.ReadByte() else b
-
+        if currentPos >= currentLine.Length then
+            currentLine <- reader.ReadLine()
+            if System.Object.ReferenceEquals(currentLine, null) then
+                -1
+            else
+                currentLine <- currentLine + "\n"
+                currentPos <- 0
+                let ch = currentLine.[currentPos]
+                currentPos <- currentPos + 1
+                (int) ch
+        else
+            let ch = currentLine.[currentPos]
+            currentPos <- currentPos + 1
+            (int) ch
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
     let trueV = BoolValue true
