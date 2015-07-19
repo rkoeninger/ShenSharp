@@ -107,19 +107,19 @@ type Tests() =
     [<TestMethod>]
     member this.DefunAndResolutionOfDefinedFunctions() =
         let env = emptyEnv ()
-        env.Globals.Add("not", funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult
-                                                 | _             -> failwith "must be bool"))
+        env.Globals.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult
+                                                 | _             -> failwith "must be bool")
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
     [<TestMethod>]
     member this.SymbolResolution() =
         let env = emptyEnv ()
-        env.Globals.Add("symbol?", funcV 1 (function | [SymbolValue _] -> trueR
-                                                     | _               -> falseR))
+        env.Globals.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueR
+                                                     | _               -> falseR)
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
-        env.Globals.Add("id", funcV 1 (function | [x] -> ValueResult x
-                                                | _   -> failwith "must be 1 arg"))
+        env.Globals.["id"] <- funcV 1 (function | [x] -> ValueResult x
+                                                | _   -> failwith "must be 1 arg")
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<TestMethod>]

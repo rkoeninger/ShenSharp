@@ -121,7 +121,7 @@ module KlEvaluator =
         | FunctionValue f -> f
         | SymbolValue s -> match env.Globals.TryGetValue(s) with
                            | (true, FunctionValue f) -> f
-                           | (false, _) -> failwithf "Symbol \"%s\" is undefined" s
+                           | (false, _) -> failwithf "Symbol \"%s\" is undefined" s // TODO this should be an ErrorResult
                            | _ -> failwithf "Symbol \"%s\" does not represent function" s
         | _ -> failwith "Function value expected"
     let go = function
@@ -168,7 +168,7 @@ module KlEvaluator =
             eval env binding >>= (fun v -> eval (append1 env symbol v) body)
         | LambdaExpr (param, body) -> closure eval env [param] body |> ValueResult
         | DefunExpr (name, paramz, body) -> let f = closure eval env paramz body
-                                            env.Globals.Add(name, f)
+                                            env.Globals.[name] <- f
                                             ValueResult f
         | FreezeExpr expr -> closure eval env [] expr |> ValueResult
         | TrapExpr (pos, body, handler) ->
@@ -218,6 +218,7 @@ type StreamDec(s : System.IO.Stream) =
             let ch = currentLine.[currentPos]
             currentPos <- currentPos + 1
             (int) ch
+
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
     let trueV = BoolValue true
@@ -398,7 +399,7 @@ module KlBuiltins =
         let rec install = function
             | [] -> ()
             | (name, value) :: defs ->
-                env.Globals.Add(name, value)
+                env.Globals.[name] <- value
                 install defs
         install [
             "intern",          funV 1 klIntern
