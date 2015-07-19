@@ -194,23 +194,11 @@ module KlEvaluator =
             depth <- depth - 1
             r
 
-type StreamDec(s : System.IO.Stream) =
-    inherit System.IO.Stream()
-    let reader = new System.IO.StreamReader(s, System.Text.Encoding.UTF8)
+type ConsoleIn(stream: System.IO.Stream) =
+    let reader = new System.IO.StreamReader(stream)
     let mutable currentLine = ""
     let mutable currentPos = 0
-    override this.CanRead with get() = s.CanRead
-    override this.CanSeek with get() = s.CanSeek
-    override this.CanWrite with get() = s.CanWrite
-    override this.Length with get() = s.Length
-    override this.Position with get() = s.Position
-                           and set(p) = s.Position <- p
-    override this.Flush() = s.Flush()
-    override this.Seek(p, o) = s.Seek(p, o)
-    override this.SetLength(l) = s.SetLength(l)
-    override this.Read(buf, o, l) = failwith "I didn't think you'd call this"
-    override this.Write(buf, o, l) = s.Write(buf, o, l)
-    override this.ReadByte() =
+    member this.Read() = 
         if currentPos >= currentLine.Length then
             currentLine <- reader.ReadLine()
             if System.Object.ReferenceEquals(currentLine, null) then
@@ -225,6 +213,7 @@ type StreamDec(s : System.IO.Stream) =
             let ch = currentLine.[currentPos]
             currentPos <- currentPos + 1
             (int) ch
+    member this.Close() = stream.Close()
 
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
@@ -448,11 +437,13 @@ module KlBuiltins =
     let funR arity f = FunctionValue (new Function (arity, f))
     let funV arity f = funR arity (f >> ValueResult)
     let emptyEnv () = { Globals = new Globals(); Locals = [] }
-    let baseEnv () =
-        let consoleInStream = new StreamDec(System.Console.OpenStandardInput())
+    let stinput =
+        let consoleIn = new ConsoleIn(System.Console.OpenStandardInput())
+        new InStream(consoleIn.Read, consoleIn.Close) |> InStreamValue
+    let stoutput =
         let consoleOutStream = System.Console.OpenStandardOutput()
-        let stinput = new InStream(consoleInStream.ReadByte, consoleInStream.Close) |> InStreamValue
-        let stoutput = new OutStream(consoleOutStream.WriteByte, consoleOutStream.Close) |> OutStreamValue
+        new OutStream(consoleOutStream.WriteByte, consoleOutStream.Close) |> OutStreamValue
+    let baseEnv () =
         let env = emptyEnv ()
         let rec install = function
             | [] -> ()
