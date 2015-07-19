@@ -3,7 +3,7 @@
 open FParsec
 
 type KlToken = BoolToken   of bool
-             | NumberToken of decimal // TODO numbers broken into ints and floats
+             | NumberToken of decimal
              | StringToken of string
              | SymbolToken of string
              | ComboToken  of KlToken list
@@ -28,20 +28,21 @@ module KlTokenizer =
 
 type Position = Head | Tail
 type KlExpr = EmptyExpr
-            | BoolExpr   of bool
-            | NumberExpr of decimal
-            | StringExpr of string
-            | SymbolExpr of string
-            | AndExpr    of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
-            | OrExpr     of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
-            | IfExpr     of KlExpr * KlExpr * KlExpr        // (Bool, a, a) -> a
-            | CondExpr   of (KlExpr * KlExpr) list          // [(Bool, a)] -> a
-            | LetExpr    of string * KlExpr * KlExpr        // (Symbol, a, Expr) -> a
-            | LambdaExpr of string * KlExpr                 // (Symbol, a) -> (Value -> a)
-            | DefunExpr  of string * string list * KlExpr   // (Symbol, [Symbol], Expr) -> ([Value] -> a)
-            | FreezeExpr of KlExpr                          // Expr -> (() -> Value)
-            | TrapExpr   of Position * KlExpr * KlExpr
-            | AppExpr    of Position * KlExpr * KlExpr list
+            | BoolExpr    of bool
+            | IntExpr     of int
+            | DecimalExpr of decimal
+            | StringExpr  of string
+            | SymbolExpr  of string
+            | AndExpr     of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
+            | OrExpr      of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
+            | IfExpr      of KlExpr * KlExpr * KlExpr        // (Bool, a, a) -> a
+            | CondExpr    of (KlExpr * KlExpr) list          // [(Bool, a)] -> a
+            | LetExpr     of string * KlExpr * KlExpr        // (Symbol, a, Expr) -> a
+            | LambdaExpr  of string * KlExpr                 // (Symbol, a) -> (Value -> a)
+            | DefunExpr   of string * string list * KlExpr   // (Symbol, [Symbol], Expr) -> ([Value] -> a)
+            | FreezeExpr  of KlExpr                          // Expr -> (() -> Value)
+            | TrapExpr    of Position * KlExpr * KlExpr
+            | AppExpr     of Position * KlExpr * KlExpr list
 
 module KlParser =
     let tSymbol = function
@@ -50,7 +51,7 @@ module KlParser =
     let rec parse pos = function
         | ComboToken [] -> EmptyExpr
         | BoolToken b -> BoolExpr b
-        | NumberToken n -> NumberExpr n
+        | NumberToken n -> if n % 1.0m = 0m then IntExpr (int n) else DecimalExpr n
         | StringToken s -> StringExpr s
         | SymbolToken s -> SymbolExpr s
         | ComboToken [(SymbolToken "and"); left; right] -> AndExpr (parse Head left, parse pos right)
@@ -79,7 +80,8 @@ and Function(arity : int, f : KlValue list -> Result) =
     member this.Apply(args : KlValue list) = f args
 and KlValue = EmptyValue
             | BoolValue     of bool
-            | NumberValue   of decimal
+            | IntValue      of int
+            | DecimalValue  of decimal
             | StringValue   of string
             | SymbolValue   of string
             | FunctionValue of Function
@@ -153,7 +155,8 @@ module KlEvaluator =
     let rec eval env = function // have `eval` call `eval0` and run thunks, `eval0` runs `eval` on other exprs
         | EmptyExpr    -> EmptyValue |> ValueResult
         | BoolExpr b   -> boolR b
-        | NumberExpr n -> NumberValue n |> ValueResult
+        | IntExpr n    -> IntValue n |> ValueResult
+        | DecimalExpr n-> DecimalValue n |> ValueResult
         | StringExpr s -> StringValue s |> ValueResult
         | SymbolExpr s -> resolve env s |> ValueResult
         | AndExpr (left, right) -> eval env left >>= branch (eval env) id right falseR
@@ -227,10 +230,9 @@ module KlBuiltins =
         | [StringValue s] -> SymbolValue s
         | _ -> invalidArgs ()
     let klStringPos = function
-        | [StringValue s; NumberValue index] ->
-            let i = int index
-            if i >= 0 && i < s.Length
-                then s.[i] |> string |> StringValue |> ValueResult
+        | [StringValue s; IntValue index] ->
+            if index >= 0 && index < s.Length
+                then s.[index] |> string |> StringValue |> ValueResult
                 else "string index out of bounds" |> ErrorResult
         | _ -> invalidArgs ()
     let klStringTail = function
@@ -242,7 +244,8 @@ module KlBuiltins =
     let rec klStr = function
         | EmptyValue -> "()"
         | BoolValue b -> if b then "true" else "false"
-        | NumberValue n -> n.ToString()
+        | IntValue n -> n.ToString()
+        | DecimalValue n -> n.ToString()
         | StringValue s -> "\"" + s + "\""
         | SymbolValue s -> s
         | ConsValue (head, tail) -> sprintf "(cons %s %s)" (klStr head) (klStr tail)
@@ -258,10 +261,10 @@ module KlBuiltins =
         | [_] -> falseV
         | _ -> invalidArgs ()
     let klIntToString = function
-        | [NumberValue n] -> int n |> char |> string |> StringValue
+        | [IntValue n] -> int n |> char |> string |> StringValue
         | _ -> invalidArgs ()
     let klStringToInt = function
-        | [StringValue s] -> s.[0] |> int |> decimal |> NumberValue
+        | [StringValue s] -> s.[0] |> int |> IntValue
         | _ -> invalidArgs ()
     let klSet env = function
         | [SymbolValue s; x] -> env.Globals.[s] <- x
@@ -294,7 +297,10 @@ module KlBuiltins =
     let rec klEq = function
         | EmptyValue, EmptyValue                 -> true
         | BoolValue x, BoolValue y               -> x = y
-        | NumberValue x, NumberValue y           -> x = y
+        | IntValue x, IntValue y                 -> x = y
+        | DecimalValue x, DecimalValue y         -> x = y
+        | IntValue x, DecimalValue y             -> decimal x = y
+        | DecimalValue x, IntValue y             -> x = decimal y
         | StringValue x, StringValue y           -> x = y
         | SymbolValue x, SymbolValue y           -> x = y
         | StreamValue x, StreamValue y           -> x = y
@@ -309,7 +315,8 @@ module KlBuiltins =
     let rec klValueToToken = function
         | EmptyValue -> ComboToken []
         | BoolValue b -> BoolToken b
-        | NumberValue n -> NumberToken n
+        | IntValue n -> n |> decimal |> NumberToken
+        | DecimalValue n -> n |> NumberToken
         | StringValue s -> StringToken s
         | SymbolValue s -> SymbolToken s
         | ConsValue _ as cons ->
@@ -325,20 +332,18 @@ module KlBuiltins =
         | [x; _] -> x // TODO label the type of an expression (what does that mean?)
         | _ -> invalidArgs ()
     let klNewVector = function
-        | [NumberValue length] -> Array.create (int length) EmptyValue |> VectorValue
+        | [IntValue length] -> Array.create length EmptyValue |> VectorValue
         | _ -> invalidArgs ()
     let klReadVector = function
-        | [VectorValue vector; NumberValue index] ->
-            let i = int index
-            if i >= 0 && i < vector.Length
-                then vector.[i] |> ValueResult
+        | [VectorValue vector; IntValue index] ->
+            if index >= 0 && index < vector.Length
+                then vector.[index] |> ValueResult
                 else ErrorResult "Vector index out of bounds"
         | _ -> invalidArgs ()
     let klWriteVector = function
-        | [VectorValue vector as vv; NumberValue index; value] ->
-            let i = int index
-            if i >= 0 && i < vector.Length
-                then vector.[i] <- value
+        | [VectorValue vector as vv; IntValue index; value] ->
+            if index >= 0 && index < vector.Length
+                then vector.[index] <- value
                      ValueResult vv
                 else ErrorResult "Vector index out of bounds"
         | _ -> invalidArgs ()
@@ -347,16 +352,15 @@ module KlBuiltins =
         | [_] -> falseV
         | _ -> invalidArgs ()
     let klWriteByte = function
-        | [NumberValue number; StreamValue stream] ->
-            let i = int number
+        | [IntValue i; StreamValue stream] ->
             if 0 <= i && i <= 255
                 then let b = byte i
                      stream.WriteByte(b)
-                     b |> decimal |> NumberValue
+                     b |> int |> IntValue
                 else invalidArgs ()
         | _ -> invalidArgs ()
     let klReadByte = function
-        | [StreamValue stream] -> stream.ReadByte() |> decimal |> NumberValue
+        | [StreamValue stream] -> stream.ReadByte() |> IntValue
         | _ -> invalidArgs ()
     let klOpen = function
         | [StringValue path; SymbolValue "in"] -> System.IO.File.OpenRead(path) :> System.IO.Stream |> StreamValue
@@ -372,23 +376,61 @@ module KlBuiltins =
     let klGetTime = function
         // Both run and unix time are in milliseconds
         // ElapsedTicks is in 100 picoseconds/0.1 microseconds
-        | [SymbolValue "run"] -> stopwatch.ElapsedTicks * 10000L |> decimal |> NumberValue
-        | [SymbolValue "unix"] -> (System.DateTime.UtcNow - epoch).TotalSeconds |> decimal |> NumberValue
+        | [SymbolValue "run"] -> stopwatch.ElapsedTicks / 10000L |> int |> IntValue
+        | [SymbolValue "unix"] -> (System.DateTime.UtcNow - epoch).TotalSeconds |> int |> IntValue
         // TODO support "real" time?
         | _ -> invalidArgs ()
-    let op f wrapper = function
-        | [NumberValue x; NumberValue y] -> f x y |> wrapper
+    let klAdd = function
+        | [IntValue x;     IntValue y]     -> x + y |> IntValue
+        | [IntValue x;     DecimalValue y] -> decimal x + y |> DecimalValue
+        | [DecimalValue x; IntValue y]     -> x + decimal y |> DecimalValue
+        | [DecimalValue x; DecimalValue y] -> x + y |> DecimalValue
         | _ -> invalidArgs ()
-    let klAdd              = op (+)  NumberValue
-    let klSubtract         = op (-)  NumberValue
-    let klMultiply         = op (*)  NumberValue
-    let klDivide           = op (/)  NumberValue
-    let klGreaterThan      = op (>)  BoolValue
-    let klLessThan         = op (<)  BoolValue
-    let klGreaterThanEqual = op (>=) BoolValue
-    let klLessThanEqual    = op (<=) BoolValue
+    let klSubtract = function
+        | [IntValue x;     IntValue y]     -> x - y |> IntValue
+        | [IntValue x;     DecimalValue y] -> decimal x - y |> DecimalValue
+        | [DecimalValue x; IntValue y]     -> x - decimal y |> DecimalValue
+        | [DecimalValue x; DecimalValue y] -> x - y |> DecimalValue
+        | _ -> invalidArgs ()
+    let klMultiply = function
+        | [IntValue x;     IntValue y]     -> x * y |> IntValue
+        | [IntValue x;     DecimalValue y] -> decimal x * y |> DecimalValue
+        | [DecimalValue x; IntValue y]     -> x * decimal y |> DecimalValue
+        | [DecimalValue x; DecimalValue y] -> x * y |> DecimalValue
+        | _ -> invalidArgs ()
+    let klDivide = function
+        | [IntValue x;     IntValue y]     -> decimal x / decimal y |> DecimalValue
+        | [IntValue x;     DecimalValue y] -> decimal x / y |> DecimalValue
+        | [DecimalValue x; IntValue y]     -> x / decimal y |> DecimalValue
+        | [DecimalValue x; DecimalValue y] -> x / y |> DecimalValue
+        | _ -> invalidArgs ()
+    let klGreaterThan = function
+        | [IntValue x;     IntValue y]     -> x > y |> BoolValue
+        | [IntValue x;     DecimalValue y] -> decimal x > y |> BoolValue
+        | [DecimalValue x; IntValue y]     -> x > decimal y |> BoolValue
+        | [DecimalValue x; DecimalValue y] -> x > y |> BoolValue
+        | _ -> invalidArgs ()
+    let klLessThan = function
+        | [IntValue x;     IntValue y]     -> x < y |> BoolValue
+        | [IntValue x;     DecimalValue y] -> decimal x < y |> BoolValue
+        | [DecimalValue x; IntValue y]     -> x < decimal y |> BoolValue
+        | [DecimalValue x; DecimalValue y] -> x < y |> BoolValue
+        | _ -> invalidArgs ()
+    let klGreaterThanEqual = function
+        | [IntValue x;     IntValue y]     -> x >= y |> BoolValue
+        | [IntValue x;     DecimalValue y] -> decimal x >= y |> BoolValue
+        | [DecimalValue x; IntValue y]     -> x >= decimal y |> BoolValue
+        | [DecimalValue x; DecimalValue y] -> x >= y |> BoolValue
+        | _ -> invalidArgs ()
+    let klLessThanEqual = function
+        | [IntValue x;     IntValue y]     -> x <= y |> BoolValue
+        | [IntValue x;     DecimalValue y] -> decimal x <= y |> BoolValue
+        | [DecimalValue x; IntValue y]     -> x <= decimal y |> BoolValue
+        | [DecimalValue x; DecimalValue y] -> x <= y |> BoolValue
+        | _ -> invalidArgs ()
     let klIsNumber = function
-        | [NumberValue _] -> trueV
+        | [IntValue _] -> trueV
+        | [DecimalValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
     let funR arity f = FunctionValue (new Function (arity, f))

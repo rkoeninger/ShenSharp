@@ -15,9 +15,11 @@ type Tests() =
     let getError = function
         | ValueResult (ErrorValue e) -> e
         | _ -> failwith "not an Error"
-    let getNumber = function
-        | ValueResult (NumberValue n) -> n
-        | _ -> failwith "not a Number"
+    let getInt = function
+        | ValueResult (IntValue n) -> n
+        | _ -> failwith "not an int"
+    let isIntR = function | ValueResult (IntValue _) -> true | _ -> false
+    let isDecimalR = function | ValueResult (DecimalValue _) -> true | _ -> false
     let getString = function
         | ValueResult (StringValue s) -> s
         | _ -> failwith "not a String"
@@ -43,8 +45,8 @@ type Tests() =
     let symApp1 sym arg1 = AppExpr (Head, SymbolExpr sym, [arg1])
     let symApp2 sym arg1 arg2 = AppExpr (Head, SymbolExpr sym, [arg1; arg2])
     let symApp3 sym arg1 arg2 arg3 = AppExpr (Head, SymbolExpr sym, [arg1; arg2; arg3])
-    let intE = decimal >> NumberExpr
-    let intV = decimal >> NumberValue
+    let intE = IntExpr
+    let intV = IntValue
     let intR = intV >> ValueResult
     let funcV n f = FunctionValue <| new Function(n, f)
 
@@ -139,6 +141,26 @@ type Tests() =
         Assert.AreEqual(trueR, runit "(cons? (cons 0 0))")
     
     [<TestMethod>]
+    member this.Math() =
+        Assert.IsTrue(isIntR <| runit "(+ 1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(+ 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(+ 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runit "(+ 1.1 2.4)")
+        Assert.IsTrue(isIntR <| runit "(- 1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(- 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(- 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runit "(- 1.1 2.4)")
+        Assert.IsTrue(isIntR <| runit "(* 1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(* 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(* 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runit "(* 1.1 2.4)")
+        Assert.IsTrue(isDecimalR <| runit "(/ 1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(/ 2 1)") // TODO should this still be an int result?
+        Assert.IsTrue(isDecimalR <| runit "(/ 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runit "(/ 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runit "(/ 1.1 2.4)")
+
+    [<TestMethod>]
     member this.StringFunctions() =
         Assert.AreEqual("Hello, World!", runit "(cn \"Hello, \" \"World!\")" |> getString)
         Assert.AreEqual("Hello", runit "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))" |> getString)
@@ -177,12 +199,12 @@ type Tests() =
                             ["acc"; "n"],
                             IfExpr (AppExpr (Head,
                                              SymbolExpr "=",
-                                             [NumberExpr 0m; SymbolExpr "n"]),
+                                             [intE 0; SymbolExpr "n"]),
                                     SymbolExpr "acc",
                                     AppExpr (Tail,
                                              SymbolExpr "!",
                                              [symApp2 "*" (SymbolExpr "n") (SymbolExpr "acc")
-                                              symApp2 "-" (SymbolExpr "n") (NumberExpr 1m)])))
+                                              symApp2 "-" (SymbolExpr "n") (intE 1)])))
         Assert.AreEqual(e0, e)
 
     [<Ignore>]
@@ -199,11 +221,11 @@ type Tests() =
 
     [<TestMethod>]
     member this.PrintStuff() =
-        let u = runit "(get-time unix)" |> getNumber
-        printf "Unix time: %f" u
+        let u = runit "(get-time unix)" |> getInt
+        printf "Unix time: %i" u
         printf "\r\n"
-        let r = runit "(get-time run)" |> getNumber
-        printf "Run time: %f" r
+        let r = runit "(get-time run)" |> getInt
+        printf "Run time: %i" r
         printf "\r\n"
         let s = runit "(str (cons 1 (cons 2 (cons 3 ()))))" |> getString
         printf "Cons: %s" s
