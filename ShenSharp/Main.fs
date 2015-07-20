@@ -29,8 +29,8 @@ module Shen =
             | StringToken s -> "\"" + s + "\""
             | SymbolToken s -> s
         let env = KlBuiltins.baseEnv ()
-        "(defun shen.demod (X) X)" |> KlTokenizer.tokenize |> KlParser.parse Head |> KlEvaluator.eval env |> ignore
         for file in (List.map (fun f -> System.IO.Path.Combine(klFolder, f)) files) do
+            printfn ""
             printfn "Loading %s" file
             printfn ""
             stdout.Flush()
@@ -38,12 +38,11 @@ module Shen =
             for ast in KlTokenizer.tokenizeAll text do
                 match ast with
                 | ComboToken (command :: symbol :: _) ->
-                    //printfn "%s %s" (astToStr command) (astToStr symbol)
-                    //printfn ""
-                    stdout.Flush()
+                    printfn "%s %s" (astToStr command) (astToStr symbol)
                     let expr = KlParser.parse Head ast
                     KlEvaluator.eval env expr |> ignore
                 | _ -> () // ignore copyright block at top
+        printfn ""
         printfn "Loading done"
         printfn "Time: %s" <| stopwatch.Elapsed.ToString()
         printfn ""

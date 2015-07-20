@@ -104,6 +104,9 @@ and Result = ValueResult of KlValue
 // TODO break the distinction between Pending and Complete(Value|Error) into another level of DU?
 // TODO use `inherits` to re-use DU cases and prevent nested boxing?
 
+type FunctionResolveResult = FunctionResult of Function
+                           | FunctionResolveError of string
+
 module KlEvaluator =
     let (|Greater|Equal|Lesser|) (x, y) = if x > y then Greater elif x < y then Lesser else Equal
     let vBool = function
@@ -121,22 +124,26 @@ module KlEvaluator =
     let closure eval env (paramz : string list) body =
         new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
     let vFunc (env : Env) = function
-        | FunctionValue f -> f
-        | SymbolValue s -> match env.Globals.TryGetValue(s) with
-                           | (true, FunctionValue f) -> f
-                           | (false, _) -> failwithf "Symbol \"%s\" is undefined" s // TODO this should be an ErrorResult
-                           | _ -> failwithf "Symbol \"%s\" does not represent function" s
-        | _ -> failwith "Function value expected"
+        | FunctionValue f -> FunctionResult f
+        | SymbolValue s ->
+            match env.Globals.TryGetValue(s) with
+            | (true, FunctionValue f) -> FunctionResult f
+            | (false, _) -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
+            | _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
+        | _ -> failwith "Function value or symbol expected"
     let go = function
         | ThunkResult thunk -> thunk.Run()
         | result -> result
-    let rec apply (pos : Position) (f : Function) (args : KlValue list) : Result =
-        match args.Length, f.Arity with
-        | Greater -> failwith "Too many arguments"
-        | Lesser -> funcR (f.Arity - args.Length) (List.append args >> apply pos f)
-        | Equal -> match pos with
-                   | Head -> f.Apply args |> go
-                   | Tail -> thunkR (fun () -> f.Apply args)
+    let rec apply (pos : Position) (fr : FunctionResolveResult) (args : KlValue list) : Result =
+        match fr with
+        | FunctionResolveError e -> ErrorResult e
+        | FunctionResult f ->
+            match args.Length, f.Arity with
+            | Greater -> failwith "Too many arguments"
+            | Lesser -> funcR (f.Arity - args.Length) (List.append args >> apply pos fr)
+            | Equal -> match pos with
+                       | Head -> f.Apply args |> go
+                       | Tail -> thunkR (fun () -> f.Apply args)
     let rec (>>=) result f =
         match go result with
         | ValueResult value -> f value
@@ -254,9 +261,10 @@ module KlBuiltins =
                                 x
         | _ -> invalidArgs ()
     let klValue env = function
-        | [SymbolValue s] -> match env.Globals.TryGetValue(s) with
-                             | (true, v) -> v
-                             | (false, _) -> failwithf "Symbol \"%s\" is undefined" s
+        | [SymbolValue s] ->
+            match env.Globals.TryGetValue(s) with
+            | (true, v) -> ValueResult v
+            | (false, _) -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
         | _ -> invalidArgs ()
     let klSimpleError = function
         | [StringValue s] -> ErrorResult s
@@ -449,7 +457,7 @@ module KlBuiltins =
             "n->string",        funV 1 klIntToString
             "string->n",        funV 1 klStringToInt
             "set",              funV 2 (klSet env)
-            "value",            funV 1 (klValue env)
+            "value",            funR 1 (klValue env)
             "simple-error",     funR 1 klSimpleError
             "error-to-string",  funV 1 klErrorToString
             "cons",             funV 2 klNewCons
