@@ -8,7 +8,85 @@ type KlToken = BoolToken   of bool
              | SymbolToken of string
              | ComboToken  of KlToken list
 
-(* Tokenizer is strict about spacing. It will not handle extra spaces inside of parens. *)
+type Position = Head | Tail
+
+type KlExpr = EmptyExpr
+            | BoolExpr    of bool
+            | IntExpr     of int
+            | DecimalExpr of decimal
+            | StringExpr  of string
+            | SymbolExpr  of string
+            | AndExpr     of KlExpr * KlExpr
+            | OrExpr      of KlExpr * KlExpr
+            | IfExpr      of KlExpr * KlExpr * KlExpr
+            | CondExpr    of (KlExpr * KlExpr) list
+            | LetExpr     of string * KlExpr * KlExpr
+            | LambdaExpr  of string * KlExpr
+            | DefunExpr   of string * string list * KlExpr
+            | FreezeExpr  of KlExpr
+            | TrapExpr    of Position * KlExpr * KlExpr
+            | AppExpr     of Position * KlExpr * KlExpr list
+
+type [<ReferenceEquality>] InStream = {Read : unit -> int; Close : unit -> unit}
+type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
+
+type Globals = System.Collections.Generic.Dictionary<string, KlValue>
+and Locals = Map<string, KlValue> list
+and Function(arity: int, f: KlValue list -> Result) =
+    member this.Arity = arity
+    member this.Apply(args : KlValue list) = f args
+and KlValue = EmptyValue
+            | BoolValue      of bool
+            | IntValue       of int
+            | DecimalValue   of decimal
+            | StringValue    of string
+            | SymbolValue    of string
+            | FunctionValue  of Function
+            | VectorValue    of KlValue array
+            | ConsValue      of KlValue * KlValue
+            | ErrorValue     of string
+            | InStreamValue  of InStream
+            | OutStreamValue of OutStream
+and Thunk(cont: unit -> Result) =
+    member this.Run() =
+        match cont () with
+        | ThunkResult thunk -> thunk.Run()
+        | result -> result
+and Result = ValueResult of KlValue
+           | ErrorResult of string
+           | ThunkResult of Thunk
+// TODO break the distinction between Pending and Complete(Value|Error) into another level of DU?
+// TODO use `inherits` to re-use DU cases and prevent nested boxing?
+
+type Env = {Globals: Globals; Locals: Locals}
+
+// TODO find some other way to do this
+type FunctionResolveResult = FunctionResult of Function
+                           | FunctionResolveError of string
+
+type ConsoleIn(stream: System.IO.Stream) =
+    let reader = new System.IO.StreamReader(stream)
+    let mutable currentLine = ""
+    let mutable currentPos = 0
+    member this.Read() = 
+        if currentPos >= currentLine.Length then
+            currentLine <- reader.ReadLine()
+            if System.Object.ReferenceEquals(currentLine, null) then
+                -1
+            else
+                currentLine <- currentLine + "\n"
+                currentPos <- 0
+                let ch = currentLine.[currentPos]
+                currentPos <- currentPos + 1
+                (int) ch
+        else
+            let ch = currentLine.[currentPos]
+            currentPos <- currentPos + 1
+            (int) ch
+    member this.Close() = stream.Close()
+
+// Tokenizer is strict about spacing. It will not handle extra spaces inside of parens.
+// TODO should we worry about this?
 module KlTokenizer =
     let pKlToken, pKlTokenRef = createParserForwardedToRef<KlToken, unit>()
     let pKlBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
@@ -25,24 +103,6 @@ module KlTokenizer =
     let tokenizeAll s = run pKlTokens s |> function
                                            | Success(result, _, _) -> result
                                            | Failure(error, _, _) -> failwith error
-
-type Position = Head | Tail
-type KlExpr = EmptyExpr
-            | BoolExpr    of bool
-            | IntExpr     of int
-            | DecimalExpr of decimal
-            | StringExpr  of string
-            | SymbolExpr  of string
-            | AndExpr     of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
-            | OrExpr      of KlExpr * KlExpr                 // (Bool, Bool) -> Bool
-            | IfExpr      of KlExpr * KlExpr * KlExpr        // (Bool, a, a) -> a
-            | CondExpr    of (KlExpr * KlExpr) list          // [(Bool, a)] -> a
-            | LetExpr     of string * KlExpr * KlExpr        // (Symbol, a, Expr) -> a
-            | LambdaExpr  of string * KlExpr                 // (Symbol, a) -> (Value -> a)
-            | DefunExpr   of string * string list * KlExpr   // (Symbol, [Symbol], Expr) -> ([Value] -> a)
-            | FreezeExpr  of KlExpr                          // Expr -> (() -> Value)
-            | TrapExpr    of Position * KlExpr * KlExpr
-            | AppExpr     of Position * KlExpr * KlExpr list
 
 module KlParser =
     let tSymbol = function
@@ -69,44 +129,6 @@ module KlParser =
         | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (pos, parse Head body, parse pos handler)
         | ComboToken (f :: args) -> AppExpr (pos, parse Head f, List.map (parse Head) args)
 
-type Globals = System.Collections.Generic.Dictionary<string, KlValue>
-and Locals = Map<string, KlValue> list
-and Env = { Globals : Globals; Locals : Locals }
-and Function(arity : int, f : KlValue list -> Result) =
-    member this.Arity = arity
-    member this.Apply(args : KlValue list) = f args
-and InStream(read : unit -> int, close : unit -> unit) =
-    member this.Read() = read()
-    member this.Close() = close()
-and OutStream(write: byte -> unit, close: unit -> unit) =
-    member this.Write(b: byte) = write b
-    member this.Close() = close()
-and KlValue = EmptyValue
-            | BoolValue      of bool
-            | IntValue       of int
-            | DecimalValue   of decimal
-            | StringValue    of string
-            | SymbolValue    of string
-            | FunctionValue  of Function
-            | VectorValue    of KlValue array
-            | ConsValue      of KlValue * KlValue
-            | ErrorValue     of string
-            | InStreamValue  of InStream
-            | OutStreamValue of OutStream
-and Thunk(cont : unit -> Result) =
-    member this.Run() =
-        match cont () with
-        | ThunkResult thunk -> thunk.Run()
-        | result -> result
-and Result = ValueResult of KlValue
-           | ErrorResult of string
-           | ThunkResult of Thunk
-// TODO break the distinction between Pending and Complete(Value|Error) into another level of DU?
-// TODO use `inherits` to re-use DU cases and prevent nested boxing?
-
-type FunctionResolveResult = FunctionResult of Function
-                           | FunctionResolveError of string
-
 module KlEvaluator =
     let (|Greater|Equal|Lesser|) (x, y) = if x > y then Greater elif x < y then Lesser else Equal
     let vBool = function
@@ -130,8 +152,8 @@ module KlEvaluator =
             | (true, FunctionValue f) -> FunctionResult f
             | (false, _) -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
             | _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
-        | _ -> failwith "Function value or symbol expected"
-    let go = function
+        | _ -> failwith "Function value or symbol expected" // TODO for which of these should we fail or return error
+    let go = function // TODO this should be ((Value | Error | Thunk) -> (Value | Error))
         | ThunkResult thunk -> thunk.Run()
         | result -> result
     let rec apply (pos : Position) (fr : FunctionResolveResult) (args : KlValue list) : Result =
@@ -148,7 +170,7 @@ module KlEvaluator =
         match go result with
         | ValueResult value -> f value
         | ErrorResult _ as error -> error
-        | _ -> failwith "Unexpected thunk"
+        | _ -> failwith "Unexpected thunk" // TODO this should not be necessary
     let resolve (env : Env) symbolName =
         Seq.map (Map.tryFind symbolName) env.Locals
         |> Seq.tryFind Option.isSome
@@ -189,27 +211,6 @@ module KlEvaluator =
             | r -> r
         | AppExpr (pos, f, args) ->
             eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (eval env) [] args))
-
-type ConsoleIn(stream: System.IO.Stream) =
-    let reader = new System.IO.StreamReader(stream)
-    let mutable currentLine = ""
-    let mutable currentPos = 0
-    member this.Read() = 
-        if currentPos >= currentLine.Length then
-            currentLine <- reader.ReadLine()
-            if System.Object.ReferenceEquals(currentLine, null) then
-                -1
-            else
-                currentLine <- currentLine + "\n"
-                currentPos <- 0
-                let ch = currentLine.[currentPos]
-                currentPos <- currentPos + 1
-                (int) ch
-        else
-            let ch = currentLine.[currentPos]
-            currentPos <- currentPos + 1
-            (int) ch
-    member this.Close() = stream.Close()
 
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
@@ -357,10 +358,10 @@ module KlBuiltins =
     let klOpen = function
         | [StringValue path; SymbolValue "in"] ->
             let stream = System.IO.File.OpenRead(path)
-            new InStream(stream.ReadByte, stream.Close) |> InStreamValue
+            InStreamValue {Read = stream.ReadByte; Close = stream.Close}
         | [StringValue path; SymbolValue "out"] ->
             let stream = System.IO.File.OpenWrite(path)
-            new OutStream(stream.WriteByte, stream.Close) |> OutStreamValue
+            OutStreamValue {Write = stream.WriteByte; Close = stream.Close}
         | _ -> invalidArgs ()
     let klClose = function
         | [InStreamValue stream] -> stream.Close()
@@ -433,13 +434,13 @@ module KlBuiltins =
         | _ -> invalidArgs ()
     let funR arity f = FunctionValue (new Function (arity, f))
     let funV arity f = funR arity (f >> ValueResult)
-    let emptyEnv () = { Globals = new Globals(); Locals = [] }
     let stinput =
         let consoleIn = new ConsoleIn(System.Console.OpenStandardInput())
-        new InStream(consoleIn.Read, consoleIn.Close) |> InStreamValue
+        InStreamValue {Read = consoleIn.Read; Close = consoleIn.Close}
     let stoutput =
         let consoleOutStream = System.Console.OpenStandardOutput()
-        new OutStream(consoleOutStream.WriteByte, consoleOutStream.Close) |> OutStreamValue
+        OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
+    let emptyEnv () = {Globals = new Globals(); Locals = []}
     let baseEnv () =
         let env = emptyEnv ()
         let rec install = function

@@ -19,6 +19,7 @@ module Shen =
                         "declarations.kl"
                         "t-star.kl" // TODO contrary to spec, this gets loaded before types.kl?
                                     // it contains (defun shen.typecheck ...) which types.kl uses
+                                    // Double check this now that irresolvable symbols are Errors instead of failures
                         "types.kl"
                     ]
         let klFolder = @"..\..\..\KLambda"

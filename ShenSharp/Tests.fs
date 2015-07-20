@@ -64,16 +64,6 @@ type Tests() =
         tryit "(a   \" b c \"  d)"
         let all = tokenizeAll "\"long copyright string\n\rwith line breaks\r\n\"\r\n\r\n(defun form () (stuff 0))\r\n\r\n(defun form2 (a b) (+ a b))"
         Assert.AreEqual(3, all.Length)
-        
-        // extra space tests
-        // these aren't working
-        // parse fails when there is extra space between
-        // open paren and first child
-        // or last child and close paren
-        //tryit "(    )"
-        //tryit "(   a)"
-        //tryit "(a  )"
-        //tryit "(   a   b  c   )"
 
     [<TestMethod>]
     member this.ParserTest() =
@@ -155,7 +145,7 @@ type Tests() =
         Assert.IsTrue(isDecimalR <| runit "(* 11 -2.4)")
         Assert.IsTrue(isDecimalR <| runit "(* 1.1 2.4)")
         Assert.IsTrue(isDecimalR <| runit "(/ 1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(/ 2 1)") // TODO should this still be an int result?
+        Assert.IsTrue(isDecimalR <| runit "(/ 2 1)")
         Assert.IsTrue(isDecimalR <| runit "(/ 1.1 2)")
         Assert.IsTrue(isDecimalR <| runit "(/ 11 -2.4)")
         Assert.IsTrue(isDecimalR <| runit "(/ 1.1 2.4)")
@@ -207,7 +197,7 @@ type Tests() =
                                               symApp2 "-" (SymbolExpr "n") (intE 1)])))
         Assert.AreEqual(e0, e)
 
-    [<Ignore>]
+    [<Ignore>] // TODO need to get a baseline version of this test working in order to refactor `eval`
     [<TestMethod>]
     member this.ThunksGetEvaled() =
         let env = baseEnv ()
@@ -239,49 +229,3 @@ type Tests() =
         let s = runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> getString
         printf "Error-string: %s" s
         printf "\r\n"
-
-    [<Ignore>]
-    [<TestMethod>]
-    member this.LoadKlFiles() =
-        let stopwatch = System.Diagnostics.Stopwatch.StartNew()
-        let files = [
-                        "toplevel.kl"
-                        "core.kl"
-                        "sys.kl"
-                        "sequent.kl"
-                        "yacc.kl"
-                        "reader.kl"
-                        "prolog.kl"
-                        "track.kl"
-                        "load.kl"
-                        "writer.kl"
-                        "macros.kl"
-                        "declarations.kl"
-                        "t-star.kl" // TODO contrary to spec, this gets loaded before types.kl?
-                                    // it contains (defun shen.typecheck ...) which types.kl uses
-                        "types.kl"
-                    ]
-        let klFolder = @"..\..\..\KLambda"
-        let rec astToStr = function
-            | ComboToken tokens -> sprintf "(%s)" <| String.concat " " (Seq.map astToStr tokens)
-            | BoolToken b -> if b then "true" else "false"
-            | NumberToken n -> n.ToString()
-            | StringToken s -> "\"" + s + "\""
-            | SymbolToken s -> s
-        let env = baseEnv ()
-        runInEnv env "(defun shen.demod (X) X)" |> ignore
-        for file in (List.map (fun f -> System.IO.Path.Combine(klFolder, f)) files) do
-            printfn "Loading %s" file
-            printfn ""
-            stdout.Flush()
-            let text = System.IO.File.ReadAllText(file)
-            for ast in tokenizeAll text do
-                match ast with
-                | ComboToken _ -> printfn "%s" <| astToStr ast
-                                  printfn ""
-                                  stdout.Flush()
-                                  let expr = parse Head ast
-                                  eval env expr |> ignore
-                | _ -> ()
-        printfn "Loading done"
-        printfn "Time: %s" <| stopwatch.Elapsed.ToString()
