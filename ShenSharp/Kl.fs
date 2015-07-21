@@ -30,6 +30,9 @@ type KlExpr = EmptyExpr
 type [<ReferenceEquality>] InStream = {Read : unit -> int; Close : unit -> unit}
 type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
 
+// TODO per spec, Shen/KL is dual-namespace, so we probably need
+// two `Globals` one for values associated by (set _ _)
+// and one for functions associated by (defun _ _ _)
 type Globals = System.Collections.Generic.Dictionary<string, KlValue>
 and Locals = Map<string, KlValue> list
 and Function(arity: int, f: KlValue list -> Result) =
