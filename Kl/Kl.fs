@@ -501,4 +501,20 @@ module KlBuiltins =
         env
 
 module KlCompiler =
-    let rec compiler = fun (x : KlExpr) -> "fsharp code"
+    let rec compile0 (locals: Set<string>) (expr: KlExpr) : Quotations.Expr =
+        let cc = compile0 locals
+        match expr with
+        | IfExpr (c, t, e) -> <@@ if %%(cc c) then %%(cc t) else %%(cc e) @@>
+        | AndExpr (l, r) -> <@@ %%(cc l) && %%(cc r) @@>
+        | OrExpr (l, r) -> <@@ %%(cc l) || %%(cc r) @@>
+        | CondExpr [] -> <@@ failwith "condition failure" @@>
+        | CondExpr ((i, t) :: clauses) ->
+            <@@ if %%(cc i) then %%(cc t) else %%(cc (CondExpr clauses)) @@>
+        //| LetExpr (s, b, e) -> <@@ let %%(compile0 locals s) = %%(compile0 locals b) in %%(compile0 locals e) @@>
+        //| SymbolExpr s -> Quotations.Expr.Var (Quotations.Var.Global(s, typeof<dyn>))
+        | AppExpr (_, SymbolExpr "+", [left; right]) -> <@@ %%(cc left) + %%(cc right) @@>
+        | AppExpr (_, SymbolExpr "+", [left]) -> <@@ fun x -> x + %%(cc left) @@> // TODO `x` needs to be clean
+        //| LambdaExpr (arg, body) -> <@@ fun %arg -> %%(cc body) @@>
+        | FreezeExpr body -> <@@ fun () -> %%(cc body) @@>
+        | _ -> failwith "not implemented"
+    let compile = compile0 Set.empty
