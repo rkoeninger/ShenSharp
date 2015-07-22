@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.30723.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl", "ShenSharp\Kl.fsproj", "{24903340-789D-4419-AC4B-C2C1F8000C54}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl", "Kl\Kl.fsproj", "{24903340-789D-4419-AC4B-C2C1F8000C54}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen", "Shen\Shen.fsproj", "{06344109-7314-4086-AD31-BFF125F211F5}"
 EndProject

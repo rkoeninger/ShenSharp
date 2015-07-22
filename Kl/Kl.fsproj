@@ -7,7 +7,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>24903340-789d-4419-ac4b-c2c1f8000c54</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Shen</RootNamespace>
+    <RootNamespace>Kl</RootNamespace>
     <AssemblyName>Kl</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -34,7 +34,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\ShenPOF.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\Kl.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
