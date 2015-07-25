@@ -500,21 +500,47 @@ module KlBuiltins =
             ]
         env
 
+type FsExpr = Quotations.Expr
+
+open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
+
 module KlCompiler =
-    let rec compile0 (locals: Set<string>) (expr: KlExpr) : Quotations.Expr =
+    //Microsoft.FSharp.Compiler.Ast.ParsedImplFileInput
+    //let sscs = new SimpleSourceCodeServices()
+    //let rec trans = function
+        //| EmptyExpr -> sscs.Compile(
+        //| _ -> failwith "not implemented"
+    let rec compile0 (locals: Map<string, Quotations.Var>) (expr: KlExpr) : Quotations.Expr =
         let cc = compile0 locals
         match expr with
-        | IfExpr (c, t, e) -> <@@ if %%(cc c) then %%(cc t) else %%(cc e) @@>
-        | AndExpr (l, r) -> <@@ %%(cc l) && %%(cc r) @@>
-        | OrExpr (l, r) -> <@@ %%(cc l) || %%(cc r) @@>
-        | CondExpr [] -> <@@ failwith "condition failure" @@>
-        | CondExpr ((i, t) :: clauses) ->
-            <@@ if %%(cc i) then %%(cc t) else %%(cc (CondExpr clauses)) @@>
-        //| LetExpr (s, b, e) -> <@@ let %%(compile0 locals s) = %%(compile0 locals b) in %%(compile0 locals e) @@>
-        //| SymbolExpr s -> Quotations.Expr.Var (Quotations.Var.Global(s, typeof<dyn>))
-        | AppExpr (_, SymbolExpr "+", [left; right]) -> <@@ %%(cc left) + %%(cc right) @@>
-        | AppExpr (_, SymbolExpr "+", [left]) -> <@@ fun x -> x + %%(cc left) @@> // TODO `x` needs to be clean
-        //| LambdaExpr (arg, body) -> <@@ fun %arg -> %%(cc body) @@>
+        | EmptyExpr     -> <@@ EmptyValue @@>
+        | BoolExpr b    -> <@@ (BoolValue %%(FsExpr.Value b)) @@>
+        | IntExpr n     -> <@@ (IntValue %%(FsExpr.Value n)) @@>
+        | DecimalExpr n -> <@@ (DecimalValue %%(FsExpr.Value n)) @@>
+        | StringExpr s  -> <@@ (StringValue %%(FsExpr.Value s)) @@>
+        | SymbolExpr s -> FsExpr.Var(Quotations.Var(s, typeof<KlValue>))
+        | AndExpr (l, r) -> <@@ (KlEvaluator.vBool (%%(cc l)) && KlEvaluator.vBool (%%(cc r))) @@>
+        | OrExpr  (l, r) -> <@@ (KlEvaluator.vBool (%%(cc l)) || KlEvaluator.vBool (%%(cc r))) @@>
+        | IfExpr (c, t, e) -> FsExpr.IfThenElse(cc c, cc t, cc e)
+        | CondExpr [] -> <@@ (failwith "condition failure") @@>
+        | CondExpr ((i, t) :: clauses) -> FsExpr.IfThenElse(cc i, cc t, cc (CondExpr clauses))
+        | LetExpr (s, b, e) -> FsExpr.Let(Quotations.Var(s, typeof<KlValue>), cc b, cc e)
+        | LambdaExpr (arg, body) -> FsExpr.Lambda(Quotations.Var(arg, typeof<KlValue>), cc body)
+        | DefunExpr (name, args, body) ->
+            let func = <@@ (FunctionValue (new Function(%%(FsExpr.Value args.Length), %%(cc body)))) @@>
+            let f = Quotations.Var("f", typeof<KlValue>)
+            let store = <@@ () @@> // <@@ globals.[%%name] <- f @@>
+            FsExpr.Let(f, func, FsExpr.Sequential(store, <@@ ValueResult %%(FsExpr.Var f) @@>))
         | FreezeExpr body -> <@@ fun () -> %%(cc body) @@>
+        | TrapExpr (_, body, handler) ->
+            <@@
+            match %%(cc body) with
+            | ValueResult v -> v
+            | ErrorResult e -> (%%(cc handler)) e
+            | ThunkResult _ -> failwith "thunk not expected"
+            @@>
+        | AppExpr (_, SymbolExpr "+", [left; right]) -> <@@ ((+) %%(cc left) %%(cc right)) @@>
+        | AppExpr (_, SymbolExpr "+", [left]) -> <@@ ((+) %%(cc left)) @@> // TODO `x` needs to be clean
+        //| AppExpr (_, _, _) ->
         | _ -> failwith "not implemented"
-    let compile = compile0 Set.empty
+    let compile = compile0 Map.empty

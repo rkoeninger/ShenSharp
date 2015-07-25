@@ -49,6 +49,7 @@ type Tests() =
     let intV = IntValue
     let intR = intV >> ValueResult
     let funcV n f = FunctionValue <| new Function(n, f)
+    let str x = x.ToString()
 
     [<TestMethod>]
     member this.TokenizerTest() =
@@ -211,21 +212,20 @@ type Tests() =
 
     [<TestMethod>]
     member this.PrintStuff() =
-        let u = runit "(get-time unix)" |> getInt
-        printf "Unix time: %i" u
-        printf "\r\n"
-        let r = runit "(get-time run)" |> getInt
-        printf "Run time: %i" r
-        printf "\r\n"
-        let s = runit "(str (cons 1 (cons 2 (cons 3 ()))))" |> getString
-        printf "Cons: %s" s
-        printf "\r\n"
-        let s = runit "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> getString
-        printf "Vector: %s" s
-        printf "\r\n"
-        let s = runit "(trap-error (simple-error \"whoops\") (lambda E E))" |> getError
-        printf "Error: %s" s
-        printf "\r\n"
-        let s = runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> getString
-        printf "Error-string: %s" s
-        printf "\r\n"
+        runit "(get-time unix)" |> getInt |> printfn "Unix time: %i"
+        runit "(get-time run)" |> getInt |> printfn "Run time: %i"
+        runit "(str (cons 1 (cons 2 (cons 3 ()))))" |> getString |> printfn "Cons: %s"
+        runit "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> getString |> printfn "Vector: %s"
+        runit "(trap-error (simple-error \"whoops\") (lambda E E))" |> getError |> printfn "Error: %s"
+        runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> getString |> printfn "Error-string: %s"
+
+    [<TestMethod>]
+    member this.CompilerPrintStuff() =
+        let p = KlTokenizer.tokenize >> KlParser.parse Head >> KlCompiler.compile >> str >> printfn "%s"
+        p "1"
+        p "true"
+        p "\"abc\""
+        p "abc"
+        p "(lambda E 0)"
+        p "(let X 0 0)"
+        p "(and true true)"
