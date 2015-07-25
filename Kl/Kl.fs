@@ -503,13 +503,49 @@ module KlBuiltins =
 type FsExpr = Quotations.Expr
 
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
+open Microsoft.FSharp.Compiler.Ast
+open Microsoft.FSharp.Compiler.Range
 
 module KlCompiler =
-    //Microsoft.FSharp.Compiler.Ast.ParsedImplFileInput
-    //let sscs = new SimpleSourceCodeServices()
-    //let rec trans = function
-        //| EmptyExpr -> sscs.Compile(
-        //| _ -> failwith "not implemented"
+    let sscs = new SimpleSourceCodeServices()
+    let rec trans = function
+        | EmptyExpr ->
+            let binding = SynBinding.Binding(None(*SynAccess*),
+                                             SynBindingKind.NormalBinding,
+                                             false(*?*),
+                                             false(*?*),
+                                             [(*SynAttributes*)],
+                                             PreXmlDocEmpty,
+                                             SynValData(None,
+                                                        SynValInfo([], SynArgInfo([], false, None)),
+                                                        None),
+                                             SynPat.Wild range.Zero,
+                                             None,
+                                             SynExpr.Null range.Zero(*definition goes here*),
+                                             range.Zero,
+                                             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
+            let moduleMember = SynModuleDecl.Let(true, [], range.Zero)
+            let parsedModule = SynModuleOrNamespace([Ident("ShenImpl", range.Zero)],
+                                                    true(*isModule*),
+                                                    [(*SynModuleDecl*)],
+                                                    PreXmlDocEmpty,
+                                                    [(*SynAttribute*)],
+                                                    None(*SynAccess*),
+                                                    range.Zero)
+            let parsedFile = ParsedImplFileInput("ShenImpl.kl"(*filename*),
+                                                 false(*isScript*),
+                                                 QualifiedNameOfFile(Ident("ShenImpl", range.Zero)),
+                                                 [(*ScopedPragma*)],
+                                                 [(*ParsedHashDirective*)],
+                                                 [parsedModule],
+                                                 false(*???*))
+            sscs.CompileToDynamicAssembly([ParsedInput.ImplFile <| parsedFile],
+                                          "ShenImpl",
+                                          ["dependencies"],
+                                          None(*execute*),
+                                          false(*debug*),
+                                          false(*noframework*))
+        | _ -> failwith "not implemented"
     let rec compile0 (locals: Map<string, Quotations.Var>) (expr: KlExpr) : Quotations.Expr =
         let cc = compile0 locals
         match expr with
