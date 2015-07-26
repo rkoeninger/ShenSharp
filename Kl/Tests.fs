@@ -10,8 +10,8 @@ open KlBuiltins
 [<TestClass>]
 type Tests() =
 
-    let runInEnv env = tokenize >> parse Head >> eval env >> go
-    let runit = runInEnv (baseEnv ()) >> go
+    let runInEnv env = tokenize >> parse Head >> eval env
+    let runit = runInEnv (baseEnv ())
     let getError = function
         | ValueResult (ErrorValue e) -> e
         | _ -> failwith "not an Error"
@@ -35,12 +35,14 @@ type Tests() =
         | ValueResult (FunctionValue f) -> f
         | _ -> failwith "not a Function"
     let isThunk = function
-        | ThunkResult _ -> true
+        | Completed _ -> true
         | _ -> false
     let trueV = BoolValue true
     let falseV = BoolValue false
     let trueR = BoolValue true |> ValueResult
     let falseR = BoolValue false |> ValueResult
+    let trueW = trueR |> Completed
+    let falseW = falseR |> Completed
     let eApp1 f arg1 = AppExpr(Head, f, [arg1])
     let symApp1 sym arg1 = AppExpr (Head, SymbolExpr sym, [arg1])
     let symApp2 sym arg1 arg2 = AppExpr (Head, SymbolExpr sym, [arg1; arg2])
@@ -100,7 +102,7 @@ type Tests() =
     [<TestMethod>]
     member this.DefunAndResolutionOfDefinedFunctions() =
         let env = emptyEnv ()
-        env.Globals.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult
+        env.Globals.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
                                                  | _             -> failwith "must be bool")
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
@@ -108,10 +110,10 @@ type Tests() =
     [<TestMethod>]
     member this.SymbolResolution() =
         let env = emptyEnv ()
-        env.Globals.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueR
-                                                     | _               -> falseR)
+        env.Globals.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueW
+                                                     | _               -> falseW)
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
-        env.Globals.["id"] <- funcV 1 (function | [x] -> ValueResult x
+        env.Globals.["id"] <- funcV 1 (function | [x] -> ValueResult x |> Completed
                                                 | _   -> failwith "must be 1 arg")
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
@@ -197,13 +199,6 @@ type Tests() =
                                              [symApp2 "*" (SymbolExpr "n") (SymbolExpr "acc")
                                               symApp2 "-" (SymbolExpr "n") (intE 1)])))
         Assert.AreEqual(e0, e)
-
-    [<Ignore>] // TODO need to get a baseline version of this test working in order to refactor `eval`
-    [<TestMethod>]
-    member this.ThunksGetEvaled() =
-        let env = baseEnv ()
-        runInEnv env "(defun fill (vec start stop val) (if (= stop start) (address-> vec start val) (fill (address-> vec start val) (+ 1 start) stop val)))" |> ignore
-        Assert.IsTrue(runInEnv env "(fill (absvector 5) 0 4 0)" |> isThunk)
 
     [<TestMethod>]
     member this.SimpleError() =

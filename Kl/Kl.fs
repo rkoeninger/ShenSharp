@@ -35,7 +35,7 @@ type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit
 // and one for functions associated by (defun _ _ _)
 type Globals = System.Collections.Generic.Dictionary<string, KlValue>
 and Locals = Map<string, KlValue> list
-and Function(arity: int, f: KlValue list -> Result) =
+and Function(arity: int, f: KlValue list -> Work) =
     member this.Arity = arity
     member this.Apply(args : KlValue list) = f args
 and KlValue = EmptyValue
@@ -50,16 +50,15 @@ and KlValue = EmptyValue
             | ErrorValue     of string
             | InStreamValue  of InStream
             | OutStreamValue of OutStream
-and Thunk(cont: unit -> Result) =
+and Thunk(cont: unit -> Work) =
     member this.Run() =
-        match cont () with
-        | ThunkResult thunk -> thunk.Run()
-        | result -> result
+        match cont() with
+        | Pending thunk -> thunk.Run()
+        | Completed result -> result
 and Result = ValueResult of KlValue
            | ErrorResult of string
-           | ThunkResult of Thunk
-// TODO break the distinction between Pending and Complete(Value|Error) into another level of DU?
-// TODO use `inherits` to re-use DU cases and prevent nested boxing?
+and Work = Completed of Result
+         | Pending   of Thunk
 
 type Env = {Globals: Globals; Locals: Locals}
 
@@ -140,10 +139,12 @@ module KlEvaluator =
     let boolR = BoolValue >> ValueResult
     let trueR = boolR true
     let falseR = boolR false
+    let trueW = Completed trueR
+    let falseW = Completed falseR
     let branch f g x y v = if vBool v then f x else g y
     let branch1 f = branch f f
-    let thunkR f = new Thunk(f) |> ThunkResult
-    let funcR arity f = new Function(arity, f) |> FunctionValue |> ValueResult
+    let thunkW f = new Thunk(f) |> Pending
+    let funcW arity f = new Function(arity, f) |> FunctionValue |> ValueResult |> Completed
     let append env defs = { env with Locals = List.Cons(Map.ofList defs, env.Locals) }
     let append1 env k v = append env [(k, v)]
     let closure eval env (paramz : string list) body =
@@ -156,24 +157,27 @@ module KlEvaluator =
             | (false, _) -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
             | _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
         | _ -> failwith "Function value or symbol expected" // TODO for which of these should we fail or return error
-    let go = function // TODO this should be ((Value | Error | Thunk) -> (Value | Error))
-        | ThunkResult thunk -> thunk.Run()
-        | result -> result
-    let rec apply (pos : Position) (fr : FunctionResolveResult) (args : KlValue list) : Result =
+    let go = function
+        | Pending thunk -> thunk.Run()
+        | Completed result -> result
+    let rec apply (pos : Position) (fr : FunctionResolveResult) (args : KlValue list) : Work =
         match fr with
-        | FunctionResolveError e -> ErrorResult e
+        | FunctionResolveError e -> ErrorResult e |> Completed
         | FunctionResult f ->
             match args.Length, f.Arity with
             | Greater -> failwith "Too many arguments"
-            | Lesser -> funcR (f.Arity - args.Length) (List.append args >> apply pos fr)
+            | Lesser -> funcW (f.Arity - args.Length) (List.append args >> apply pos fr)
             | Equal -> match pos with
-                       | Head -> f.Apply args |> go
-                       | Tail -> thunkR (fun () -> f.Apply args)
-    let rec (>>=) result f =
-        match go result with
+                       | Head -> f.Apply args
+                       | Tail -> thunkW (fun () -> f.Apply args)
+    let (>>=) result f =
+        match result with
+        | ValueResult value -> f value
+        | ErrorResult _ as error -> Completed error
+    let (>>>=) result f =
+        match result with
         | ValueResult value -> f value
         | ErrorResult _ as error -> error
-        | _ -> failwith "Unexpected thunk" // TODO this should not be necessary
     let resolve (env : Env) symbolName =
         Seq.map (Map.tryFind symbolName) env.Locals
         |> Seq.tryFind Option.isSome
@@ -184,36 +188,37 @@ module KlEvaluator =
         | [] -> Choice1Of2 vals
         | arg :: args -> match evalE arg |> go with
                          | ValueResult v -> evalArgs evalE (List.append vals [v]) args
-                         | e -> Choice2Of2 e
-    let rec eval env = function // TODO have `eval` call `eval0` and run thunks, `eval0` runs `eval` on other exprs
-        | EmptyExpr    -> EmptyValue |> ValueResult
-        | BoolExpr b   -> boolR b
-        | IntExpr n    -> IntValue n |> ValueResult
-        | DecimalExpr n-> DecimalValue n |> ValueResult
-        | StringExpr s -> StringValue s |> ValueResult
-        | SymbolExpr s -> resolve env s |> ValueResult
-        | AndExpr (left, right) -> eval env left >>= branch (eval env) id right falseR
-        | OrExpr  (left, right) -> eval env left >>= branch id (eval env) trueR right
-        | IfExpr (condition, ifTrue, ifFalse) -> eval env condition >>= branch1 (eval env) ifTrue ifFalse
+                         | e -> Choice2Of2 (Completed e)
+    let rec eval env expr = evalw env expr |> go
+    and evalw env = function
+        | EmptyExpr    -> EmptyValue |> ValueResult |> Completed
+        | BoolExpr b   -> boolR b |> Completed
+        | IntExpr n    -> IntValue n |> ValueResult |> Completed
+        | DecimalExpr n-> DecimalValue n |> ValueResult |> Completed
+        | StringExpr s -> StringValue s |> ValueResult |> Completed
+        | SymbolExpr s -> resolve env s |> ValueResult |> Completed
+        | AndExpr (left, right) -> eval env left >>>= branch (eval env) id right falseR |> Completed
+        | OrExpr  (left, right) -> eval env left >>>= branch id (eval env) trueR right |> Completed
+        | IfExpr (condition, ifTrue, ifFalse) -> eval env condition >>= branch1 (evalw env) ifTrue ifFalse
         | CondExpr clauses ->
             let rec evalClauses = function
-                | (condition, ifTrue) :: rest -> eval env condition >>= branch (eval env) evalClauses ifTrue rest
+                | (condition, ifTrue) :: rest -> eval env condition >>= branch (evalw env) evalClauses ifTrue rest
                 | [] -> failwith "No condition was true"
             evalClauses clauses
         | LetExpr (symbol, binding, body) ->
-            eval env binding >>= (fun v -> eval (append1 env symbol v) body)
-        | LambdaExpr (param, body) -> closure eval env [param] body |> ValueResult
+            eval env binding >>>= (fun v -> eval (append1 env symbol v) body) |> Completed
+        | LambdaExpr (param, body) -> closure evalw env [param] body |> ValueResult |> Completed
         | DefunExpr (name, paramz, body) ->
-            let f = closure eval env paramz body
+            let f = closure evalw env paramz body
             env.Globals.[name] <- f
-            ValueResult f
-        | FreezeExpr expr -> closure eval env [] expr |> ValueResult
+            f |> ValueResult |> Completed
+        | FreezeExpr expr -> closure evalw env [] expr |> ValueResult |> Completed
         | TrapExpr (pos, body, handler) ->
-            match eval env body |> go with
+            match eval env body with
             | ErrorResult e -> eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
-            | r -> r
+            | r -> Completed r
         | AppExpr (pos, f, args) ->
-            eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (eval env) [] args))
+            eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (evalw env) [] args))
 
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
@@ -435,7 +440,8 @@ module KlBuiltins =
         | [DecimalValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let funR arity f = FunctionValue (new Function (arity, f))
+    let funW arity f = FunctionValue (new Function (arity, f))
+    let funR arity f = funW arity (f >> Completed)
     let funV arity f = funR arity (f >> ValueResult)
     let stinput =
         let consoleIn = new ConsoleIn(System.Console.OpenStandardInput())
@@ -573,7 +579,6 @@ module KlCompiler =
             match %%(cc body) with
             | ValueResult v -> v
             | ErrorResult e -> (%%(cc handler)) e
-            | ThunkResult _ -> failwith "thunk not expected"
             @@>
         | AppExpr (_, SymbolExpr "+", [left; right]) -> <@@ ((+) %%(cc left) %%(cc right)) @@>
         | AppExpr (_, SymbolExpr "+", [left]) -> <@@ ((+) %%(cc left)) @@> // TODO `x` needs to be clean
