@@ -42,16 +42,18 @@ let main args =
                 let expr = KlParser.parse Head ast
                 KlEvaluator.eval env expr |> ignore
             | _ -> () // ignore copyright block at top
+    let testDir = System.IO.Path.Combine(System.Environment.CurrentDirectory, "..\\..\\..\\Tests")
+    let readmePath = System.IO.Path.Combine(testDir, "README.shen")
+    let testsPath = System.IO.Path.Combine(testDir, "tests.shen")
+    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
     printfn "Starting shen repl..."
     printfn ""
-    "(shen.shen)" |> KlTokenizer.tokenize
-                    |> KlParser.parse Head
-                    |> KlEvaluator.eval env
-                    |> ignore
+    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr readmePath])) |> ignore
+    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr testsPath])) |> ignore
     printfn ""
     printfn "Press any key to exit..."
     System.Console.ReadKey() |> ignore

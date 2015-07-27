@@ -1,7 +1,5 @@
 ﻿namespace Kl
 
-open FParsec
-
 type KlToken = BoolToken   of bool
              | NumberToken of decimal
              | StringToken of string
@@ -27,7 +25,7 @@ type KlExpr = EmptyExpr
             | TrapExpr    of Position * KlExpr * KlExpr
             | AppExpr     of Position * KlExpr * KlExpr list
 
-type [<ReferenceEquality>] InStream = {Read : unit -> int; Close : unit -> unit}
+type [<ReferenceEquality>] InStream = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
 
 // TODO per spec, Shen/KL is dual-namespace, so we probably need
@@ -37,7 +35,12 @@ type Globals = System.Collections.Generic.Dictionary<string, KlValue>
 and Locals = Map<string, KlValue> list
 and Function(arity: int, f: KlValue list -> Work) =
     member this.Arity = arity
-    member this.Apply(args : KlValue list) = f args
+    member this.Apply(args: KlValue list) = f args
+and Thunk(cont: unit -> Work) =
+    member this.Run() =
+        match cont() with
+        | Pending thunk -> thunk.Run()
+        | Completed result -> result
 and KlValue = EmptyValue
             | BoolValue      of bool
             | IntValue       of int
@@ -50,11 +53,6 @@ and KlValue = EmptyValue
             | ErrorValue     of string
             | InStreamValue  of InStream
             | OutStreamValue of OutStream
-and Thunk(cont: unit -> Work) =
-    member this.Run() =
-        match cont() with
-        | Pending thunk -> thunk.Run()
-        | Completed result -> result
 and Result = ValueResult of KlValue
            | ErrorResult of string
 and Work = Completed of Result
@@ -87,6 +85,18 @@ type ConsoleIn(stream: System.IO.Stream) =
             (int) ch
     member this.Close() = stream.Close()
 
+module Extensions =
+    let (|Integral|Fractional|) x = if x % 1.0m = 0m then Integral else Fractional
+    let (|Greater|Equal|Lesser|) (x, y) = if x > y then Greater elif x < y then Lesser else Equal
+    type System.Collections.Generic.Dictionary<'a, 'b> with
+        member this.GetMaybe(key: 'a) =
+            match this.TryGetValue(key) with
+            | true, x -> Some x
+            | false, _ -> None
+open Extensions
+
+open FParsec
+
 // Tokenizer is strict about spacing. It will not handle extra spaces inside of parens.
 // TODO should we worry about this?
 module KlTokenizer =
@@ -113,7 +123,10 @@ module KlParser =
     let rec parse pos = function
         | ComboToken [] -> EmptyExpr
         | BoolToken b -> BoolExpr b
-        | NumberToken n -> if n % 1.0m = 0m then IntExpr (int n) else DecimalExpr n
+        | NumberToken n ->
+            match n with
+            | Integral -> IntExpr (int n)
+            | Fractional -> DecimalExpr n
         | StringToken s -> StringExpr s
         | SymbolToken s -> SymbolExpr s
         | ComboToken [(SymbolToken "and"); left; right] -> AndExpr (parse Head left, parse pos right)
@@ -131,36 +144,37 @@ module KlParser =
         | ComboToken [(SymbolToken "trap-error"); body; handler] -> TrapExpr (pos, parse Head body, parse pos handler)
         | ComboToken (f :: args) -> AppExpr (pos, parse Head f, List.map (parse Head) args)
 
+open FSharpx.Option
+open FSharpx.Choice
+
 module KlEvaluator =
-    let (|Greater|Equal|Lesser|) (x, y) = if x > y then Greater elif x < y then Lesser else Equal
     let vBool = function
         | BoolValue b -> b
         | _ -> failwith "Boolean value expected"
-    let boolR = BoolValue >> ValueResult
-    let trueR = boolR true
-    let falseR = boolR false
+    let trueR = BoolValue true |> ValueResult
+    let falseR = BoolValue false |> ValueResult
     let trueW = Completed trueR
     let falseW = Completed falseR
     let branch f g x y v = if vBool v then f x else g y
     let branch1 f = branch f f
     let thunkW f = new Thunk(f) |> Pending
     let funcW arity f = new Function(arity, f) |> FunctionValue |> ValueResult |> Completed
-    let append env defs = { env with Locals = List.Cons(Map.ofList defs, env.Locals) }
+    let append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
     let append1 env k v = append env [(k, v)]
-    let closure eval env (paramz : string list) body =
+    let closure eval env (paramz: string list) body =
         new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
-    let vFunc (env : Env) = function
+    let vFunc (env: Env) = function
         | FunctionValue f -> FunctionResult f
         | SymbolValue s ->
-            match env.Globals.TryGetValue(s) with
-            | (true, FunctionValue f) -> FunctionResult f
-            | (false, _) -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
-            | _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
-        | _ -> failwith "Function value or symbol expected" // TODO for which of these should we fail or return error
+            match env.Globals.GetMaybe(s) with
+            | Some (FunctionValue f) -> FunctionResult f
+            | Some _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
+            | None -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
+        | _ -> sprintf "Function value or symbol expected" |> FunctionResolveError
     let go = function
         | Pending thunk -> thunk.Run()
         | Completed result -> result
-    let rec apply (pos : Position) (fr : FunctionResolveResult) (args : KlValue list) : Work =
+    let rec apply pos fr (args: KlValue list) =
         match fr with
         | FunctionResolveError e -> ErrorResult e |> Completed
         | FunctionResult f ->
@@ -176,37 +190,37 @@ module KlEvaluator =
         | ErrorResult _ as error -> Completed error
     let (>>>=) result f =
         match result with
-        | ValueResult value -> f value
-        | ErrorResult _ as error -> error
-    let resolve (env : Env) symbolName =
-        Seq.map (Map.tryFind symbolName) env.Locals
+        | ValueResult value -> f value |> Completed
+        | ErrorResult _ as error -> error |> Completed
+    let resolve locals symbolName =
+        Seq.map (Map.tryFind symbolName) locals
         |> Seq.tryFind Option.isSome
-        |> FSharpx.Option.concat
-        |> FSharpx.Option.getOrElse (SymbolValue symbolName)
+        |> concat
+        |> getOrElse (SymbolValue symbolName)
     let rec evalArgs evalE vals args =
         match args with
         | [] -> Choice1Of2 vals
-        | arg :: args -> match evalE arg |> go with
-                         | ValueResult v -> evalArgs evalE (List.append vals [v]) args
-                         | e -> Choice2Of2 (Completed e)
+        | arg :: args ->
+            match evalE arg |> go with
+            | ValueResult v -> evalArgs evalE (List.append vals [v]) args
+            | ErrorResult e -> Choice2Of2 e
     let rec eval env expr = evalw env expr |> go
     and evalw env = function
-        | EmptyExpr    -> EmptyValue |> ValueResult |> Completed
-        | BoolExpr b   -> boolR b |> Completed
-        | IntExpr n    -> IntValue n |> ValueResult |> Completed
-        | DecimalExpr n-> DecimalValue n |> ValueResult |> Completed
-        | StringExpr s -> StringValue s |> ValueResult |> Completed
-        | SymbolExpr s -> resolve env s |> ValueResult |> Completed
-        | AndExpr (left, right) -> eval env left >>>= branch (eval env) id right falseR |> Completed
-        | OrExpr  (left, right) -> eval env left >>>= branch id (eval env) trueR right |> Completed
+        | EmptyExpr     -> EmptyValue |> ValueResult |> Completed
+        | BoolExpr b    -> BoolValue b |> ValueResult |> Completed
+        | IntExpr n     -> IntValue n |> ValueResult |> Completed
+        | DecimalExpr n -> DecimalValue n |> ValueResult |> Completed
+        | StringExpr s  -> StringValue s |> ValueResult |> Completed
+        | SymbolExpr s  -> resolve env.Locals s |> ValueResult |> Completed
+        | AndExpr (left, right) -> eval env left >>= branch (evalw env) id right falseW
+        | OrExpr  (left, right) -> eval env left >>= branch id (evalw env) trueW right
         | IfExpr (condition, ifTrue, ifFalse) -> eval env condition >>= branch1 (evalw env) ifTrue ifFalse
         | CondExpr clauses ->
             let rec evalClauses = function
                 | (condition, ifTrue) :: rest -> eval env condition >>= branch (evalw env) evalClauses ifTrue rest
                 | [] -> failwith "No condition was true"
             evalClauses clauses
-        | LetExpr (symbol, binding, body) ->
-            eval env binding >>>= (fun v -> eval (append1 env symbol v) body) |> Completed
+        | LetExpr (symbol, binding, body) -> eval env binding >>>= (fun v -> eval (append1 env symbol v) body)
         | LambdaExpr (param, body) -> closure evalw env [param] body |> ValueResult |> Completed
         | DefunExpr (name, paramz, body) ->
             let f = closure evalw env paramz body
@@ -218,7 +232,12 @@ module KlEvaluator =
             | ErrorResult e -> eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
             | r -> Completed r
         | AppExpr (pos, f, args) ->
-            eval env f >>= (fun v -> FSharpx.Choice.choice (apply pos (vFunc env v)) id (evalArgs (evalw env) [] args))
+            eval env f >>= (fun v -> choice (apply pos (vFunc env v))
+                                            (ErrorResult >> Completed)
+                                            (evalArgs (evalw env) [] args))
+
+open System
+open System.IO
 
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
@@ -247,13 +266,13 @@ module KlBuiltins =
         | StringValue s -> "\"" + s + "\""
         | SymbolValue s -> s
         | ConsValue (head, tail) -> sprintf "(cons %s %s)" (klStr head) (klStr tail)
-        | VectorValue value -> sprintf "(@v%s)" (System.String.Join("", (Array.map (fun s -> " " + klStr s) value)))
+        | VectorValue value -> sprintf "(@v%s)" (String.Join("", (Array.map (fun s -> " " + klStr s) value)))
         | ErrorValue message -> sprintf "(simple-error \"%s\")" message
         | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
         | InStreamValue s -> sprintf "<InStream %s>" (s.ToString())
         | OutStreamValue s -> sprintf "<OutStream %s>" (s.ToString())
     let rec klToString = function
-        | [x : KlValue] -> x |> klStr |> StringValue
+        | [x] -> x |> klStr |> StringValue
         | _ -> invalidArgs ()
     let klIsString = function
         | [StringValue _] -> trueV
@@ -271,9 +290,9 @@ module KlBuiltins =
         | _ -> invalidArgs ()
     let klValue env = function
         | [SymbolValue s] ->
-            match env.Globals.TryGetValue(s) with
-            | (true, v) -> ValueResult v
-            | (false, _) -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
+            match env.Globals.GetMaybe(s) with
+            | Some v -> ValueResult v
+            | None -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
         | _ -> invalidArgs ()
     let klSimpleError = function
         | [StringValue s] -> ErrorResult s
@@ -365,27 +384,26 @@ module KlBuiltins =
         | _ -> invalidArgs ()
     let klOpen = function
         | [StringValue path; SymbolValue "in"] ->
-            let stream = System.IO.File.OpenRead(path)
-            InStreamValue {Read = stream.ReadByte; Close = stream.Close}
+            try let stream = File.OpenRead(path)
+                InStreamValue {Read = stream.ReadByte; Close = stream.Close} |> ValueResult
+            with | :? IOException as e -> ErrorResult e.Message
+                 | e -> raise e
         | [StringValue path; SymbolValue "out"] ->
-            let stream = System.IO.File.OpenWrite(path)
-            OutStreamValue {Write = stream.WriteByte; Close = stream.Close}
+            try let stream = File.OpenWrite(path)
+                OutStreamValue {Write = stream.WriteByte; Close = stream.Close} |> ValueResult
+            with | :? IOException as e -> ErrorResult e.Message
+                 | e -> raise e
         | _ -> invalidArgs ()
     let klClose = function
-        | [InStreamValue stream] -> stream.Close()
-                                    EmptyValue
-        | [OutStreamValue stream] -> stream.Close()
-                                     EmptyValue
+        | [InStreamValue stream]  -> stream.Close(); EmptyValue
+        | [OutStreamValue stream] -> stream.Close(); EmptyValue
         | _ -> invalidArgs ()
-    let epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, System.DateTimeKind.Utc)
-    let startTime = System.DateTime.UtcNow
-    let stopwatch = System.Diagnostics.Stopwatch.StartNew()
-    let klGetTime = function
-        // Both run and unix time are in milliseconds
-        // ElapsedTicks is in 100 picoseconds/0.1 microseconds
+    let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+    let startTime = DateTime.UtcNow
+    let stopwatch = Diagnostics.Stopwatch.StartNew()
+    let klGetTime = function // All returned values are in milliseconds
         | [SymbolValue "run"] -> stopwatch.ElapsedTicks / 10000L |> int |> IntValue
-        | [SymbolValue "unix"] -> (System.DateTime.UtcNow - epoch).TotalSeconds |> int |> IntValue
-        // TODO support "real" time?
+        | [SymbolValue "unix"] -> (DateTime.UtcNow - epoch).TotalSeconds |> int |> IntValue
         | _ -> invalidArgs ()
     let klAdd = function
         | [IntValue x;     IntValue y]     -> x + y |> IntValue
@@ -440,14 +458,14 @@ module KlBuiltins =
         | [DecimalValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let funW arity f = FunctionValue (new Function (arity, f))
+    let funW arity f = FunctionValue (new Function(arity, f))
     let funR arity f = funW arity (f >> Completed)
     let funV arity f = funR arity (f >> ValueResult)
     let stinput =
-        let consoleIn = new ConsoleIn(System.Console.OpenStandardInput())
+        let consoleIn = new ConsoleIn(Console.OpenStandardInput())
         InStreamValue {Read = consoleIn.Read; Close = consoleIn.Close}
     let stoutput =
-        let consoleOutStream = System.Console.OpenStandardOutput()
+        let consoleOutStream = Console.OpenStandardOutput()
         OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
     let emptyEnv () = {Globals = new Globals(); Locals = []}
     let baseEnv () =
@@ -483,7 +501,7 @@ module KlBuiltins =
             "absvector?",       funV 1 klIsVector
             "write-byte",       funV 2 klWriteByte
             "read-byte",        funV 1 klReadByte
-            "open",             funV 2 klOpen
+            "open",             funR 2 klOpen
             "close",            funV 1 klClose
             "get-time",         funV 1 klGetTime
             "+",                funV 2 klAdd
@@ -496,13 +514,12 @@ module KlBuiltins =
             "<=",               funV 2 klLessThanEqual
             "number?",          funV 1 klIsNumber
             "*language*",       "F# 3.1" |> StringValue
-            "*implementation*", "CLR " + System.Environment.Version.ToString() |> StringValue
+            "*implementation*", "CLR " + Environment.Version.ToString() |> StringValue
             "*port*",           "0.1" |> StringValue
             "*porters*",        "Robert Koeninger" |> StringValue
             "*version*",        "19.2" |> StringValue
             "*stinput*",        stinput
             "*stoutput*",       stoutput
-            "*home-directory*", System.Environment.CurrentDirectory |> StringValue
             ]
         env
 
