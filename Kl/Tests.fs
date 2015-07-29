@@ -11,32 +11,35 @@ open KlBuiltins
 type Tests() =
 
     let runInEnv env = tokenize >> parse Head >> eval env
-    let runit = runInEnv (baseEnv ())
-    let getError = function
-        | ValueResult (ErrorValue e) -> e
-        | _ -> failwith "not an Error"
-    let getInt = function
-        | ValueResult (IntValue n) -> n
-        | _ -> failwith "not an int"
+    let runIt = runInEnv (baseEnv ())
     let isIntR = function | ValueResult (IntValue _) -> true | _ -> false
     let isDecimalR = function | ValueResult (DecimalValue _) -> true | _ -> false
-    let getString = function
+    let rError = function
+        | ValueResult (ErrorValue e) -> e
+        | _ -> failwith "not an Error"
+    let rInt = function
+        | ValueResult (IntValue n) -> n
+        | _ -> failwith "not an int"
+    let rString = function
         | ValueResult (StringValue s) -> s
         | _ -> failwith "not a String"
-    let getVector = function
+    let rVector = function
         | ValueResult (VectorValue s) -> s
         | _ -> failwith "not a Vector"
-    let getUncaught = function
+    let rUncaught = function
         | ErrorResult s -> s
         | _ -> failwith "not an Error"
     let arrayEqual (xs : 'a[]) (ys : 'a[]) =
         xs.Length = ys.Length && Array.forall2 (=) xs ys
-    let getFunc = function
+    let rFunc = function
         | ValueResult (FunctionValue f) -> f
         | _ -> failwith "not a Function"
     let isThunk = function
         | Completed _ -> true
         | _ -> false
+    let rBool = function
+        | ValueResult (BoolValue b) -> b
+        | _ -> failwith "not a Bool"
     let trueV = BoolValue true
     let falseV = BoolValue false
     let trueR = BoolValue true |> ValueResult
@@ -51,6 +54,7 @@ type Tests() =
     let intV = IntValue
     let intR = intV >> ValueResult
     let funcV n f = FunctionValue <| new Function(n, f)
+    let strV = StringValue
     let str x = x.ToString()
 
     [<TestMethod>]
@@ -127,56 +131,61 @@ type Tests() =
 
     [<TestMethod>]
     member this.Builtins() =
-        Assert.AreEqual(intR 3, runit "((+ 1) 2)")
-        Assert.AreEqual(intR 2, runit "((- 4) 2)")
-        Assert.AreEqual(falseR, runit "(cons? ())")
-        Assert.AreEqual(falseR, runit "(cons? 0)")
-        Assert.AreEqual(trueR, runit "(cons? (cons 0 0))")
+        Assert.AreEqual(intR 3, runIt "((+ 1) 2)")
+        Assert.AreEqual(intR 2, runIt "((- 4) 2)")
     
     [<TestMethod>]
     member this.Math() =
-        Assert.IsTrue(isIntR <| runit "(+ 1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(+ 1.1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(+ 11 -2.4)")
-        Assert.IsTrue(isDecimalR <| runit "(+ 1.1 2.4)")
-        Assert.IsTrue(isIntR <| runit "(- 1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(- 1.1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(- 11 -2.4)")
-        Assert.IsTrue(isDecimalR <| runit "(- 1.1 2.4)")
-        Assert.IsTrue(isIntR <| runit "(* 1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(* 1.1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(* 11 -2.4)")
-        Assert.IsTrue(isDecimalR <| runit "(* 1.1 2.4)")
-        Assert.IsTrue(isDecimalR <| runit "(/ 1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(/ 2 1)")
-        Assert.IsTrue(isDecimalR <| runit "(/ 1.1 2)")
-        Assert.IsTrue(isDecimalR <| runit "(/ 11 -2.4)")
-        Assert.IsTrue(isDecimalR <| runit "(/ 1.1 2.4)")
+        Assert.IsTrue(isIntR <| runIt "(+ 1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(+ 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(+ 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runIt "(+ 1.1 2.4)")
+        Assert.IsTrue(isIntR <| runIt "(- 1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(- 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(- 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runIt "(- 1.1 2.4)")
+        Assert.IsTrue(isIntR <| runIt "(* 1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(* 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(* 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runIt "(* 1.1 2.4)")
+        Assert.IsTrue(isDecimalR <| runIt "(/ 1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(/ 2 1)")
+        Assert.IsTrue(isDecimalR <| runIt "(/ 1.1 2)")
+        Assert.IsTrue(isDecimalR <| runIt "(/ 11 -2.4)")
+        Assert.IsTrue(isDecimalR <| runIt "(/ 1.1 2.4)")
 
     [<TestMethod>]
     member this.StringFunctions() =
-        Assert.AreEqual("Hello, World!", runit "(cn \"Hello, \" \"World!\")" |> getString)
-        Assert.AreEqual("Hello", runit "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))" |> getString)
-        Assert.AreEqual("1", runit "(str 1)" |> getString)
+        Assert.AreEqual(strV "Hello, World!", runIt "(cn \"Hello, \" \"World!\")")
+        Assert.AreEqual(strV "Hello", runIt "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))")
+        Assert.AreEqual(strV "1", runIt "(str 1)")
         
     [<TestMethod>]
     member this.Vectors() =
-        Assert.IsTrue(arrayEqual Array.empty<KlValue> (runit "(absvector 0)" |> getVector))
-        Assert.IsTrue(arrayEqual [|EmptyValue|] (runit "(absvector 1)" |> getVector))
-        Assert.IsTrue(arrayEqual [|BoolValue true|] (runit "(address-> (absvector 1) 0 true)" |> getVector))
+        Assert.IsTrue(arrayEqual Array.empty<KlValue> (runIt "(absvector 0)" |> rVector))
+        Assert.IsTrue(arrayEqual [|EmptyValue|] (runIt "(absvector 1)" |> rVector))
+        Assert.IsTrue(arrayEqual [|BoolValue true|] (runIt "(address-> (absvector 1) 0 true)" |> rVector))
+
+    [<TestMethod>]
+    member this.Conses() =
+        Assert.AreEqual(trueR, runIt "(= () (tl (cons 1 ())))")
+        Assert.AreEqual(falseR, runIt "(cons? ())")
+        Assert.AreEqual(falseR, runIt "(cons? 0)")
+        Assert.AreEqual(trueR, runIt "(cons? (cons 0 0))")
 
     [<TestMethod>]
     member this.EvalFunction() =
-        Assert.AreEqual(intR 3, runit "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
-        let inc = (runit >> getFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
-        Assert.AreEqual(intR 5, (inc .Apply [intV 4]) |> go)
+        Assert.AreEqual(intR 3, runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
+        let inc = (runIt >> rFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
+        Assert.AreEqual(intR 5, (inc.Apply[intV 4]) |> go)
 
     [<TestMethod>]
     member this.SanityChecks() =
         Assert.AreEqual(BoolToken true, BoolToken true)
         Assert.AreEqual(BoolExpr true, BoolExpr true)
         Assert.AreEqual(BoolValue true, BoolValue true) // this was failing when KlValue had a case containing a function type
-        Assert.AreEqual(BoolValue true |> ValueResult, BoolValue true |> ValueResult) // this might start failing for the same reason
+        Assert.AreEqual(true |> BoolValue |> ValueResult, true |> BoolValue |> ValueResult) // this might start failing for the same reason
+        Assert.AreEqual(true |> BoolValue |> ValueResult |> Completed, true |> BoolValue |> ValueResult |> Completed)
 
     [<TestMethod>]
     member this.TailRecursionOptimization() =
@@ -202,17 +211,17 @@ type Tests() =
 
     [<TestMethod>]
     member this.SimpleError() =
-        let s = runit "(simple-error \"whoops\")" |> getUncaught
+        let s = "(simple-error \"whoops\")" |> runIt |> rUncaught
         Assert.AreEqual("whoops", s)
 
     [<TestMethod>]
     member this.PrintStuff() =
-        runit "(get-time unix)" |> getInt |> printfn "Unix time: %i"
-        runit "(get-time run)" |> getInt |> printfn "Run time: %i"
-        runit "(str (cons 1 (cons 2 (cons 3 ()))))" |> getString |> printfn "Cons: %s"
-        runit "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> getString |> printfn "Vector: %s"
-        runit "(trap-error (simple-error \"whoops\") (lambda E E))" |> getError |> printfn "Error: %s"
-        runit "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> getString |> printfn "Error-string: %s"
+        "(get-time unix)" |> runIt |> rInt |> printfn "Unix time: %i"
+        "(get-time run)" |> runIt |> rInt |> printfn "Run time: %i"
+        "(str (cons 1 (cons 2 (cons 3 ()))))" |> runIt |> rString |> printfn "Cons: %s"
+        "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> runIt |> rString |> printfn "Vector: %s"
+        "(trap-error (simple-error \"whoops\") (lambda E E))" |> runIt |> rError |> printfn "Error: %s"
+        "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> runIt |> rString |> printfn "Error-string: %s"
 
     [<TestMethod>]
     member this.CompilerPrintStuff() =

@@ -52,8 +52,9 @@ let main args =
     printfn ""
     printfn "Starting shen repl..."
     printfn ""
-    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr readmePath])) |> ignore
-    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr testsPath])) |> ignore
+    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
+    //KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr readmePath])) |> ignore
+    //KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr testsPath])) |> ignore
     printfn ""
     printfn "Press any key to exit..."
     System.Console.ReadKey() |> ignore
