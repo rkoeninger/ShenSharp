@@ -55,6 +55,7 @@ type Tests() =
     let intR = intV >> ValueResult
     let funcV n f = FunctionValue <| new Function(n, f)
     let strV = StringValue
+    let strR = StringValue >> ValueResult
     let str x = x.ToString()
 
     [<TestMethod>]
@@ -106,19 +107,19 @@ type Tests() =
     [<TestMethod>]
     member this.DefunAndResolutionOfDefinedFunctions() =
         let env = emptyEnv ()
-        env.Globals.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
-                                                 | _             -> failwith "must be bool")
+        env.FunctionDefinitions.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
+                                                             | _             -> failwith "must be bool")
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
     [<TestMethod>]
     member this.SymbolResolution() =
         let env = emptyEnv ()
-        env.Globals.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueW
-                                                     | _               -> falseW)
+        env.FunctionDefinitions.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueW
+                                                                 | _               -> falseW)
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
-        env.Globals.["id"] <- funcV 1 (function | [x] -> ValueResult x |> Completed
-                                                | _   -> failwith "must be 1 arg")
+        env.FunctionDefinitions.["id"] <- funcV 1 (function | [x] -> ValueResult x |> Completed
+                                                            | _   -> failwith "must be 1 arg")
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<TestMethod>]
@@ -156,9 +157,9 @@ type Tests() =
 
     [<TestMethod>]
     member this.StringFunctions() =
-        Assert.AreEqual(strV "Hello, World!", runIt "(cn \"Hello, \" \"World!\")")
-        Assert.AreEqual(strV "Hello", runIt "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))")
-        Assert.AreEqual(strV "1", runIt "(str 1)")
+        Assert.AreEqual(strR "Hello, World!", runIt "(cn \"Hello, \" \"World!\")")
+        Assert.AreEqual(strR "Hello", runIt "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))")
+        Assert.AreEqual(strR "1", runIt "(str 1)")
         
     [<TestMethod>]
     member this.Vectors() =
@@ -194,6 +195,13 @@ type Tests() =
         let x = runInEnv env "(fill (absvector 20000) 0 19999 0)"
         ()
     
+    [<TestMethod>]
+    member this.MutualRecursion() =
+        let env = baseEnv ()
+        runInEnv env "(defun add (x y) (if (= 0 x) y (add2 (- x 1) (+ y 1))))" |> ignore
+        runInEnv env "(defun add2 (x y) (if (= 0 x) y (add (- x 1) (+ y 1))))" |> ignore
+        Assert.AreEqual(intR 40000, runInEnv env "(add 20000 20000)")
+
     [<TestMethod>]
     member this.HeadTailPositionsParsed() =
         let e = "(defun ! (acc n) (if (= 0 n) acc (! (* n acc) (- n 1))))" |> tokenize |> parse Head

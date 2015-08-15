@@ -28,9 +28,6 @@ type KlExpr = EmptyExpr
 type [<ReferenceEquality>] InStream = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
 
-// TODO per spec, Shen/KL is dual-namespace, so we probably need
-// two `Globals` one for values associated by (set _ _)
-// and one for functions associated by (defun _ _ _)
 type Globals = System.Collections.Generic.Dictionary<string, KlValue>
 and Locals = Map<string, KlValue> list
 and Function(arity: int, f: KlValue list -> Work) =
@@ -58,7 +55,7 @@ and Result = ValueResult of KlValue
 and Work = Completed of Result
          | Pending   of Thunk
 
-type Env = {Globals: Globals; Locals: Locals}
+type Env = {SymbolDefinitions: Globals; FunctionDefinitions: Globals; Locals: Locals}
 
 // TODO find some other way to do this
 type FunctionResolveResult = FunctionResult of Function
@@ -166,7 +163,7 @@ module KlEvaluator =
     let vFunc (env: Env) = function
         | FunctionValue f -> FunctionResult f
         | SymbolValue s ->
-            match env.Globals.GetMaybe(s) with
+            match env.FunctionDefinitions.GetMaybe(s) with
             | Some (FunctionValue f) -> FunctionResult f
             | Some _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
             | None -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
@@ -224,7 +221,7 @@ module KlEvaluator =
         | LambdaExpr (param, body) -> closure evalw env [param] body |> ValueResult |> Completed
         | DefunExpr (name, paramz, body) ->
             let f = closure evalw env paramz body
-            env.Globals.[name] <- f
+            env.FunctionDefinitions.[name] <- f
             f |> ValueResult |> Completed
         | FreezeExpr expr -> closure evalw env [] expr |> ValueResult |> Completed
         | TrapExpr (pos, body, handler) ->
@@ -285,12 +282,12 @@ module KlBuiltins =
         | [StringValue s] -> s.[0] |> int |> IntValue
         | _ -> invalidArgs ()
     let klSet env = function
-        | [SymbolValue s; x] -> env.Globals.[s] <- x
+        | [SymbolValue s; x] -> env.SymbolDefinitions.[s] <- x
                                 x
         | _ -> invalidArgs ()
     let klValue env = function
         | [SymbolValue s] ->
-            match env.Globals.GetMaybe(s) with
+            match env.SymbolDefinitions.GetMaybe(s) with
             | Some v -> ValueResult v
             | None -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
         | _ -> invalidArgs ()
@@ -467,15 +464,15 @@ module KlBuiltins =
     let stoutput =
         let consoleOutStream = Console.OpenStandardOutput()
         OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
-    let emptyEnv () = {Globals = new Globals(); Locals = []}
+    let emptyEnv () = {SymbolDefinitions = new Globals(); FunctionDefinitions = new Globals(); Locals = []}
     let baseEnv () =
         let env = emptyEnv ()
-        let rec install = function
+        let rec install (globals: System.Collections.Generic.Dictionary<string, KlValue>) = function
             | [] -> ()
             | (name, value) :: defs ->
-                env.Globals.[name] <- value
-                install defs
-        install [
+                globals.[name] <- value
+                install globals defs
+        install env.FunctionDefinitions [
             "intern",           funV 1 klIntern
             "pos",              funR 2 klStringPos
             "tlstr",            funV 1 klStringTail
@@ -513,6 +510,8 @@ module KlBuiltins =
             ">=",               funV 2 klGreaterThanEqual
             "<=",               funV 2 klLessThanEqual
             "number?",          funV 1 klIsNumber
+        ]
+        install env.SymbolDefinitions [
             "*language*",       "F# 3.1" |> StringValue
             "*implementation*", "CLR " + Environment.Version.ToString() |> StringValue
             "*port*",           "0.1" |> StringValue
@@ -520,7 +519,7 @@ module KlBuiltins =
             "*version*",        "19.2" |> StringValue
             "*stinput*",        stinput
             "*stoutput*",       stoutput
-            ]
+        ]
         env
 
 type FsExpr = Quotations.Expr
