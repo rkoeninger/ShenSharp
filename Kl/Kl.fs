@@ -144,6 +144,13 @@ module KlParser =
 open FSharpx.Option
 open FSharpx.Choice
 
+module Debugging =
+    let mutable indent = 0
+    let increaseIndent() =
+        indent <- indent + 1
+    let decreaseIndent() =
+        indent <- indent - 1
+
 module KlEvaluator =
     let vBool = function
         | BoolValue b -> b
@@ -229,9 +236,23 @@ module KlEvaluator =
             | ErrorResult e -> eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
             | r -> Completed r
         | AppExpr (pos, f, args) ->
-            eval env f >>= (fun v -> choice (apply pos (vFunc env v))
-                                            (ErrorResult >> Completed)
-                                            (evalArgs (evalw env) [] args))
+            let mutable turnLoggingBackOn = false
+            if env.SymbolDefinitions.ContainsKey("logging") && env.SymbolDefinitions.["logging"] = IntValue 1 then
+                match f with
+                | SymbolExpr s ->
+                    printfn "%s%s" (String.replicate Debugging.indent " ") s
+                    if s = "shen.multiple-set" || s = "shen.prh" then
+                        env.SymbolDefinitions.["logging"] <- IntValue 0
+                        turnLoggingBackOn <- true
+                | _ -> ()
+            Debugging.increaseIndent()
+            let r = eval env f >>= (fun v -> choice (apply pos (vFunc env v))
+                                                    (ErrorResult >> Completed)
+                                                    (evalArgs (evalw env) [] args))
+            Debugging.decreaseIndent()
+            if turnLoggingBackOn then
+                env.SymbolDefinitions.["logging"] <- IntValue 1
+            r
 
 open System
 open System.IO

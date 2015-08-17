@@ -29,6 +29,9 @@ type Tests() =
     let rUncaught = function
         | ErrorResult s -> s
         | _ -> failwith "not an Error"
+    let isUncaught = function
+        | ErrorResult _ -> true
+        | _ -> false
     let arrayEqual (xs : 'a[]) (ys : 'a[]) =
         xs.Length = ys.Length && Array.forall2 (=) xs ys
     let rFunc = function
@@ -85,24 +88,32 @@ type Tests() =
         tryit "(add 1 2)" (symApp2 "add" (intE 1) (intE 2))
 
     [<TestMethod>]
-    member this.EvaluatorTest() =
-        let tryit syntax expr = 
-            match run pKlToken syntax with
-                | Success(result, _, _)   -> Assert.AreEqual(ValueResult expr, result |> parse Head |> eval (emptyEnv ()))
-                | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
+    member this.LazyBooleanOperations() =
+        let consToArray = function
+            | ConsValue _ as cons ->
+                let generator = function | ConsValue (head, tail) -> Some(head, tail)
+                                         | EmptyValue -> None
+                                         | _ -> invalidArgs ()
+                cons |> Seq.unfold generator |> Seq.toArray
+            | _ -> [||]
+        let lazinessTest syntax expectedBool expectedResults =
+            let env = baseEnv ()
+            runInEnv env "(defun do (X Y) Y)" |> ignore
+            env.SymbolDefinitions.["results"] <- EmptyValue
+            match runInEnv env syntax with
+            | ValueResult (BoolValue b) ->
+                Assert.IsTrue((b && expectedBool) || not(b || expectedBool))
+                let results = env.SymbolDefinitions.["results"] |> consToArray
+                Assert.IsTrue(arrayEqual expectedResults results)
+            | _ -> Assert.Fail()
 
-        // some basic expressions using special forms and literals only
-        tryit "()" EmptyValue
-        tryit "true" trueV
-        tryit "2" (intV 2)
-        tryit "(and true true)" trueV
-        tryit "(and true false)" falseV
-        tryit "(and false true)" falseV
-        tryit "(and false false)" falseV
-        tryit "(or true true)" trueV
-        tryit "(or true false)" trueV
-        tryit "(or false true)" trueV
-        tryit "(or false false)" falseV
+        lazinessTest "(and true true)" true [||]
+        lazinessTest "(and false (do (set results (cons 1 (value results))) false))" false [||]
+        lazinessTest "(and true (do (set results (cons 1 (value results))) false))" false [|intV 1|]
+        lazinessTest "(and true (do (set results (cons 1 (value results))) true))" true [|intV 1|]
+        lazinessTest "(or false true)" true [||]
+        lazinessTest "(or false (do (set results (cons 1 (value results))) false))" false [|intV 1|]
+        lazinessTest "(or true (do (set results (cons 1 (value results))) false))" true [||]
 
     [<TestMethod>]
     member this.DefunAndResolutionOfDefinedFunctions() =
@@ -123,6 +134,10 @@ type Tests() =
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<TestMethod>]
+    member this.``result of interning a string is equal to symbol with name that is equal to that string``() =
+        Assert.AreEqual(ValueResult (SymbolValue "hi"), runIt "(intern \"hi\")")
+
+    [<TestMethod>]
     member this.PartialApplicationForBuiltins() =
         let env = baseEnv ()
         Assert.AreEqual(intR 3, eval env (symApp2 "+" (intE 1) (intE 2)))
@@ -136,19 +151,49 @@ type Tests() =
         Assert.AreEqual(intR 2, runIt "((- 4) 2)")
     
     [<TestMethod>]
-    member this.Math() =
-        Assert.IsTrue(isIntR <| runIt "(+ 1 2)")
+    member this.``adding two integers gives integer``() =
+        Assert.IsTrue(isIntR <| runIt "(+ 5 3)")
+
+    [<TestMethod>]
+    member this.``adding decimal and integer gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(+ 1.1 2)")
         Assert.IsTrue(isDecimalR <| runIt "(+ 11 -2.4)")
+    
+    [<TestMethod>]
+    member this.``adding two decimals gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(+ 1.1 2.4)")
+
+    [<TestMethod>]
+    member this.``subtracting two integers gives integer``() =
         Assert.IsTrue(isIntR <| runIt "(- 1 2)")
+
+    [<TestMethod>]
+    member this.``subtracting integer from decimal gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(- 1.1 2)")
+
+    [<TestMethod>]
+    member this.``subtracting decimal from integer gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(- 11 -2.4)")
+
+    [<TestMethod>]
+    member this.``subtracting two decimals gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(- 1.1 2.4)")
+
+    [<TestMethod>]
+    member this.``multiplying two integers gives integer``() =
         Assert.IsTrue(isIntR <| runIt "(* 1 2)")
+
+    [<TestMethod>]
+    member this.``multiplying integer and decimal gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(* 1.1 2)")
         Assert.IsTrue(isDecimalR <| runIt "(* 11 -2.4)")
+
+    [<TestMethod>]
+    member this.``multiplying two decimals gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(* 1.1 2.4)")
+
+    [<TestMethod>]
+    member this.``dividing any combination of two decimals/integers gives decimal``() =
         Assert.IsTrue(isDecimalR <| runIt "(/ 1 2)")
         Assert.IsTrue(isDecimalR <| runIt "(/ 2 1)")
         Assert.IsTrue(isDecimalR <| runIt "(/ 1.1 2)")
@@ -189,14 +234,14 @@ type Tests() =
         Assert.AreEqual(true |> BoolValue |> ValueResult |> Completed, true |> BoolValue |> ValueResult |> Completed)
 
     [<TestMethod>]
-    member this.TailRecursionOptimization() =
+    member this.``deep-running tail-recursive function does not stack overflow``() =
         let env = baseEnv ()
         runInEnv env "(defun fill (vec start stop val) (if (= stop start) (address-> vec start val) (fill (address-> vec start val) (+ 1 start) stop val)))" |> ignore
         let x = runInEnv env "(fill (absvector 20000) 0 19999 0)"
         ()
     
     [<TestMethod>]
-    member this.MutualRecursion() =
+    member this.``deep-running mutually-recursive functions do not stack overflow``() =
         let env = baseEnv ()
         runInEnv env "(defun add (x y) (if (= 0 x) y (add2 (- x 1) (+ y 1))))" |> ignore
         runInEnv env "(defun add2 (x y) (if (= 0 x) y (add (- x 1) (+ y 1))))" |> ignore
@@ -218,9 +263,35 @@ type Tests() =
         Assert.AreEqual(e0, e)
 
     [<TestMethod>]
-    member this.SimpleError() =
-        let s = "(simple-error \"whoops\")" |> runIt |> rUncaught
-        Assert.AreEqual("whoops", s)
+    member this.``string index out of bounds should cause uncaught error``() =
+        Assert.IsTrue(runIt "(pos \"\" 0)" |> isUncaught)
+        Assert.IsTrue(runIt "(pos \"hello\" 5)" |> isUncaught)
+
+    [<TestMethod>]
+    member this.``vector index out of bounds should cause uncaught error``() =
+        Assert.IsTrue(runIt "(<-address (absvector 0) 0)" |> isUncaught)
+
+    [<TestMethod>]
+    member this.``simple-error should cause uncaught error``() =
+        Assert.AreEqual("whoops", "(simple-error \"whoops\")" |> runIt |> rUncaught)
+
+    [<TestMethod>]
+    member this.``simple-error should be caught by trap-error``() =
+        Assert.AreEqual(ValueResult EmptyValue, runIt "(trap-error (simple-error \"whoops\") (lambda E ()))")
+
+    [<TestMethod>]
+    member this.``trap-error should prevent uncaught error from propogating``() =
+        Assert.AreEqual(ValueResult EmptyValue, runIt "(trap-error (pos \"\" 0) (lambda E ()))")
+
+    [<TestMethod>]
+    member this.``trap-error should eval and apply second expression if eval of first results in uncaught error``() =
+        let env = baseEnv ()
+        runInEnv env "(defun do (X Y) Y)" |> ignore
+        Assert.IsTrue(runInEnv env "(trap-error (do (pos \"\" 0) false) (lambda E true))" |> rBool)
+
+    [<TestMethod>]
+    member this.``error message should be preserved when error is caught and handled``() =
+        Assert.AreEqual(strR "hi", runIt "(trap-error (simple-error \"hi\") (lambda E (error-to-string E)))")
 
     [<TestMethod>]
     member this.PrintStuff() =
