@@ -1,2 +1,8 @@
 language: csharp
 solution: ShenSharp.sln
+install:
+  - nuget restore ShenSharp.sln
+  - nuget install NUnit.Runners -Version 3.0.0 -OutputDirectory testrunner
+script:
+  - xbuild /p:Configuration=Release ShenSharp.sln
+  - mono ./testrunner/NUnit.Runners.3.0.0/tools/nunit-console.exe ./Kl/bin/Release/Kl.dll
