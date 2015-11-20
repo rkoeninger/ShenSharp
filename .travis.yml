@@ -1,2 +1,2 @@
-language: fsharp
+language: csharp
 solution: ShenSharp.sln
