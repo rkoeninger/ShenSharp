@@ -50,11 +50,17 @@ let main args =
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
-    printfn "Starting shen repl..."
-    printfn ""
-    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
-    //KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr readmePath])) |> ignore
-    //KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr testsPath])) |> ignore
+//    printfn "Starting shen repl..."
+//    printfn ""
+//    while true do
+//        printf "> "
+//        let line = System.Console.ReadLine()
+//        match line |> KlTokenizer.tokenize |> KlParser.parse Head |> KlEvaluator.eval env with
+//        | ValueResult v -> printfn "%s" (KlBuiltins.klStr v)
+//        | ErrorResult e -> printfn "ERROR %s" e
+//    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
+    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr readmePath])) |> ignore
+    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr testsPath])) |> ignore
     printfn ""
     printfn "Press any key to exit..."
     System.Console.ReadKey() |> ignore
