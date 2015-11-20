@@ -1,3 +1,5 @@
+notifications:
+  email: false
 language: csharp
 solution: ShenSharp.sln
 install:
