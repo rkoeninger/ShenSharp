@@ -30,14 +30,13 @@ type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit
 
 type Globals = System.Collections.Generic.Dictionary<string, KlValue>
 and Locals = Map<string, KlValue> list
-and Function(arity: int, f: KlValue list -> Work) =
+and Function(name: string, arity: int, f: KlValue list -> Work) =
+    member this.Name = name
     member this.Arity = arity
     member this.Apply(args: KlValue list) = f args
+    override this.ToString() = this.Name
 and Thunk(cont: unit -> Work) =
-    member this.Run() =
-        match cont() with
-        | Pending thunk -> thunk.Run()
-        | Completed result -> result
+    member this.Run = cont
 and KlValue = EmptyValue
             | BoolValue      of bool
             | IntValue       of int
@@ -144,15 +143,9 @@ module KlParser =
 open FSharpx.Option
 open FSharpx.Choice
 
-module Debugging =
-    let mutable indent = 0
-    let increaseIndent() =
-        indent <- indent + 1
-    let decreaseIndent() =
-        indent <- indent - 1
-
 module KlEvaluator =
-    let vBool = function
+    let vBool x =
+        match x with
         | BoolValue b -> b
         | _ -> failwith "Boolean value expected"
     let trueR = BoolValue true |> ValueResult
@@ -162,11 +155,11 @@ module KlEvaluator =
     let branch f g x y v = if vBool v then f x else g y
     let branch1 f = branch f f
     let thunkW f = new Thunk(f) |> Pending
-    let funcW arity f = new Function(arity, f) |> FunctionValue |> ValueResult |> Completed
+    let funcW name arity f = new Function(name, arity, f) |> FunctionValue |> ValueResult |> Completed
     let append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
     let append1 env k v = append env [(k, v)]
     let closure eval env (paramz: string list) body =
-        new Function(paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
+        new Function("Anonymous", paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
     let vFunc (env: Env) = function
         | FunctionValue f -> FunctionResult f
         | SymbolValue s ->
@@ -175,8 +168,8 @@ module KlEvaluator =
             | Some _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
             | None -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
         | _ -> sprintf "Function value or symbol expected" |> FunctionResolveError
-    let go = function
-        | Pending thunk -> thunk.Run()
+    let rec go = function
+        | Pending thunk -> thunk.Run() |> go
         | Completed result -> result
     let rec apply pos fr (args: KlValue list) =
         match fr with
@@ -184,7 +177,9 @@ module KlEvaluator =
         | FunctionResult f ->
             match args.Length, f.Arity with
             | Greater -> failwith "Too many arguments"
-            | Lesser -> funcW (f.Arity - args.Length) (List.append args >> apply pos fr)
+            | Lesser -> funcW ("Partial " + f.Name)
+                              (f.Arity - args.Length)
+                              (List.append args >> apply pos fr)
             | Equal -> match pos with
                        | Head -> f.Apply args
                        | Tail -> thunkW (fun () -> f.Apply args)
@@ -236,23 +231,9 @@ module KlEvaluator =
             | ErrorResult e -> eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
             | r -> Completed r
         | AppExpr (pos, f, args) ->
-            let mutable turnLoggingBackOn = false
-            if env.SymbolDefinitions.ContainsKey("logging") && env.SymbolDefinitions.["logging"] = IntValue 1 then
-                match f with
-                | SymbolExpr s ->
-                    printfn "%s%s" (String.replicate Debugging.indent " ") s
-                    if s = "shen.multiple-set" || s = "shen.prh" then
-                        env.SymbolDefinitions.["logging"] <- IntValue 0
-                        turnLoggingBackOn <- true
-                | _ -> ()
-            Debugging.increaseIndent()
-            let r = eval env f >>= (fun v -> choice (apply pos (vFunc env v))
-                                                    (ErrorResult >> Completed)
-                                                    (evalArgs (evalw env) [] args))
-            Debugging.decreaseIndent()
-            if turnLoggingBackOn then
-                env.SymbolDefinitions.["logging"] <- IntValue 1
-            r
+            eval env f >>= (fun v -> choice (apply pos (vFunc env v))
+                                            (ErrorResult >> Completed)
+                                            (evalArgs (evalw env) [] args))
 
 open System
 open System.IO
@@ -331,24 +312,25 @@ module KlBuiltins =
         | [ConsValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let rec klEq = function
-        | EmptyValue, EmptyValue                 -> true
-        | BoolValue x, BoolValue y               -> x = y
-        | IntValue x, IntValue y                 -> x = y
-        | DecimalValue x, DecimalValue y         -> x = y
-        | IntValue x, DecimalValue y             -> decimal x = y
-        | DecimalValue x, IntValue y             -> x = decimal y
-        | StringValue x, StringValue y           -> x = y
-        | SymbolValue x, SymbolValue y           -> x = y
-        | InStreamValue x, InStreamValue y       -> x = y
-        | OutStreamValue x, OutStreamValue y     -> x = y
-        | FunctionValue x, FunctionValue y       -> x = y
-        | ErrorValue x, ErrorValue y             -> x = y
-        | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq (x1, y1) && klEq (x2, y2)
-        | VectorValue xs, VectorValue ys         -> xs.Length = ys.Length && Array.forall2 (=) xs ys
+    let rec klEq a b =
+        match a, b with
+        | EmptyValue,         EmptyValue         -> true
+        | BoolValue x,        BoolValue y        -> x = y
+        | IntValue x,         IntValue y         -> x = y
+        | DecimalValue x,     DecimalValue y     -> x = y
+        | IntValue x,         DecimalValue y     -> decimal x = y
+        | DecimalValue x,     IntValue y         -> x = decimal y
+        | StringValue x,      StringValue y      -> x = y
+        | SymbolValue x,      SymbolValue y      -> x = y
+        | InStreamValue x,    InStreamValue y    -> x = y
+        | OutStreamValue x,   OutStreamValue y   -> x = y
+        | FunctionValue x,    FunctionValue y    -> x = y
+        | ErrorValue x,       ErrorValue y       -> x = y
+        | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq x1 y1 && klEq x2 y2
+        | VectorValue xs,     VectorValue ys     -> xs.Length = ys.Length && Array.forall2 klEq xs ys
         | (_, _) -> false
     let klEquals = function
-        | [x; y] -> klEq (x, y) |> BoolValue
+        | [x; y] -> klEq x y |> BoolValue
         | _ -> invalidArgs ()
     let rec klValueToToken = function
         | EmptyValue -> ComboToken []
@@ -370,7 +352,7 @@ module KlBuiltins =
         | [x; _] -> x // TODO label the type of an expression (what does that mean?)
         | _ -> invalidArgs ()
     let klNewVector = function
-        | [IntValue length] -> Array.create length EmptyValue |> VectorValue
+        | [IntValue length] -> Array.create length (SymbolValue "fail!") |> VectorValue
         | _ -> invalidArgs ()
     let klReadVector = function
         | [VectorValue vector; IntValue index] ->
@@ -476,61 +458,61 @@ module KlBuiltins =
         | [DecimalValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let funW arity f = FunctionValue (new Function(arity, f))
-    let funR arity f = funW arity (f >> Completed)
-    let funV arity f = funR arity (f >> ValueResult)
+    let funW name arity f = name, FunctionValue(new Function(name, arity, f))
+    let funR name arity f = funW name arity (f >> Completed)
+    let funV name arity f = funR name arity (f >> ValueResult)
     let stinput =
         let consoleIn = new ConsoleIn(Console.OpenStandardInput())
         InStreamValue {Read = consoleIn.Read; Close = consoleIn.Close}
     let stoutput =
         let consoleOutStream = Console.OpenStandardOutput()
         OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
+    let rec install (globals: System.Collections.Generic.Dictionary<string, KlValue>) = function
+        | [] -> ()
+        | (name, value) :: defs ->
+            globals.[name] <- value
+            install globals defs
     let emptyEnv () = {SymbolDefinitions = new Globals(); FunctionDefinitions = new Globals(); Locals = []}
     let baseEnv () =
         let env = emptyEnv ()
-        let rec install (globals: System.Collections.Generic.Dictionary<string, KlValue>) = function
-            | [] -> ()
-            | (name, value) :: defs ->
-                globals.[name] <- value
-                install globals defs
         install env.FunctionDefinitions [
-            "intern",           funV 1 klIntern
-            "pos",              funR 2 klStringPos
-            "tlstr",            funV 1 klStringTail
-            "cn",               funV 2 klStringConcat
-            "str",              funV 1 klToString
-            "string?",          funV 1 klIsString
-            "n->string",        funV 1 klIntToString
-            "string->n",        funV 1 klStringToInt
-            "set",              funV 2 (klSet env)
-            "value",            funR 1 (klValue env)
-            "simple-error",     funR 1 klSimpleError
-            "error-to-string",  funV 1 klErrorToString
-            "cons",             funV 2 klNewCons
-            "hd",               funV 1 klHead
-            "tl",               funV 1 klTail
-            "cons?",            funV 1 klIsCons
-            "=",                funV 2 klEquals
-            "type",             funV 1 klType
-            "eval-kl",          funR 1 (klEval env)
-            "absvector",        funV 1 klNewVector
-            "<-address",        funR 2 klReadVector
-            "address->",        funR 3 klWriteVector
-            "absvector?",       funV 1 klIsVector
-            "write-byte",       funV 2 klWriteByte
-            "read-byte",        funV 1 klReadByte
-            "open",             funR 2 klOpen
-            "close",            funV 1 klClose
-            "get-time",         funV 1 klGetTime
-            "+",                funV 2 klAdd
-            "-",                funV 2 klSubtract
-            "*",                funV 2 klMultiply
-            "/",                funV 2 klDivide
-            ">",                funV 2 klGreaterThan
-            "<",                funV 2 klLessThan
-            ">=",               funV 2 klGreaterThanEqual
-            "<=",               funV 2 klLessThanEqual
-            "number?",          funV 1 klIsNumber
+            funV "intern"          1 klIntern
+            funR "pos"             2 klStringPos
+            funV "tlstr"           1 klStringTail
+            funV "cn"              2 klStringConcat
+            funV "str"             1 klToString
+            funV "string?"         1 klIsString
+            funV "n->string"       1 klIntToString
+            funV "string->n"       1 klStringToInt
+            funV "set"             2 (klSet env)
+            funR "value"           1 (klValue env)
+            funR "simple-error"    1 klSimpleError
+            funV "error-to-string" 1 klErrorToString
+            funV "cons"            2 klNewCons
+            funV "hd"              1 klHead
+            funV "tl"              1 klTail
+            funV "cons?"           1 klIsCons
+            funV "="               2 klEquals
+            funV "type"            1 klType
+            funR "eval-kl"         1 (klEval env)
+            funV "absvector"       1 klNewVector
+            funR "<-address"       2 klReadVector
+            funR "address->"       3 klWriteVector
+            funV "absvector?"      1 klIsVector
+            funV "write-byte"      2 klWriteByte
+            funV "read-byte"       1 klReadByte
+            funR "open"            2 klOpen
+            funV "close"           1 klClose
+            funV "get-time"        1 klGetTime
+            funV "+"               2 klAdd
+            funV "-"               2 klSubtract
+            funV "*"               2 klMultiply
+            funV "/"               2 klDivide
+            funV ">"               2 klGreaterThan
+            funV "<"               2 klLessThan
+            funV ">="              2 klGreaterThanEqual
+            funV "<="              2 klLessThanEqual
+            funV "number?"         1 klIsNumber
         ]
         install env.SymbolDefinitions [
             "*language*",       "F# 3.1" |> StringValue
@@ -542,6 +524,24 @@ module KlBuiltins =
             "*stoutput*",       stoutput
         ]
         env
+    let klPrint = function
+        | [x] -> Console.Write(klStr x)
+                 EmptyValue
+        | _ -> invalidArgs()
+    let klFillVector = function
+        | [VectorValue array as vector; IntValue stop; IntValue start; fillValue] ->
+            for i = start to stop do
+                array.[i] <- fillValue
+            vector
+        | _ -> invalidArgs()
+    let rec klElement = function
+        | [_; EmptyValue] -> falseV
+        | [element; ConsValue(head, tail)] ->
+            if klEq element head then
+                trueV
+            else
+                klElement [element; tail]
+        | _ -> invalidArgs()
 
 type FsExpr = Quotations.Expr
 
@@ -551,6 +551,24 @@ open Microsoft.FSharp.Compiler.Range
 
 module KlCompiler =
     let sscs = new SimpleSourceCodeServices()
+    let rec build = function
+        | EmptyExpr -> SynExpr.LetOrUse(false, false, [SynBinding.Binding(Some SynAccess.Public,
+                                                                             SynBindingKind.NormalBinding,
+                                                                             false(*?*),
+                                                                             false(*?*),
+                                                                             [(*SynAttributes*)],
+                                                                             PreXmlDocEmpty,
+                                                                             SynValData(None,
+                                                                                        SynValInfo([], SynArgInfo([], false, None)),
+                                                                                        None),
+                                                                             SynPat.Wild range.Zero,
+                                                                             SynBindingReturnInfo.SynBindingReturnInfo(SynType.StaticConstant(SynConst.Unit, range.Zero), range.Zero, []) |> Some,
+                                                                             SynExpr.Null range.Zero(*definition goes here*),
+                                                                             range.Zero,
+                                                                             SequencePointInfoForBinding.NoSequencePointAtLetBinding)],
+                                                            SynExpr.Const(SynConst.Bool false, range.Zero),
+                                                            range.Zero)
+        | _ -> failwith "not implemented"
     let rec trans = function
         | EmptyExpr ->
             let binding = SynBinding.Binding(None(*SynAccess*),
@@ -563,7 +581,7 @@ module KlCompiler =
                                                         SynValInfo([], SynArgInfo([], false, None)),
                                                         None),
                                              SynPat.Wild range.Zero,
-                                             None,
+                                             SynBindingReturnInfo.SynBindingReturnInfo(SynType.StaticConstant(SynConst.Unit, range.Zero), range.Zero, []) |> Some,
                                              SynExpr.Null range.Zero(*definition goes here*),
                                              range.Zero,
                                              SequencePointInfoForBinding.NoSequencePointAtLetBinding)
@@ -586,7 +604,7 @@ module KlCompiler =
                                           "ShenImpl",
                                           ["dependencies"],
                                           None(*execute*),
-                                          false(*debug*),
+                                          true(*debug*),
                                           false(*noframework*))
         | _ -> failwith "not implemented"
     let rec compile0 (locals: Map<string, Quotations.Var>) (expr: KlExpr) : Quotations.Expr =
@@ -606,7 +624,7 @@ module KlCompiler =
         | LetExpr (s, b, e) -> FsExpr.Let(Quotations.Var(s, typeof<KlValue>), cc b, cc e)
         | LambdaExpr (arg, body) -> FsExpr.Lambda(Quotations.Var(arg, typeof<KlValue>), cc body)
         | DefunExpr (name, args, body) ->
-            let func = <@@ (FunctionValue (new Function(%%(FsExpr.Value args.Length), %%(cc body)))) @@>
+            let func = <@@ (FunctionValue (new Function(name, %%(FsExpr.Value args.Length), %%(cc body)))) @@>
             let f = Quotations.Var("f", typeof<KlValue>)
             let store = <@@ () @@> // <@@ globals.[%%name] <- f @@>
             FsExpr.Let(f, func, FsExpr.Sequential(store, <@@ ValueResult %%(FsExpr.Var f) @@>))

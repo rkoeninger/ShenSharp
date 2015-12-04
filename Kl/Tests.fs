@@ -6,6 +6,9 @@ open KlTokenizer
 open KlParser
 open KlEvaluator
 open KlBuiltins
+open System.Reflection
+open System
+open System.CodeDom.Compiler
 
 [<TestFixture>]
 type Tests() =
@@ -56,7 +59,7 @@ type Tests() =
     let intE = IntExpr
     let intV = IntValue
     let intR = intV >> ValueResult
-    let funcV n f = FunctionValue <| new Function(n, f)
+    let funcV n f = FunctionValue <| new Function("", n, f)
     let strV = StringValue
     let strR = StringValue >> ValueResult
     let str x = x.ToString()
@@ -209,7 +212,7 @@ type Tests() =
     [<Test>]
     member this.Vectors() =
         Assert.IsTrue(arrayEqual Array.empty<KlValue> (runIt "(absvector 0)" |> rVector))
-        Assert.IsTrue(arrayEqual [|EmptyValue|] (runIt "(absvector 1)" |> rVector))
+        Assert.IsTrue(arrayEqual [|SymbolValue "fail!"|] (runIt "(absvector 1)" |> rVector))
         Assert.IsTrue(arrayEqual [|BoolValue true|] (runIt "(address-> (absvector 1) 0 true)" |> rVector))
 
     [<Test>]
@@ -243,9 +246,9 @@ type Tests() =
     [<Test>]
     member this.``deep-running mutually-recursive functions do not stack overflow``() =
         let env = baseEnv ()
-        runInEnv env "(defun add (x y) (if (= 0 x) y (add2 (- x 1) (+ y 1))))" |> ignore
-        runInEnv env "(defun add2 (x y) (if (= 0 x) y (add (- x 1) (+ y 1))))" |> ignore
-        Assert.AreEqual(intR 40000, runInEnv env "(add 20000 20000)")
+        runInEnv env "(defun odd? (x) (if (= 1 x) true (even? (- x 1))))" |> ignore
+        runInEnv env "(defun even? (x) (if (= 1 x) false (odd? (- x 1))))" |> ignore
+        Assert.AreEqual(ValueResult (BoolValue false), runInEnv env "(odd? 20000)")
 
     [<Test>]
     member this.HeadTailPositionsParsed() =

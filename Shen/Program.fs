@@ -1,7 +1,8 @@
 ﻿open Kl
+open System
+open System.IO
 
-[<EntryPoint>]
-let main args =
+let main0 args =
     let stopwatch = System.Diagnostics.Stopwatch.StartNew()
     let files = [
                     "toplevel.kl"
@@ -29,7 +30,7 @@ let main args =
         | StringToken s -> "\"" + s + "\""
         | SymbolToken s -> s
     let env = KlBuiltins.baseEnv ()
-    for file in (List.map (fun f -> System.IO.Path.Combine(klFolder, f)) files) do
+    for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
         printfn ""
@@ -42,14 +43,12 @@ let main args =
                 let expr = KlParser.parse Head ast
                 KlEvaluator.eval env expr |> ignore
             | _ -> () // ignore copyright block at top
-    let testDir = System.IO.Path.Combine(System.Environment.CurrentDirectory, "..\\..\\..\\Tests")
-    let readmePath = System.IO.Path.Combine(testDir, "README.shen")
-    let testsPath = System.IO.Path.Combine(testDir, "tests.shen")
-    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
+    let load path = KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr path])) |> ignore
+//    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
 //    printfn "Starting shen repl..."
 //    printfn ""
 //    while true do
@@ -59,9 +58,19 @@ let main args =
 //        | ValueResult v -> printfn "%s" (KlBuiltins.klStr v)
 //        | ErrorResult e -> printfn "ERROR %s" e
 //    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
-    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr readmePath])) |> ignore
-    KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr testsPath])) |> ignore
+    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
+    load <| "README.shen"
+    load <| "tests.shen"
+//    env.SymbolDefinitions.["logging"] <- IntValue 1
+//    load <| Path.Combine(testDir, "debug.shen")
     printfn ""
     printfn "Press any key to exit..."
     System.Console.ReadKey() |> ignore
+    0
+
+[<EntryPoint>]
+let main args =
+    let thread = new System.Threading.Thread((fun () -> main0 args |> ignore), 4194304)
+    thread.Start()
+    thread.Join()
     0
