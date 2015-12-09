@@ -70,7 +70,7 @@ let main0 args =
 
 [<EntryPoint>]
 let main args =
-    let thread = new System.Threading.Thread((fun () -> main0 args |> ignore), 4194304)
+    let thread = new System.Threading.Thread((fun () -> main0 args |> ignore), 16777216)
     thread.Start()
     thread.Join()
     0

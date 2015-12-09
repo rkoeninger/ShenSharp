@@ -124,6 +124,8 @@ module KlParser =
             | Integral -> IntExpr (int n)
             | Fractional -> DecimalExpr n
         | StringToken s -> StringExpr s
+        | SymbolToken "true" -> BoolExpr true
+        | SymbolToken "false" -> BoolExpr false
         | SymbolToken s -> SymbolExpr s
         | ComboToken [(SymbolToken "and"); left; right] -> AndExpr (parse Head left, parse pos right)
         | ComboToken [(SymbolToken "or");  left; right] -> OrExpr  (parse Head left, parse pos right)
@@ -176,7 +178,7 @@ module KlEvaluator =
         | FunctionResolveError e -> ErrorResult e |> Completed
         | FunctionResult f ->
             match args.Length, f.Arity with
-            | Greater -> failwith "Too many arguments"
+            | Greater -> "Too many arguments" |> ErrorResult |> Completed
             | Lesser -> funcW ("Partial " + f.Name)
                               (f.Arity - args.Length)
                               (List.append args >> apply pos fr)
@@ -210,7 +212,9 @@ module KlEvaluator =
         | IntExpr n     -> IntValue n |> ValueResult |> Completed
         | DecimalExpr n -> DecimalValue n |> ValueResult |> Completed
         | StringExpr s  -> StringValue s |> ValueResult |> Completed
-        | SymbolExpr s  -> resolve env.Locals s |> ValueResult |> Completed
+        | SymbolExpr "true"  -> trueW
+        | SymbolExpr "false" -> falseW
+        | SymbolExpr s       -> resolve env.Locals s |> ValueResult |> Completed
         | AndExpr (left, right) -> eval env left >>= branch (evalw env) id right falseW
         | OrExpr  (left, right) -> eval env left >>= branch id (evalw env) trueW right
         | IfExpr (condition, ifTrue, ifFalse) -> eval env condition >>= branch1 (evalw env) ifTrue ifFalse
