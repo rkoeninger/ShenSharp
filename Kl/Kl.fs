@@ -547,100 +547,283 @@ module KlBuiltins =
                 klElement [element; tail]
         | _ -> invalidArgs()
 
-type FsExpr = Quotations.Expr
+type FsQuot = Quotations.Expr
+
+open Fantomas
 
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
+open Microsoft.FSharp.Compiler.SourceCodeServices
 open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.Range
 
+module FsAst =
+    let defaultRange = mkFileIndexRange 50 (mkPos 100 100) (mkPos 200 200)
+
+type FsFile =
+
+    static member Of(ns: string, modules: SynModuleOrNamespace list) =
+        ParsedInput.ImplFile(
+            ParsedImplFileInput(
+                "filename",
+                false,
+                QualifiedNameOfFile(new Ident(ns, FsAst.defaultRange)),
+                [],
+                [],
+                modules,
+                false))
+
+type FsConst =
+
+    static member Int32(x: int) =
+        SynExpr.Const(SynConst.Int32(x), FsAst.defaultRange)
+
+type FsModule =
+
+    static member Of(name: string, members: SynModuleDecls) =
+        SynModuleOrNamespace.SynModuleOrNamespace(
+            [new Ident(name, FsAst.defaultRange)],
+            true,
+            members,
+            PreXmlDocEmpty,
+            [],
+            None,
+            FsAst.defaultRange)
+
+    static member Let(bindings: SynBinding list) =
+        SynModuleDecl.Let(false, bindings, FsAst.defaultRange)
+
+    static member SingleLet(name: string, args: (string * string) list, body: SynExpr) =
+        let eachArg (typ, nm) = [SynArgInfo.SynArgInfo([], false, Some(new Ident(nm, FsAst.defaultRange)))]
+        let argInfos = List.map eachArg args
+        let valData =
+            SynValData.SynValData(
+                None,
+                SynValInfo.SynValInfo(
+                    argInfos,
+                    SynArgInfo.SynArgInfo([], false, None)),
+                None)
+        let eachCtorArg (typ, nm) =
+            SynPat.Paren(
+                //SynPat.Typed(
+                    SynPat.Named(
+                        SynPat.Wild(FsAst.defaultRange),
+                        new Ident(nm, FsAst.defaultRange),
+                        false,
+                        None,
+                        FsAst.defaultRange),
+                  //  SynType.LongIdent(
+                    //    LongIdentWithDots.LongIdentWithDots(
+                      //      [new Ident(typ, FsAst.defaultRange)],
+                        //    [])),
+                    //FsAst.defaultRange),
+                FsAst.defaultRange)
+        let ctorArgs = List.map eachCtorArg args
+        let namePat =
+            SynPat.LongIdent(
+                LongIdentWithDots.LongIdentWithDots([new Ident(name, FsAst.defaultRange)], []),
+                None,
+                None,
+                SynConstructorArgs.Pats(ctorArgs),
+                None,
+                FsAst.defaultRange)
+        let returnType = SynType.LongIdent(LongIdentWithDots.LongIdentWithDots([new Ident("KlValue", FsAst.defaultRange)], []))
+        let returnInfo = SynBindingReturnInfo.SynBindingReturnInfo(returnType, FsAst.defaultRange, [])
+        let binding =
+            SynBinding.Binding(
+                None,
+                SynBindingKind.NormalBinding,
+                false,
+                false,
+                [],
+                PreXmlDoc.Empty,
+                valData,
+                namePat,
+                Some returnInfo,
+                body,
+                FsAst.defaultRange,
+                SequencePointInfoForBinding.NoSequencePointAtLetBinding)
+        SynModuleDecl.Let(false, [binding], FsAst.defaultRange)
+
+    static member LetRec(bindings: SynBinding list) =
+        SynModuleDecl.Let(true, bindings, FsAst.defaultRange)
+
+open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Quotations.DerivedPatterns
+open Microsoft.FSharp.Quotations.Patterns
+
+type FsExpr =
+
+    static member Paren(expr: SynExpr) =
+        SynExpr.Paren(expr, FsAst.defaultRange, None, FsAst.defaultRange)
+
+    static member Id(id: string) =
+        SynExpr.Ident(new Ident(id, FsAst.defaultRange))
+
+    static member Let(bindings: SynBinding list, body: SynExpr) =
+        SynExpr.LetOrUse(false, false, bindings, body, FsAst.defaultRange)
+        
+    static member LetRec(bindings: SynBinding list, body: SynExpr) =
+        SynExpr.LetOrUse(true, false, bindings, body, FsAst.defaultRange)
+
+    static member Const(constant: SynConst) =
+        SynExpr.Const(constant, FsAst.defaultRange)
+
+    static member List(exprs: SynExpr list) =
+        SynExpr.ArrayOrList(false, exprs, FsAst.defaultRange)
+
+    static member App(f0: SynExpr, args0: SynExpr list) =
+        let rec buildApply f args =
+            match args with
+            | single :: [] ->
+                SynExpr.App(
+                    ExprAtomicFlag.NonAtomic,
+                    false,
+                    f,
+                    single,
+                    FsAst.defaultRange)
+            | first :: rest ->
+                buildApply (SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, first, FsAst.defaultRange)) rest
+            | _ -> failwith "must have at least one argument"
+        buildApply f0 args0
+
+    static member Infix(lhs: SynExpr, op: SynExpr, rhs: SynExpr) =
+        FsExpr.App(op, [lhs; rhs])
+
+type FsIds =
+    
+    static member Plus = FsExpr.Id("op_Addition")
+    static member PipePipe = FsExpr.Id("op_OrElse")
+    static member AmpAmp = FsExpr.Id("op_AndAlso")
+
+type FsBinding =
+
+    static member Of(symbol: string, body: SynExpr) =
+        SynBinding.Binding(
+            Some(SynAccess.Public),
+            SynBindingKind.NormalBinding,
+            false,
+            false,
+            [],
+            PreXmlDoc.Empty,
+            SynValData.SynValData(
+                None,
+                SynValInfo.SynValInfo([], SynArgInfo.SynArgInfo([], false, None)),
+                None),
+            SynPat.Named(
+                SynPat.Wild FsAst.defaultRange,
+                new Ident(symbol, FsAst.defaultRange),
+                false,
+                None,
+                FsAst.defaultRange),
+            None,
+            body,
+            FsAst.defaultRange,
+            SequencePointInfoForBinding.NoSequencePointAtLetBinding)
+
 module KlCompiler =
     let sscs = new SimpleSourceCodeServices()
+    let checker = FSharpChecker.Create()
+    let getUntypedTree (file, input) = 
+        // Get compiler options for the 'project' implied by a single script file
+        let projOptions = 
+            checker.GetProjectOptionsFromScript(file, input)
+            |> Async.RunSynchronously
+
+        // Run the first phase (untyped parsing) of the compiler
+        let parseFileResults = 
+            checker.ParseFileInProject(file, input, projOptions) 
+            |> Async.RunSynchronously
+
+        match parseFileResults.ParseTree with
+        | Some tree -> tree
+        | None -> failwith "Something went wrong during parsing!"
+    let idExpr id = SynExpr.Ident(new Ident(id, range.Zero))
+    let longIdExpr ids =
+        let ident id = new Ident(id, FsAst.defaultRange)
+        SynExpr.LongIdent(
+            false,
+            LongIdentWithDots.LongIdentWithDots(List.map ident ids, []),
+            None,
+            FsAst.defaultRange)
     let rec build = function
-        | EmptyExpr -> SynExpr.LetOrUse(false, false, [SynBinding.Binding(Some SynAccess.Public,
-                                                                             SynBindingKind.NormalBinding,
-                                                                             false(*?*),
-                                                                             false(*?*),
-                                                                             [(*SynAttributes*)],
-                                                                             PreXmlDocEmpty,
-                                                                             SynValData(None,
-                                                                                        SynValInfo([], SynArgInfo([], false, None)),
-                                                                                        None),
-                                                                             SynPat.Wild range.Zero,
-                                                                             SynBindingReturnInfo.SynBindingReturnInfo(SynType.StaticConstant(SynConst.Unit, range.Zero), range.Zero, []) |> Some,
-                                                                             SynExpr.Null range.Zero(*definition goes here*),
-                                                                             range.Zero,
-                                                                             SequencePointInfoForBinding.NoSequencePointAtLetBinding)],
-                                                            SynExpr.Const(SynConst.Bool false, range.Zero),
-                                                            range.Zero)
-        | _ -> failwith "not implemented"
-    let rec trans = function
-        | EmptyExpr ->
-            let binding = SynBinding.Binding(None(*SynAccess*),
-                                             SynBindingKind.NormalBinding,
-                                             false(*?*),
-                                             false(*?*),
-                                             [(*SynAttributes*)],
-                                             PreXmlDocEmpty,
-                                             SynValData(None,
-                                                        SynValInfo([], SynArgInfo([], false, None)),
-                                                        None),
-                                             SynPat.Wild range.Zero,
-                                             SynBindingReturnInfo.SynBindingReturnInfo(SynType.StaticConstant(SynConst.Unit, range.Zero), range.Zero, []) |> Some,
-                                             SynExpr.Null range.Zero(*definition goes here*),
-                                             range.Zero,
-                                             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
-            let moduleMember = SynModuleDecl.Let(true, [], range.Zero)
-            let parsedModule = SynModuleOrNamespace([Ident("ShenImpl", range.Zero)],
-                                                    true(*isModule*),
-                                                    [(*SynModuleDecl*)],
-                                                    PreXmlDocEmpty,
-                                                    [(*SynAttribute*)],
-                                                    None(*SynAccess*),
-                                                    range.Zero)
-            let parsedFile = ParsedImplFileInput("ShenImpl.kl"(*filename*),
-                                                 false(*isScript*),
-                                                 QualifiedNameOfFile(Ident("ShenImpl", range.Zero)),
-                                                 [(*ScopedPragma*)],
-                                                 [(*ParsedHashDirective*)],
-                                                 [parsedModule],
-                                                 false(*???*))
-            sscs.CompileToDynamicAssembly([ParsedInput.ImplFile <| parsedFile],
-                                          "ShenImpl",
-                                          ["dependencies"],
-                                          None(*execute*),
-                                          true(*debug*),
-                                          false(*noframework*))
-        | _ -> failwith "not implemented"
-    let rec compile0 (locals: Map<string, Quotations.Var>) (expr: KlExpr) : Quotations.Expr =
-        let cc = compile0 locals
-        match expr with
-        | EmptyExpr     -> <@@ EmptyValue @@>
-        | BoolExpr b    -> <@@ (BoolValue %%(FsExpr.Value b)) @@>
-        | IntExpr n     -> <@@ (IntValue %%(FsExpr.Value n)) @@>
-        | DecimalExpr n -> <@@ (DecimalValue %%(FsExpr.Value n)) @@>
-        | StringExpr s  -> <@@ (StringValue %%(FsExpr.Value s)) @@>
-        | SymbolExpr s -> FsExpr.Var(Quotations.Var(s, typeof<KlValue>))
-        | AndExpr (l, r) -> <@@ (KlEvaluator.vBool (%%(cc l)) && KlEvaluator.vBool (%%(cc r))) @@>
-        | OrExpr  (l, r) -> <@@ (KlEvaluator.vBool (%%(cc l)) || KlEvaluator.vBool (%%(cc r))) @@>
-        | IfExpr (c, t, e) -> FsExpr.IfThenElse(cc c, cc t, cc e)
-        | CondExpr [] -> <@@ (failwith "condition failure") @@>
-        | CondExpr ((i, t) :: clauses) -> FsExpr.IfThenElse(cc i, cc t, cc (CondExpr clauses))
-        | LetExpr (s, b, e) -> FsExpr.Let(Quotations.Var(s, typeof<KlValue>), cc b, cc e)
-        | LambdaExpr (arg, body) -> FsExpr.Lambda(Quotations.Var(arg, typeof<KlValue>), cc body)
-        | DefunExpr (name, args, body) ->
-            let func = <@@ (FunctionValue (new Function(name, %%(FsExpr.Value args.Length), %%(cc body)))) @@>
-            let f = Quotations.Var("f", typeof<KlValue>)
-            let store = <@@ () @@> // <@@ globals.[%%name] <- f @@>
-            FsExpr.Let(f, func, FsExpr.Sequential(store, <@@ ValueResult %%(FsExpr.Var f) @@>))
-        | FreezeExpr body -> <@@ fun () -> %%(cc body) @@>
-        | TrapExpr (_, body, handler) ->
-            <@@
-            match %%(cc body) with
-            | ValueResult v -> v
-            | ErrorResult e -> (%%(cc handler)) e
-            @@>
-        | AppExpr (_, SymbolExpr "+", [left; right]) -> <@@ ((+) %%(cc left) %%(cc right)) @@>
-        | AppExpr (_, SymbolExpr "+", [left]) -> <@@ ((+) %%(cc left)) @@> // TODO `x` needs to be clean
-        //| AppExpr (_, _, _) ->
-        | _ -> failwith "not implemented"
-    let compile = compile0 Map.empty
+        | EmptyExpr -> idExpr "EmptyValue"
+        | BoolExpr b -> SynExpr.Const(SynConst.Bool b, range.Zero)
+        | IntExpr i -> SynExpr.Const(SynConst.Int32 i, range.Zero)
+        | DecimalExpr d -> SynExpr.Const(SynConst.Decimal d, range.Zero)
+        | StringExpr s -> SynExpr.Const(SynConst.String(s, range.Zero), range.Zero) // TODO escape special chars
+        | SymbolExpr s -> idExpr s // TODO make symbol acceptable: "string?" -> "stringP"
+        | AndExpr(left, right) -> FsExpr.App(FsIds.AmpAmp, [build left; build right])
+        | OrExpr(left, right) -> FsExpr.App(FsIds.PipePipe, [build left; build right])
+        | IfExpr(condition, ifTrue, ifFalse) ->
+            SynExpr.IfThenElse(
+                build condition,
+                build ifTrue,
+                build ifFalse |> Some,
+                SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
+                false,
+                FsAst.defaultRange,
+                FsAst.defaultRange)
+        | CondExpr(clauses) ->
+            let rec buildClauses = function
+                | (condition, ifTrue) :: rest ->
+                    SynExpr.IfThenElse(
+                        build condition,
+                        build ifTrue,
+                        buildClauses rest |> Some,
+                        SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
+                        false,
+                        range.Zero,
+                        range.Zero)
+                | [] ->
+                    SynExpr.App(
+                        ExprAtomicFlag.NonAtomic,
+                        false,
+                        idExpr "failwith",
+                        SynExpr.Const(SynConst.String("No condition was true", range.Zero), range.Zero),
+                        range.Zero)
+            buildClauses clauses
+        | LetExpr(symbol, binding, body) ->
+            SynExpr.LetOrUse(
+                false,
+                false,
+                [SynBinding.Binding(
+                    None,
+                    SynBindingKind.NormalBinding,
+                    false,
+                    false,
+                    [],
+                    PreXmlDoc.Empty,
+                    SynValData.SynValData(
+                        None,
+                        SynValInfo.SynValInfo([], SynArgInfo.SynArgInfo([], false, None)),
+                        None),
+                    SynPat.Named(
+                        SynPat.Wild range.Zero,
+                        new Ident(symbol, range.Zero),
+                        false,
+                        None,
+                        range.Zero),
+                    None,
+                    build binding,
+                    range.Zero,
+                    SequencePointInfoForBinding.NoSequencePointAtLetBinding)],
+                build body,
+                range.Zero)
+        | LambdaExpr(symbol, body) -> failwith "lambda compilation not implemented"
+        | DefunExpr(symbol, paramz, body) -> failwith "defun compilation not implemented"
+        | FreezeExpr(expr) -> failwith "freeze compilation not implemented"
+        | TrapExpr(pos, t, c) -> failwith "trap compilation not implemented"
+        | AppExpr(pos, f, args) ->
+            let primitiveOp op =
+                match op with
+                | "+" -> Some(longIdExpr ["KlBuiltins"; "klAdd"])
+                | "-" -> Some(longIdExpr ["KlBuiltins"; "klSubtract"])
+                | "*" -> Some(longIdExpr ["KlBuiltins"; "klMultiply"])
+                | "/" -> Some(longIdExpr ["KlBuiltins"; "klDivide"])
+                | _ -> None
+            match f with
+            | SymbolExpr op ->
+                match primitiveOp op with
+                | Some(op) -> FsExpr.Paren(FsExpr.App(op, [FsExpr.List(List.map build args)]))
+                | _ -> failwith "unrecognized op or number of args"
+            | _ -> failwith "can't support function"
