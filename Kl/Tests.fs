@@ -310,6 +310,7 @@ type Tests() =
         "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> runIt |> rString |> printfn "Error-string: %s"
 
     [<Test>]
+    [<Ignore("")>]
     member this.CompilerServicesBuildAst() =
         let p = KlTokenizer.tokenize >> KlParser.parse Head >> KlCompiler.build
         let r = AndExpr(BoolExpr true, BoolExpr false) |> KlCompiler.build
@@ -343,6 +344,7 @@ type Tests() =
         ()
 
     [<Test>]
+    [<Ignore("")>]
     member this.KlExprToSynExpr() =
         let kl = KlExpr.AndExpr(KlExpr.BoolExpr true, KlExpr.BoolExpr false)
         let syn = FsFile.Of("KlExprTest", [FsModule.Of("KlExprTestMod", [FsModule.SingleLet("z", [], KlCompiler.build kl)])])
