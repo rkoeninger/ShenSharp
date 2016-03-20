@@ -1,21 +1,18 @@
-﻿namespace Kl
+﻿namespace Kl.Tests
 
 open NUnit.Framework
 open FParsec
-open KlTokenizer
-open KlParser
-open KlEvaluator
-open KlBuiltins
+open Kl
+open Kl.KlTokenizer
+open Kl.KlParser
+open Kl.KlEvaluator
+open Kl.KlBuiltins
 open System.Reflection
 open System
-open System.CodeDom.Compiler
 open System.IO
-open Microsoft.FSharp.Compiler.Ast
-open Microsoft.FSharp.Compiler.Range
-open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 
 [<TestFixture>]
-type Tests() =
+type KlTests() =
 
     let runInEnv env = tokenize >> parse Head >> eval env
     let runIt = runInEnv (baseEnv ())
@@ -308,53 +305,3 @@ type Tests() =
         "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> runIt |> rString |> printfn "Vector: %s"
         "(trap-error (simple-error \"whoops\") (lambda E E))" |> runIt |> rError |> printfn "Error: %s"
         "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> runIt |> rString |> printfn "Error-string: %s"
-
-    [<Test>]
-    [<Ignore("")>]
-    member this.CompilerServicesBuildAst() =
-        let p = KlTokenizer.tokenize >> KlParser.parse Head >> KlCompiler.build
-        let r = AndExpr(BoolExpr true, BoolExpr false) |> KlCompiler.build
-        let s = new SimpleSourceCodeServices()
-        let fileName = "..\\..\\..\\..\\test.fs"
-        let text = File.ReadAllText(fileName)
-        let parsedInput = Fantomas.CodeFormatter.Parse(fileName, text)
-        let ast = FsFile.Of(
-                      "ShenNs",
-                      [FsModule.Of(
-                          "ShenStuff",
-                          [SynModuleDecl.Open(
-                            LongIdentWithDots.LongIdentWithDots([new Ident("Kl", FsAst.defaultRange)], []), FsAst.defaultRange)
-                           FsModule.SingleLet(
-                              "f",
-                              [("KlValue", "x")
-                               ("KlValue", "y")],
-                              KlCompiler.build(
-                                KlExpr.AppExpr(
-                                  Position.Head,
-                                  KlExpr.SymbolExpr "+",
-                                  [SymbolExpr "x"; SymbolExpr "y"])))])])
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, Fantomas.FormatConfig.FormatConfig.Default)
-        try
-            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
-            let types = asm.Value.GetTypes()
-            let res1 = types.[0].GetMethods().[0].Invoke(null, [|IntValue 1; IntValue 2|])
-            assert (res1 = (IntValue 3 :> obj))
-        with
-            ex -> printfn "%s" <| ex.ToString()
-        ()
-
-    [<Test>]
-    [<Ignore("")>]
-    member this.KlExprToSynExpr() =
-        let kl = KlExpr.AndExpr(KlExpr.BoolExpr true, KlExpr.BoolExpr false)
-        let syn = FsFile.Of("KlExprTest", [FsModule.Of("KlExprTestMod", [FsModule.SingleLet("z", [], KlCompiler.build kl)])])
-        let str = Fantomas.CodeFormatter.FormatAST(syn, None, Fantomas.FormatConfig.FormatConfig.Default)
-        ()
-
-module XXX =
-
-    let rec f x = f (x + 1)
-        and g x y = if x = 0 then y else g (x - 1) (y + h)
-        and m x y = if x = 1 then y else if y = 1 then x else m (x - 1) (g x y)
-        and h = 1
-        and k = f >> ((*) 2)
