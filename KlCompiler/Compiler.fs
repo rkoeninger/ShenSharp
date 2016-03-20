@@ -1,11 +1,7 @@
 ﻿namespace KlCompiler
 
-type FsQuot = Quotations.Expr
-
 open Kl
-
 open Fantomas
-
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 open Microsoft.FSharp.Compiler.SourceCodeServices
 open Microsoft.FSharp.Compiler.Ast
@@ -139,16 +135,10 @@ type FsExpr =
             | first :: rest ->
                 buildApply (SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, first, FsAst.defaultRange)) rest
             | _ -> failwith "must have at least one argument"
-        buildApply f0 args0
+        SynExpr.Paren(buildApply f0 args0, FsAst.defaultRange, Some FsAst.defaultRange, FsAst.defaultRange)
 
     static member Infix(lhs: SynExpr, op: SynExpr, rhs: SynExpr) =
         FsExpr.App(op, [lhs; rhs])
-
-type FsIds =
-    
-    static member Plus = FsExpr.Id("op_Addition")
-    static member PipePipe = FsExpr.Id("op_OrElse")
-    static member AmpAmp = FsExpr.Id("op_AndAlso")
 
 type FsBinding =
 
@@ -212,15 +202,17 @@ module KlCompiler =
                 .Replace("+", "_PLUS_")
                 .Replace("*", "_STAR_")
                 .TrimEnd('_')
+        let builtin id = longIdExpr ["KlBuiltins"; id]
+        let seBool synExpr = FsExpr.App(builtin "vBool", [synExpr])
         match expr with
         | EmptyExpr -> idExpr "EmptyValue"
-        | BoolExpr b -> SynExpr.Const(SynConst.Bool b, range.Zero)
-        | IntExpr i -> SynExpr.Const(SynConst.Int32 i, range.Zero)
-        | DecimalExpr d -> SynExpr.Const(SynConst.Decimal d, range.Zero)
-        | StringExpr s -> SynExpr.Const(SynConst.String(s, range.Zero), range.Zero) // TODO escape special chars
+        | BoolExpr b -> FsExpr.App(longIdExpr ["KlValue"; "BoolValue"], [SynExpr.Const(SynConst.Bool b, range.Zero)])
+        | IntExpr i -> FsExpr.App(longIdExpr ["KlValue"; "IntValue"], [SynExpr.Const(SynConst.Int32 i, range.Zero)])
+        | DecimalExpr d -> FsExpr.App(longIdExpr ["KlValue"; "DecimalValue"], [SynExpr.Const(SynConst.Decimal d, range.Zero)])
+        | StringExpr s -> FsExpr.App(longIdExpr ["KlValue"; "StringValue"], [SynExpr.Const(SynConst.String(s, range.Zero), range.Zero)]) // TODO escape special chars
         | SymbolExpr s -> idExpr (klToFsId s)
-        | AndExpr(left, right) -> FsExpr.App(FsIds.AmpAmp, [build left; build right])
-        | OrExpr(left, right) -> FsExpr.App(FsIds.PipePipe, [build left; build right])
+        | AndExpr(left, right) -> FsExpr.App(FsExpr.Id("op_BooleanAnd"), [build left |> seBool; build right |> seBool])
+        | OrExpr(left, right) -> FsExpr.App(FsExpr.Id("op_BooleanOr"), [build left |> seBool; build right |> seBool])
         | IfExpr(condition, ifTrue, ifFalse) ->
             SynExpr.IfThenElse(
                 build condition,
@@ -282,7 +274,6 @@ module KlCompiler =
         | FreezeExpr(expr) -> failwith "freeze compilation not implemented"
         | TrapExpr(pos, t, c) -> failwith "trap compilation not implemented"
         | AppExpr(pos, f, args) ->
-            let builtin id = longIdExpr ["KlBuiltins"; id]
             let primitiveOp op =
                 match op with
                 | "intern"          -> Some(builtin "klIntern")

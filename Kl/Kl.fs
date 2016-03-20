@@ -244,6 +244,10 @@ open System.IO
 
 module KlBuiltins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
+    let vBool x =
+        match x with
+        | BoolValue b -> b
+        | _ -> failwith "Boolean value expected"
     let trueV = BoolValue true
     let falseV = BoolValue false
     let klIntern = function
