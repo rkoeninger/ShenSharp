@@ -604,18 +604,18 @@ type FsModule =
                 None)
         let eachCtorArg (typ, nm) =
             SynPat.Paren(
-                //SynPat.Typed(
+                SynPat.Typed(
                     SynPat.Named(
                         SynPat.Wild(FsAst.defaultRange),
                         new Ident(nm, FsAst.defaultRange),
                         false,
                         None,
                         FsAst.defaultRange),
-                  //  SynType.LongIdent(
-                    //    LongIdentWithDots.LongIdentWithDots(
-                      //      [new Ident(typ, FsAst.defaultRange)],
-                        //    [])),
-                    //FsAst.defaultRange),
+                    SynType.LongIdent(
+                        LongIdentWithDots.LongIdentWithDots(
+                            [new Ident(typ, FsAst.defaultRange)],
+                            [])),
+                    FsAst.defaultRange),
                 FsAst.defaultRange)
         let ctorArgs = List.map eachCtorArg args
         let namePat =
@@ -742,16 +742,28 @@ module KlCompiler =
         let ident id = new Ident(id, FsAst.defaultRange)
         SynExpr.LongIdent(
             false,
-            LongIdentWithDots.LongIdentWithDots(List.map ident ids, []),
+            LongIdentWithDots.LongIdentWithDots(
+                List.map ident ids,
+                List.replicate ((ids.Length) - 1) FsAst.defaultRange),
             None,
             FsAst.defaultRange)
-    let rec build = function
+    let rec build expr =
+        let klToFsId (klId:string) =
+            klId.Replace("?", "_P_")
+                .Replace("<", "_LT_")
+                .Replace(">", "_GT_")
+                .Replace("-", "_")
+                .Replace(".", "_DOT_")
+                .Replace("+", "_PLUS_")
+                .Replace("*", "_STAR_")
+                .TrimEnd('_')
+        match expr with
         | EmptyExpr -> idExpr "EmptyValue"
         | BoolExpr b -> SynExpr.Const(SynConst.Bool b, range.Zero)
         | IntExpr i -> SynExpr.Const(SynConst.Int32 i, range.Zero)
         | DecimalExpr d -> SynExpr.Const(SynConst.Decimal d, range.Zero)
         | StringExpr s -> SynExpr.Const(SynConst.String(s, range.Zero), range.Zero) // TODO escape special chars
-        | SymbolExpr s -> idExpr s // TODO make symbol acceptable: "string?" -> "stringP"
+        | SymbolExpr s -> idExpr (klToFsId s)
         | AndExpr(left, right) -> FsExpr.App(FsIds.AmpAmp, [build left; build right])
         | OrExpr(left, right) -> FsExpr.App(FsIds.PipePipe, [build left; build right])
         | IfExpr(condition, ifTrue, ifFalse) ->
@@ -809,18 +821,53 @@ module KlCompiler =
                     SequencePointInfoForBinding.NoSequencePointAtLetBinding)],
                 build body,
                 range.Zero)
-        | LambdaExpr(symbol, body) -> failwith "lambda compilation not implemented"
+        | LambdaExpr(symbol, body) -> failwith "lambda not impl"
+            (*SynExpr.Lambda(false, false, [], body, FsAst.defaultRange)*)
         | DefunExpr(symbol, paramz, body) -> failwith "defun compilation not implemented"
         | FreezeExpr(expr) -> failwith "freeze compilation not implemented"
         | TrapExpr(pos, t, c) -> failwith "trap compilation not implemented"
         | AppExpr(pos, f, args) ->
+            let builtin id = longIdExpr ["KlBuiltins"; id]
             let primitiveOp op =
                 match op with
-                | "+" -> Some(longIdExpr ["KlBuiltins"; "klAdd"])
-                | "-" -> Some(longIdExpr ["KlBuiltins"; "klSubtract"])
-                | "*" -> Some(longIdExpr ["KlBuiltins"; "klMultiply"])
-                | "/" -> Some(longIdExpr ["KlBuiltins"; "klDivide"])
-                | _ -> None
+                | "intern"          -> Some(builtin "klIntern")
+                | "pos"             -> Some(builtin "klStringPos")
+                | "tlstr"           -> Some(builtin "klStringTail")
+                | "cn"              -> Some(builtin "klStringConcat")
+                | "str"             -> Some(builtin "klToString")
+                | "string?"         -> Some(builtin "klIsString")
+                | "n->string"       -> Some(builtin "klIntToString")
+                | "string->n"       -> Some(builtin "klStringToInt")
+                | "set"             -> Some(builtin "klSet") // needs env
+                | "value"           -> Some(builtin "klValue") // needs env
+                | "simple-error"    -> Some(builtin "klSimpleError")
+                | "error-to-string" -> Some(builtin "klErrorToString")
+                | "cons"            -> Some(builtin "klNewCons")
+                | "hd"              -> Some(builtin "klHead")
+                | "tl"              -> Some(builtin "klTail")
+                | "cons?"           -> Some(builtin "klIsCons")
+                | "="               -> Some(builtin "klEquals")
+                | "type"            -> Some(builtin "klType")
+                | "eval-kl"         -> Some(builtin "klEval") // needs env
+                | "absvector"       -> Some(builtin "klNewVector")
+                | "<-address"       -> Some(builtin "klReadVector")
+                | "address->"       -> Some(builtin "klWriteVector")
+                | "absvector?"      -> Some(builtin "klIsVector")
+                | "write-byte"      -> Some(builtin "klWriteByte")
+                | "read-byte"       -> Some(builtin "klReadByte")
+                | "open"            -> Some(builtin "klOpen")
+                | "close"           -> Some(builtin "klClose")
+                | "get-time"        -> Some(builtin "klGetTime")
+                | "+"               -> Some(builtin "klAdd")
+                | "-"               -> Some(builtin "klSubtract")
+                | "*"               -> Some(builtin "klMultiply")
+                | "/"               -> Some(builtin "klDivide")
+                | ">"               -> Some(builtin "klGreaterThan")
+                | "<"               -> Some(builtin "klLessThan")
+                | ">="              -> Some(builtin "klGreaterThanEqual")
+                | "<="              -> Some(builtin "klLessThanEqual")
+                | "number?"         -> Some(builtin "klIsNumber")
+                | _                 -> None
             match f with
             | SymbolExpr op ->
                 match primitiveOp op with
