@@ -4,7 +4,8 @@ language: csharp
 solution: ShenSharp.sln
 install:
   - nuget restore ShenSharp.sln
-  - nuget install NUnit.Runners -Version 3.0.0 -OutputDirectory testrunner
+  - nuget install NUnit.Runners -Version 3.2.0 -OutputDirectory testrunner
 script:
   - xbuild /p:Configuration=Release ShenSharp.sln
-  - mono ./testrunner/NUnit.Console.3.0.0/tools/nunit3-console.exe ./Kl/bin/Release/Kl.dll
+  - mono ./testrunner/NUnit.Console.3.2.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/Kl.Tests.dll
+  - mono ./testrunner/NUnit.Console.3.2.0/tools/nunit3-console.exe ./KlCompiler.Tests/bin/Release/KlCompiler.Tests.dll
