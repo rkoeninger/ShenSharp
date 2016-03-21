@@ -28,6 +28,17 @@ type FsConst =
     static member Int32(x: int) =
         SynExpr.Const(SynConst.Int32(x), FsAst.defaultRange)
 
+    static member String(x: string) =
+        SynExpr.Const(SynConst.String(x, FsAst.defaultRange), FsAst.defaultRange)
+        
+type FsType =
+
+    static member Of(typeName: string) =
+        SynType.LongIdent(
+            LongIdentWithDots.LongIdentWithDots(
+                [new Ident(typeName, FsAst.defaultRange)],
+                []))
+
 type FsModule =
 
     static member Of(name: string, members: SynModuleDecls) =
@@ -62,10 +73,7 @@ type FsModule =
                         false,
                         None,
                         FsAst.defaultRange),
-                    SynType.LongIdent(
-                        LongIdentWithDots.LongIdentWithDots(
-                            [new Ident(typ, FsAst.defaultRange)],
-                            [])),
+                    FsType.Of(typ),
                     FsAst.defaultRange),
                 FsAst.defaultRange)
         let ctorArgs = List.map eachCtorArg args
@@ -77,7 +85,7 @@ type FsModule =
                 SynConstructorArgs.Pats(ctorArgs),
                 None,
                 FsAst.defaultRange)
-        let returnType = SynType.LongIdent(LongIdentWithDots.LongIdentWithDots([new Ident("KlValue", FsAst.defaultRange)], []))
+        let returnType = FsType.Of("KlValue")
         let returnInfo = SynBindingReturnInfo.SynBindingReturnInfo(returnType, FsAst.defaultRange, [])
         let binding =
             SynBinding.Binding(
@@ -98,10 +106,6 @@ type FsModule =
     static member LetRec(bindings: SynBinding list) =
         SynModuleDecl.Let(true, bindings, FsAst.defaultRange)
 
-open Microsoft.FSharp.Quotations
-open Microsoft.FSharp.Quotations.DerivedPatterns
-open Microsoft.FSharp.Quotations.Patterns
-
 type FsExpr =
 
     static member Paren(expr: SynExpr) =
@@ -109,6 +113,16 @@ type FsExpr =
 
     static member Id(id: string) =
         SynExpr.Ident(new Ident(id, FsAst.defaultRange))
+
+    static member LongId(ids: string list) =
+        let ident id = new Ident(id, FsAst.defaultRange)
+        SynExpr.LongIdent(
+            false,
+            LongIdentWithDots.LongIdentWithDots(
+                List.map ident ids,
+                List.replicate ((ids.Length) - 1) FsAst.defaultRange),
+            None,
+            FsAst.defaultRange)
 
     static member Let(bindings: SynBinding list, body: SynExpr) =
         SynExpr.LetOrUse(false, false, bindings, body, FsAst.defaultRange)
@@ -121,6 +135,16 @@ type FsExpr =
 
     static member List(exprs: SynExpr list) =
         SynExpr.ArrayOrList(false, exprs, FsAst.defaultRange)
+
+    static member If(condition: SynExpr, ifTrue: SynExpr, ifFalse: SynExpr) =
+        SynExpr.IfThenElse(
+            condition,
+            ifTrue,
+            Some ifFalse,
+            SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
+            false,
+            FsAst.defaultRange,
+            FsAst.defaultRange)
 
     static member App(f0: SynExpr, args0: SynExpr list) =
         let rec buildApply f args =
@@ -135,7 +159,10 @@ type FsExpr =
             | first :: rest ->
                 buildApply (SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, first, FsAst.defaultRange)) rest
             | _ -> failwith "must have at least one argument"
-        SynExpr.Paren(buildApply f0 args0, FsAst.defaultRange, Some FsAst.defaultRange, FsAst.defaultRange)
+        FsExpr.Paren(buildApply f0 args0)
+
+    static member Constructor(typeName: string, arg: SynExpr) =
+        SynExpr.New(false, FsType.Of(typeName), arg, FsAst.defaultRange)
 
     static member Infix(lhs: SynExpr, op: SynExpr, rhs: SynExpr) =
         FsExpr.App(op, [lhs; rhs])
@@ -211,68 +238,22 @@ module KlCompiler =
         | DecimalExpr d -> FsExpr.App(longIdExpr ["KlValue"; "DecimalValue"], [SynExpr.Const(SynConst.Decimal d, range.Zero)])
         | StringExpr s -> FsExpr.App(longIdExpr ["KlValue"; "StringValue"], [SynExpr.Const(SynConst.String(s, range.Zero), range.Zero)]) // TODO escape special chars
         | SymbolExpr s -> idExpr (klToFsId s)
-        | AndExpr(left, right) -> FsExpr.App(FsExpr.Id("op_BooleanAnd"), [build left |> seBool; build right |> seBool])
-        | OrExpr(left, right) -> FsExpr.App(FsExpr.Id("op_BooleanOr"), [build left |> seBool; build right |> seBool])
-        | IfExpr(condition, ifTrue, ifFalse) ->
-            SynExpr.IfThenElse(
-                build condition,
-                build ifTrue,
-                build ifFalse |> Some,
-                SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
-                false,
-                FsAst.defaultRange,
-                FsAst.defaultRange)
+        | AndExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanAnd"), build right |> seBool)
+        | OrExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanOr"), build right |> seBool)
+        | IfExpr(condition, ifTrue, ifFalse) -> FsExpr.If(build condition |> seBool, build ifTrue, build ifFalse)
         | CondExpr(clauses) ->
             let rec buildClauses = function
-                | (condition, ifTrue) :: rest ->
-                    SynExpr.IfThenElse(
-                        build condition,
-                        build ifTrue,
-                        buildClauses rest |> Some,
-                        SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
-                        false,
-                        range.Zero,
-                        range.Zero)
-                | [] ->
-                    SynExpr.App(
-                        ExprAtomicFlag.NonAtomic,
-                        false,
-                        idExpr "failwith",
-                        SynExpr.Const(SynConst.String("No condition was true", range.Zero), range.Zero),
-                        range.Zero)
+                | (condition, ifTrue) :: rest -> FsExpr.If(build condition |> seBool, build ifTrue, buildClauses rest)
+                | [] -> FsExpr.App(idExpr "failwith", [FsConst.String("No condition was true")])
             buildClauses clauses
-        | LetExpr(symbol, binding, body) ->
-            SynExpr.LetOrUse(
-                false,
-                false,
-                [SynBinding.Binding(
-                    None,
-                    SynBindingKind.NormalBinding,
-                    false,
-                    false,
-                    [],
-                    PreXmlDoc.Empty,
-                    SynValData.SynValData(
-                        None,
-                        SynValInfo.SynValInfo([], SynArgInfo.SynArgInfo([], false, None)),
-                        None),
-                    SynPat.Named(
-                        SynPat.Wild range.Zero,
-                        new Ident(symbol, range.Zero),
-                        false,
-                        None,
-                        range.Zero),
-                    None,
-                    build binding,
-                    range.Zero,
-                    SequencePointInfoForBinding.NoSequencePointAtLetBinding)],
-                build body,
-                range.Zero)
+        | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) -> failwith "lambda not impl"
             (*SynExpr.Lambda(false, false, [], body, FsAst.defaultRange)*)
         | DefunExpr(symbol, paramz, body) -> failwith "defun compilation not implemented"
         | FreezeExpr(expr) -> failwith "freeze compilation not implemented"
+            //FsExpr.App(longIdExpr ["KlValue"; "FunctionValue"]; [FsExpr.Constructor("Function", )])
         | TrapExpr(pos, t, c) -> failwith "trap compilation not implemented"
+            
         | AppExpr(pos, f, args) ->
             let primitiveOp op =
                 match op with

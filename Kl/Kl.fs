@@ -291,16 +291,18 @@ module KlBuiltins =
     let klStringToInt = function
         | [StringValue s] -> s.[0] |> int |> IntValue
         | _ -> invalidArgs ()
-    let klSet env = function
-        | [SymbolValue s; x] -> env.SymbolDefinitions.[s] <- x
+    let klSet2 (symbols: Globals) = function
+        | [SymbolValue s; x] -> symbols.[s] <- x
                                 x
         | _ -> invalidArgs ()
-    let klValue env = function
+    let klSet env = klSet2 env.SymbolDefinitions
+    let klValue2 (globals: Globals) = function
         | [SymbolValue s] ->
-            match env.SymbolDefinitions.GetMaybe(s) with
+            match globals.GetMaybe(s) with
             | Some v -> ValueResult v
             | None -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
         | _ -> invalidArgs ()
+    let klValue env = klValue2 env.SymbolDefinitions
     let klSimpleError = function
         | [StringValue s] -> ErrorResult s
         | _ -> invalidArgs ()
@@ -538,15 +540,11 @@ module KlBuiltins =
         | _ -> invalidArgs()
     let klFillVector = function
         | [VectorValue array as vector; IntValue stop; IntValue start; fillValue] ->
-            for i = start to stop do
-                array.[i] <- fillValue
+            Array.fill array start (stop - start) fillValue
             vector
         | _ -> invalidArgs()
     let rec klElement = function
         | [_; EmptyValue] -> falseV
-        | [element; ConsValue(head, tail)] ->
-            if klEq element head then
-                trueV
-            else
-                klElement [element; tail]
+        | [key; ConsValue(head, _)] when klEq key head -> trueV
+        | [key; ConsValue(_, tail)] -> klElement [key; tail]
         | _ -> invalidArgs()
