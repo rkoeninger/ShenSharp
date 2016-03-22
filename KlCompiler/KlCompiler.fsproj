@@ -49,9 +49,9 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <Compile Include="Compiler.fs" />
-    <None Include="packages.config" />
     <None Include="app.config" />
+    <None Include="packages.config" />
+    <Compile Include="Compiler.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FantomasLib">
