@@ -19,9 +19,19 @@ type CompilerTests() =
     member this.CompilerServicesBuildAst() =
         let p = KlTokenizer.tokenize >> KlParser.parse Head >> KlCompiler.build
         let r = AndExpr(BoolExpr true, BoolExpr false) |> KlCompiler.build
-        let fileName = "..\\..\\test.fs"
-        let text = File.ReadAllText(fileName)
-        let parsedInput = Fantomas.CodeFormatter.Parse(fileName, text)
+        let text = """
+namespace Testing
+
+open Kl
+
+module Test =
+    let d = new DateTime()
+    let e = true && true
+    let rec f (y:int) = if y >= 0 then y else f (y + 1)
+    and g x y = if y = 1 then x else x + (y - 1 |> g x)
+    let h = 123
+        """
+        let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
         let ast = FsFile.Of(
                       "ShenNs",
                       [FsModule.Of(
