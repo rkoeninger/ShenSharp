@@ -7,5 +7,6 @@ install:
   - nuget install NUnit.Runners -Version 3.2.0 -OutputDirectory testrunner
 script:
   - xbuild /p:Configuration=Release ShenSharp.sln
-  - mono ./testrunner/NUnit.ConsoleRunner.3.2.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/Kl.Tests.dll
-  - mono ./testrunner/NUnit.ConsoleRunner.3.2.0/tools/nunit3-console.exe ./KlCompiler.Tests/bin/Release/KlCompiler.Tests.dll
+  - mono ./testrunner/NUnit.ConsoleRunner.3.2.0/tools/nunit3-console.exe \
+    ./Kl.Tests/bin/Release/Kl.Tests.dll \
+    ./KlCompiler.Tests/bin/Release/KlCompiler.Tests.dll
