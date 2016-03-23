@@ -103,11 +103,11 @@ type KlTests() =
         let lazinessTest syntax expectedBool expectedResults =
             let env = baseEnv ()
             runInEnv env "(defun do (X Y) Y)" |> ignore
-            env.SymbolDefinitions.["results"] <- EmptyValue
+            env.Globals.Symbols.["results"] <- EmptyValue
             match runInEnv env syntax with
             | ValueResult (BoolValue b) ->
                 Assert.IsTrue((b && expectedBool) || not(b || expectedBool))
-                let results = env.SymbolDefinitions.["results"] |> consToArray
+                let results = env.Globals.Symbols.["results"] |> consToArray
                 Assert.IsTrue(arrayEqual expectedResults results)
             | _ -> Assert.Fail()
 
@@ -122,19 +122,19 @@ type KlTests() =
     [<Test>]
     member this.DefunAndResolutionOfDefinedFunctions() =
         let env = emptyEnv ()
-        env.FunctionDefinitions.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
-                                                             | _             -> failwith "must be bool")
+        env.Globals.Functions.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
+                                                                     | _             -> failwith "must be bool")
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
     [<Test>]
     member this.SymbolResolution() =
         let env = emptyEnv ()
-        env.FunctionDefinitions.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueW
-                                                                 | _               -> falseW)
+        env.Globals.Functions.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueW
+                                                                         | _               -> falseW)
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
-        env.FunctionDefinitions.["id"] <- funcV 1 (function | [x] -> ValueResult x |> Completed
-                                                            | _   -> failwith "must be 1 arg")
+        env.Globals.Functions.["id"] <- funcV 1 (function | [x] -> ValueResult x |> Completed
+                                                                    | _   -> failwith "must be 1 arg")
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<Test>]

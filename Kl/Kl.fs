@@ -28,7 +28,8 @@ type KlExpr = EmptyExpr
 type [<ReferenceEquality>] InStream = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
 
-type Globals = System.Collections.Generic.Dictionary<string, KlValue>
+type Defines = System.Collections.Generic.Dictionary<string, KlValue>
+and Globals = {Symbols: Defines; Functions: Defines}
 and Locals = Map<string, KlValue> list
 and Function(name: string, arity: int, f: KlValue list -> Work) =
     member this.Name = name
@@ -54,7 +55,7 @@ and Result = ValueResult of KlValue
 and Work = Completed of Result
          | Pending   of Thunk
 
-type Env = {SymbolDefinitions: Globals; FunctionDefinitions: Globals; Locals: Locals}
+type Env = {Globals: Globals; Locals: Locals}
 
 // TODO find some other way to do this
 type FunctionResolveResult = FunctionResult of Function
@@ -165,7 +166,7 @@ module KlEvaluator =
     let vFunc (env: Env) = function
         | FunctionValue f -> FunctionResult f
         | SymbolValue s ->
-            match env.FunctionDefinitions.GetMaybe(s) with
+            match env.Globals.Functions.GetMaybe(s) with
             | Some (FunctionValue f) -> FunctionResult f
             | Some _ -> sprintf "Symbol \"%s\" does not represent function" s |> FunctionResolveError
             | None -> sprintf "Symbol \"%s\" is undefined" s |> FunctionResolveError
@@ -227,7 +228,7 @@ module KlEvaluator =
         | LambdaExpr (param, body) -> closure evalw env [param] body |> ValueResult |> Completed
         | DefunExpr (name, paramz, body) ->
             let f = closure evalw env paramz body
-            env.FunctionDefinitions.[name] <- f
+            env.Globals.Functions.[name] <- f
             f |> ValueResult |> Completed
         | FreezeExpr expr -> closure evalw env [] expr |> ValueResult |> Completed
         | TrapExpr (pos, body, handler) ->
@@ -291,18 +292,16 @@ module KlBuiltins =
     let klStringToInt = function
         | [StringValue s] -> s.[0] |> int |> IntValue
         | _ -> invalidArgs ()
-    let klSet2 (symbols: Globals) = function
+    let klSet (symbols: Defines) = function
         | [SymbolValue s; x] -> symbols.[s] <- x
                                 x
         | _ -> invalidArgs ()
-    let klSet env = klSet2 env.SymbolDefinitions
-    let klValue2 (globals: Globals) = function
+    let klValue (symbols: Defines) = function
         | [SymbolValue s] ->
-            match globals.GetMaybe(s) with
+            match symbols.GetMaybe(s) with
             | Some v -> ValueResult v
             | None -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
         | _ -> invalidArgs ()
-    let klValue env = klValue2 env.SymbolDefinitions
     let klSimpleError = function
         | [StringValue s] -> ErrorResult s
         | _ -> invalidArgs ()
@@ -482,10 +481,10 @@ module KlBuiltins =
         | (name, value) :: defs ->
             globals.[name] <- value
             install globals defs
-    let emptyEnv () = {SymbolDefinitions = new Globals(); FunctionDefinitions = new Globals(); Locals = []}
+    let emptyEnv () = {Globals = {Symbols = new Defines(); Functions = new Defines()}; Locals = []}
     let baseEnv () =
         let env = emptyEnv ()
-        install env.FunctionDefinitions [
+        install env.Globals.Functions [
             funV "intern"          1 klIntern
             funR "pos"             2 klStringPos
             funV "tlstr"           1 klStringTail
@@ -494,8 +493,8 @@ module KlBuiltins =
             funV "string?"         1 klIsString
             funV "n->string"       1 klIntToString
             funV "string->n"       1 klStringToInt
-            funV "set"             2 (klSet env)
-            funR "value"           1 (klValue env)
+            funV "set"             2 (klSet env.Globals.Symbols)
+            funR "value"           1 (klValue env.Globals.Symbols)
             funR "simple-error"    1 klSimpleError
             funV "error-to-string" 1 klErrorToString
             funV "cons"            2 klNewCons
@@ -524,7 +523,7 @@ module KlBuiltins =
             funV "<="              2 klLessThanEqual
             funV "number?"         1 klIsNumber
         ]
-        install env.SymbolDefinitions [
+        install env.Globals.Symbols [
             "*language*",       "F# 3.1" |> StringValue
             "*implementation*", "CLR " + Environment.Version.ToString() |> StringValue
             "*port*",           "0.1" |> StringValue

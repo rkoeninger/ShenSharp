@@ -9,6 +9,11 @@ open Microsoft.FSharp.Compiler.Range
 
 module FsAst =
     let defaultRange = mkFileIndexRange 50 (mkPos 100 100) (mkPos 200 200)
+    let longIdDots ids = 
+        let ident id = new Ident(id, defaultRange)
+        LongIdentWithDots.LongIdentWithDots(
+            List.map ident ids,
+            List.replicate ((ids.Length) - 1) defaultRange)
 
 type FsFile =
 
@@ -33,6 +38,9 @@ type FsConst =
         
 type FsType =
 
+    static member ListOf(typeArg: SynType) =
+        SynType.App(SynType.LongIdent(FsAst.longIdDots ["list"]), None, [typeArg], [FsAst.defaultRange], None, true, FsAst.defaultRange)
+    
     static member Of(typeName: string) =
         SynType.LongIdent(
             LongIdentWithDots.LongIdentWithDots(
@@ -133,8 +141,33 @@ type FsExpr =
     static member Const(constant: SynConst) =
         SynExpr.Const(constant, FsAst.defaultRange)
 
+    static member Tuple(exprs: SynExpr list) =
+        FsExpr.Paren(SynExpr.Tuple(exprs, List.replicate exprs.Length FsAst.defaultRange, FsAst.defaultRange))
+
     static member List(exprs: SynExpr list) =
         SynExpr.ArrayOrList(false, exprs, FsAst.defaultRange)
+
+    static member Lambda(body: SynExpr) =
+        SynExpr.Lambda(
+            false,
+            false,
+            SynSimplePats.Typed(
+                SynSimplePats.SimplePats(
+                    [SynSimplePat.Typed(
+                        SynSimplePat.Id(
+                            new Ident("args", FsAst.defaultRange),
+                            None,
+                            true,
+                            false,
+                            false,
+                            FsAst.defaultRange),
+                        FsType.ListOf(FsType.Of("KlValue")),
+                        FsAst.defaultRange)],
+                    FsAst.defaultRange),
+                FsType.Of("Work"),
+                FsAst.defaultRange),
+            body,
+            FsAst.defaultRange)
 
     static member If(condition: SynExpr, ifTrue: SynExpr, ifFalse: SynExpr) =
         SynExpr.IfThenElse(
@@ -162,7 +195,7 @@ type FsExpr =
         FsExpr.Paren(buildApply f0 args0)
 
     static member Constructor(typeName: string, arg: SynExpr) =
-        SynExpr.New(false, FsType.Of(typeName), arg, FsAst.defaultRange)
+        FsExpr.Paren(SynExpr.New(false, FsType.Of(typeName), arg, FsAst.defaultRange))
 
     static member Infix(lhs: SynExpr, op: SynExpr, rhs: SynExpr) =
         FsExpr.App(op, [lhs; rhs])
@@ -250,10 +283,14 @@ module KlCompiler =
         | LambdaExpr(symbol, body) -> failwith "lambda not impl"
             (*SynExpr.Lambda(false, false, [], body, FsAst.defaultRange)*)
         | DefunExpr(symbol, paramz, body) -> failwith "defun compilation not implemented"
-        | FreezeExpr(expr) -> failwith "freeze compilation not implemented"
-            //FsExpr.App(longIdExpr ["KlValue"; "FunctionValue"]; [FsExpr.Constructor("Function", )])
+        | FreezeExpr(expr) ->
+            FsExpr.App(
+                longIdExpr ["KlValue"; "FunctionValue"],
+                [FsExpr.Constructor("Function",
+                                    FsExpr.Tuple([FsConst.String("Anonymous");
+                                                  FsConst.Int32(0);
+                                                  FsExpr.Lambda(build expr)]))])
         | TrapExpr(pos, t, c) -> failwith "trap compilation not implemented"
-            
         | AppExpr(pos, f, args) ->
             let primitiveOp op =
                 match op with
@@ -265,8 +302,8 @@ module KlCompiler =
                 | "string?"         -> Some(builtin "klIsString")
                 | "n->string"       -> Some(builtin "klIntToString")
                 | "string->n"       -> Some(builtin "klStringToInt")
-                | "set"             -> Some(builtin "klSet") // needs env
-                | "value"           -> Some(builtin "klValue") // needs env
+                | "set"             -> Some(builtin "klSet") // needs env.Globals.Symbols
+                | "value"           -> Some(builtin "klValue") // needs env.Globals.Functions
                 | "simple-error"    -> Some(builtin "klSimpleError")
                 | "error-to-string" -> Some(builtin "klErrorToString")
                 | "cons"            -> Some(builtin "klNewCons")

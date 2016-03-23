@@ -26,6 +26,7 @@ open Kl
 
 module Test =
     let d = new DateTime()
+    let t = (1, 2)
     let e = true && true
     let rec f (y:int) = if y >= 0 then y else f (y + 1)
     and g x y = if y = 1 then x else x + (y - 1 |> g x)
@@ -79,6 +80,34 @@ module Test =
             let fields = types.[0].GetFields()
             let v = props.[0].GetValue(null)
             Assert.AreEqual(false, v)
+            ()
+        with
+            ex -> printfn "%s" <| ex.ToString()
+                  assert false
+        ()
+
+    [<Test>]
+    [<Ignore("")>]
+    member this.BuildFreezeExpr() =
+        let kl = KlExpr.FreezeExpr(KlExpr.AppExpr(Head, KlExpr.SymbolExpr "number?", [KlExpr.StringExpr "hi"]))
+        let syn = KlCompiler.build kl
+        let ast =
+            FsFile.Of(
+                "KlExprTest",
+                [FsModule.Of(
+                    "KlExprTestMod",
+                    [openKl
+                     FsModule.SingleLet("z", [], syn)])])
+        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        try
+            let s = new SimpleSourceCodeServices()
+            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+            let types = asm.Value.GetTypes()
+            let methods = types.[0].GetMethods()
+            let props = types.[0].GetProperties()
+            let fields = types.[0].GetFields()
+            let v = props.[0].GetValue(null)
+            //Assert.AreEqual(false, v)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()
