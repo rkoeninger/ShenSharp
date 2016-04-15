@@ -204,7 +204,7 @@ type FsBinding =
 
     static member Of(symbol: string, body: SynExpr) =
         SynBinding.Binding(
-            Some(SynAccess.Public),
+            None, //Some(SynAccess.Public), // TODO: need to distinguish between module-level binds and expr-level
             SynBindingKind.NormalBinding,
             false,
             false,

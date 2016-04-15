@@ -48,6 +48,7 @@ module Test =
                                   KlExpr.SymbolExpr "+",
                                   [SymbolExpr "x"; SymbolExpr "y"])))])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
@@ -72,6 +73,7 @@ module Test =
                     [openKl
                      FsModule.SingleLet("z", [], syn)])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -101,6 +103,7 @@ module Test =
                     [openKl
                      FsModule.SingleLet("z", [], syn)])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -129,6 +132,7 @@ module Test =
                     [openKl
                      FsModule.SingleLet("z", ["KlValue", "x"], syn)])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -143,6 +147,35 @@ module Test =
             Assert.AreEqual(KlValue.StringValue "negative", v2)
             let v3 = methods.[0].Invoke(null, [|KlValue.IntValue(0)|])
             Assert.AreEqual(KlValue.StringValue "zero", v3)
+            ()
+        with
+            ex -> printfn "%s" <| ex.ToString()
+                  assert false
+        ()
+
+    [<Test>]
+    member this.BuildLetExpr() =
+        let kl = "(let x 5 (if (> x 0) \"positive\" \"non-positive\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
+        let syn = KlCompiler.build kl
+        let ast =
+            FsFile.Of(
+                "KlExprTest",
+                [FsModule.Of(
+                    "KlExprTestMod",
+                    [openKl
+                     FsModule.SingleLet("z", [], syn)])])
+        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        System.Console.WriteLine(str)
+        try
+            let s = new SimpleSourceCodeServices()
+            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+            Assert.IsEmpty(errors)
+            let types = asm.Value.GetTypes()
+            let methods = types.[0].GetMethods()
+            let props = types.[0].GetProperties()
+            let fields = types.[0].GetFields()
+            let v = props.[0].GetValue(null)
+            Assert.AreEqual(KlValue.StringValue "positive", v)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()
