@@ -276,6 +276,8 @@ module KlCompiler =
         | IfExpr(condition, ifTrue, ifFalse) -> FsExpr.If(build condition |> seBool, build ifTrue, build ifFalse)
         | CondExpr(clauses) ->
             let rec buildClauses = function
+                | (BoolExpr false, _) :: rest -> buildClauses rest
+                | (BoolExpr true, ifTrue) :: _ -> build ifTrue
                 | (condition, ifTrue) :: rest -> FsExpr.If(build condition |> seBool, build ifTrue, buildClauses rest)
                 | [] -> FsExpr.App(idExpr "failwith", [FsConst.String("No condition was true")])
             buildClauses clauses
