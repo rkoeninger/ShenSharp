@@ -14,6 +14,13 @@ type CompilerTests() =
 
     let openKl = SynModuleDecl.Open(LongIdentWithDots.LongIdentWithDots([new Ident("Kl", FsAst.defaultRange)], []), FsAst.defaultRange)
     let formatConfig = Fantomas.FormatConfig.FormatConfig.create(4, 160, false, true, true, true, true, true, false, false, true)
+    let singleBinding args syn =
+        FsFile.Of(
+                "KlExprTest",
+                [FsModule.Of(
+                    "KlExprTestMod",
+                    [openKl
+                     FsModule.SingleLet("z", args, syn)])])
 
     [<Test>]
     member this.CompilerServicesBuildAst() =
@@ -25,6 +32,10 @@ namespace Testing
 open Kl
 
 module Test =
+    let thing =
+        printfn "hi"
+        printfn "asd"
+        ()
     let d = new DateTime()
     let t = (1, 2)
     let e = true && true
@@ -65,13 +76,7 @@ module Test =
     member this.KlExprToSynExpr() =
         let kl = KlExpr.AndExpr(KlExpr.BoolExpr true, KlExpr.BoolExpr false)
         let syn = KlCompiler.build kl
-        let ast =
-            FsFile.Of(
-                "KlExprTest",
-                [FsModule.Of(
-                    "KlExprTestMod",
-                    [openKl
-                     FsModule.SingleLet("z", [], syn)])])
+        let ast = singleBinding [] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -95,13 +100,7 @@ module Test =
     member this.BuildFreezeExpr() =
         let kl = KlExpr.FreezeExpr(KlExpr.AppExpr(Head, KlExpr.SymbolExpr "number?", [KlExpr.StringExpr "hi"]))
         let syn = KlCompiler.build kl
-        let ast =
-            FsFile.Of(
-                "KlExprTest",
-                [FsModule.Of(
-                    "KlExprTestMod",
-                    [openKl
-                     FsModule.SingleLet("z", [], syn)])])
+        let ast = singleBinding [] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -124,13 +123,7 @@ module Test =
     member this.BuildCondExpr() =
         let kl = "(cond ((> x 0) \"positive\") ((< x 0) \"negative\") (true \"zero\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
-        let ast =
-            FsFile.Of(
-                "KlExprTest",
-                [FsModule.Of(
-                    "KlExprTestMod",
-                    [openKl
-                     FsModule.SingleLet("z", ["KlValue", "x"], syn)])])
+        let ast = singleBinding ["KlValue", "x"] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -157,13 +150,7 @@ module Test =
     member this.BuildLetExpr() =
         let kl = "(let x 5 (if (> x 0) \"positive\" \"non-positive\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
-        let ast =
-            FsFile.Of(
-                "KlExprTest",
-                [FsModule.Of(
-                    "KlExprTestMod",
-                    [openKl
-                     FsModule.SingleLet("z", [], syn)])])
+        let ast = singleBinding [] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -180,4 +167,12 @@ module Test =
         with
             ex -> printfn "%s" <| ex.ToString()
                   assert false
+        ()
+
+    [<Ignore("relative paths don't work on travis-ci")>]
+    [<Test>]
+    member this.BuildModule() =
+        let src = System.IO.File.ReadAllText(@"..\..\..\KLambda\toplevel.kl")
+        let exprs = src |> KlTokenizer.tokenizeAll |> List.map (KlParser.parse Head)
+        let decls = KlCompiler.buildModule exprs
         ()

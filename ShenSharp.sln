@@ -13,6 +13,24 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl.Tests", "Kl.Tests\Kl.Tes
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "KlCompiler.Tests", "KlCompiler.Tests\KlCompiler.Tests.fsproj", "{FF3B0057-6835-476D-B772-0E12C5179C56}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "KLambda", "KLambda", "{EA193698-DB88-4A4D-9F1D-AC724FDEA294}"
+	ProjectSection(SolutionItems) = preProject
+		KLambda\core.kl = KLambda\core.kl
+		KLambda\declarations.kl = KLambda\declarations.kl
+		KLambda\load.kl = KLambda\load.kl
+		KLambda\macros.kl = KLambda\macros.kl
+		KLambda\prolog.kl = KLambda\prolog.kl
+		KLambda\reader.kl = KLambda\reader.kl
+		KLambda\sequent.kl = KLambda\sequent.kl
+		KLambda\sys.kl = KLambda\sys.kl
+		KLambda\t-star.kl = KLambda\t-star.kl
+		KLambda\toplevel.kl = KLambda\toplevel.kl
+		KLambda\track.kl = KLambda\track.kl
+		KLambda\types.kl = KLambda\types.kl
+		KLambda\writer.kl = KLambda\writer.kl
+		KLambda\yacc.kl = KLambda\yacc.kl
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

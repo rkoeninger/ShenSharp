@@ -35,6 +35,8 @@ type FsConst =
 
     static member String(x: string) =
         SynExpr.Const(SynConst.String(x, FsAst.defaultRange), FsAst.defaultRange)
+
+    static member Unit = SynExpr.Const(SynConst.Unit, FsAst.defaultRange)
         
 type FsType =
 
@@ -132,6 +134,9 @@ type FsExpr =
             None,
             FsAst.defaultRange)
 
+    static member ConsSequential(expr0: SynExpr, expr1: SynExpr) =
+        SynExpr.Sequential(SequencePointsAtSeq, true, expr0, expr1, FsAst.defaultRange)
+
     static member Let(bindings: SynBinding list, body: SynExpr) =
         SynExpr.LetOrUse(false, false, bindings, body, FsAst.defaultRange)
         
@@ -204,7 +209,7 @@ type FsBinding =
 
     static member Of(symbol: string, body: SynExpr) =
         SynBinding.Binding(
-            None, //Some(SynAccess.Public), // TODO: need to distinguish between module-level binds and expr-level
+            None,
             SynBindingKind.NormalBinding,
             false,
             false,
@@ -252,7 +257,7 @@ module KlCompiler =
                 List.replicate ((ids.Length) - 1) FsAst.defaultRange),
             None,
             FsAst.defaultRange)
-    let rec build expr =
+    let rec build expr = // Throws on DefunExpr
         let klToFsId (klId:string) =
             klId.Replace("?", "_P_")
                 .Replace("<", "_LT_")
@@ -265,7 +270,7 @@ module KlCompiler =
         let builtin id = longIdExpr ["KlBuiltins"; id]
         let seBool synExpr = FsExpr.App(builtin "vBool", [synExpr])
         match expr with
-        | EmptyExpr -> idExpr "EmptyValue"
+        | EmptyExpr -> longIdExpr ["KlValue"; "EmptyValue"]
         | BoolExpr b -> FsExpr.App(longIdExpr ["KlValue"; "BoolValue"], [SynExpr.Const(SynConst.Bool b, range.Zero)])
         | IntExpr i -> FsExpr.App(longIdExpr ["KlValue"; "IntValue"], [SynExpr.Const(SynConst.Int32 i, range.Zero)])
         | DecimalExpr d -> FsExpr.App(longIdExpr ["KlValue"; "DecimalValue"], [SynExpr.Const(SynConst.Decimal d, range.Zero)])
@@ -284,7 +289,7 @@ module KlCompiler =
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) -> failwith "lambda not impl"
             (*SynExpr.Lambda(false, false, [], body, FsAst.defaultRange)*)
-        | DefunExpr(symbol, paramz, body) -> failwith "defun compilation not implemented"
+        | DefunExpr(symbol, paramz, body) -> failwith "Defun expr must be at top level"
         | FreezeExpr(expr) ->
             FsExpr.App(
                 longIdExpr ["KlValue"; "FunctionValue"],
@@ -305,7 +310,7 @@ module KlCompiler =
                 | "n->string"       -> Some(builtin "klIntToString")
                 | "string->n"       -> Some(builtin "klStringToInt")
                 | "set"             -> Some(builtin "klSet") // needs env.Globals.Symbols
-                | "value"           -> Some(builtin "klValue") // needs env.Globals.Functions
+                | "value"           -> Some(builtin "klValue") // needs env.Globals.Symbols
                 | "simple-error"    -> Some(builtin "klSimpleError")
                 | "error-to-string" -> Some(builtin "klErrorToString")
                 | "cons"            -> Some(builtin "klNewCons")
@@ -339,4 +344,26 @@ module KlCompiler =
                 match primitiveOp op with
                 | Some(op) -> FsExpr.Paren(FsExpr.App(op, [FsExpr.List(List.map build args)]))
                 | _ -> failwith "unrecognized op or number of args"
-            | _ -> failwith "can't support function"
+            | _ -> failwith "application expression or special form must start with symbol"
+    let topLevelBuild expr =
+        match expr with
+        | DefunExpr(symbol, paramz, body) ->
+            let typedParamz = List.map (fun p -> "KlValue", p) paramz
+            FsModule.SingleLet(symbol, typedParamz, build body)
+        | expr -> failwith "not a defun expr"
+    let buildInit exprs =
+        let rec buildSeq exprs =
+            match exprs with
+            | expr :: rest -> FsExpr.ConsSequential(expr, buildSeq rest)
+            | [] -> FsConst.Unit
+        FsModule.SingleLet("init", ["unit", "x"], buildSeq exprs)
+    let buildModule exprs =
+        let isDefun = function
+            | DefunExpr _ -> true
+            | _ -> false
+        let isApp = function
+            | AppExpr _ -> true
+            | _ -> false
+        let decls = exprs |> List.filter isDefun |> List.map topLevelBuild
+        let init = exprs |> List.filter isApp |> List.map build |> buildInit
+        List.append decls [init]
