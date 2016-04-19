@@ -181,7 +181,7 @@ module Test =
     [<Test>]
     member this.BuildModule() =
         let src = System.IO.File.ReadAllText(@"..\..\..\KLambda\toplevel.kl")
-        let exprs = src |> KlTokenizer.tokenizeAll |> List.map (KlParser.parse Head) |> Seq.take 3 |> Seq.toList
+        let exprs = src |> KlTokenizer.tokenizeAll |> List.map (KlParser.parse Head) |> Seq.take 6 |> Seq.toList
         let parsedInput = KlCompiler.buildModule exprs
         let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
         System.Console.WriteLine(str)

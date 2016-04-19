@@ -278,12 +278,20 @@ module KlCompiler =
                 .TrimEnd('_')
         let builtin id = longIdExpr ["KlBuiltins"; id]
         let seBool synExpr = FsExpr.App(builtin "vBool", [synExpr])
+        let escape s =
+            let escapeChar ch =
+                match ch with
+                | '\n' -> "\\n"
+                | '\r' -> "\\r"
+                | '\t' -> "\\t"
+                | _ -> ch.ToString()
+            String.collect escapeChar s
         match expr with
         | EmptyExpr -> longIdExpr ["KlValue"; "EmptyValue"]
         | BoolExpr b -> FsExpr.App(longIdExpr ["KlValue"; "BoolValue"], [SynExpr.Const(SynConst.Bool b, range.Zero)])
         | IntExpr i -> FsExpr.App(longIdExpr ["KlValue"; "IntValue"], [SynExpr.Const(SynConst.Int32 i, range.Zero)])
         | DecimalExpr d -> FsExpr.App(longIdExpr ["KlValue"; "DecimalValue"], [SynExpr.Const(SynConst.Decimal d, range.Zero)])
-        | StringExpr s -> FsExpr.App(longIdExpr ["KlValue"; "StringValue"], [FsConst.String s]) // TODO escape special chars
+        | StringExpr s -> FsExpr.App(longIdExpr ["KlValue"; "StringValue"], [FsConst.String (escape s)])
         | SymbolExpr s ->
             if System.Char.IsUpper(s.Chars 0) // Let and Defun variables start with uppercase char
                 then idExpr (klToFsId s)
@@ -338,8 +346,8 @@ module KlCompiler =
                 | "string?"         -> Some(builtin "klIsString")
                 | "n->string"       -> Some(builtin "klIntToString")
                 | "string->n"       -> Some(builtin "klStringToInt")
-                | "set"             -> Some(builtin "klSet") // needs env.Globals.Symbols
-                | "value"           -> Some(builtin "klValue") // needs env.Globals.Symbols
+                | "set"             -> Some(builtin "klSet")
+                | "value"           -> Some(builtin "klValue")
                 | "simple-error"    -> Some(builtin "klSimpleError")
                 | "error-to-string" -> Some(builtin "klErrorToString")
                 | "cons"            -> Some(builtin "klNewCons")
@@ -348,7 +356,7 @@ module KlCompiler =
                 | "cons?"           -> Some(builtin "klIsCons")
                 | "="               -> Some(builtin "klEquals")
                 | "type"            -> Some(builtin "klType")
-                | "eval-kl"         -> Some(builtin "klEval") // needs env.Globals
+                | "eval-kl"         -> Some(builtin "klEval")
                 | "absvector"       -> Some(builtin "klNewVector")
                 | "<-address"       -> Some(builtin "klReadVector")
                 | "address->"       -> Some(builtin "klWriteVector")
