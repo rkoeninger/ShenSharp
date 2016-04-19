@@ -35,16 +35,10 @@ type Stuff = Num of int
            | Str of string
 
 module Test =
-    let thing =
-        printfn "hi"
-        printfn "asd"
-        ()
-    let d = new DateTime()
-    let t = (1, 2)
-    let e = true && true
-    let rec f (y:int) = if y >= 0 then y else f (y + 1)
-    and g x y = if y = 1 then x else x + (y - 1 |> g x)
-    let h = 123
+    let (args: Stuff list) =
+        match args with
+        | [X; Y] -> ()
+        | _ -> ()
     let matchStuff xs =
         match xs with
         | Num i -> i.ToString()
@@ -58,9 +52,9 @@ module Test =
                           [openKl
                            FsModule.SingleLet(
                               "f",
-                              ["Globals", "envGlobals"
-                               "KlValue", "X"
-                               "KlValue", "Y"],
+                              ["envGlobals", FsType.Of("Globals")
+                               "X", FsType.Of("KlValue")
+                               "Y", FsType.Of("KlValue")],
                               KlCompiler.build(
                                 KlExpr.AppExpr(
                                   Position.Head,
@@ -84,7 +78,7 @@ module Test =
     member this.KlExprToSynExpr() =
         let kl = KlExpr.AndExpr(KlExpr.BoolExpr true, KlExpr.BoolExpr false)
         let syn = KlCompiler.build kl
-        let ast = singleBinding ["Globals", "envGlobals"] syn
+        let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -108,7 +102,7 @@ module Test =
     member this.BuildFreezeExpr() =
         let kl = KlExpr.FreezeExpr(KlExpr.AppExpr(Head, KlExpr.SymbolExpr "number?", [KlExpr.StringExpr "hi"]))
         let syn = KlCompiler.build kl
-        let ast = singleBinding ["Globals", "envGlobals"] syn
+        let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -131,7 +125,7 @@ module Test =
     member this.BuildCondExpr() =
         let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
-        let ast = singleBinding ["Globals", "envGlobals"; "KlValue", "X"] syn
+        let ast = singleBinding ["envGlobals", FsType.Of("Globals"); "X", FsType.Of("KlValue")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -158,7 +152,7 @@ module Test =
     member this.BuildLetExpr() =
         let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
-        let ast = singleBinding ["Globals", "envGlobals"] syn
+        let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try

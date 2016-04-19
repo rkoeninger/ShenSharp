@@ -64,8 +64,8 @@ type FsModule =
     static member Let(bindings: SynBinding list) =
         SynModuleDecl.Let(false, bindings, FsAst.defaultRange)
 
-    static member SingleLet(name: string, args: (string * string) list, body: SynExpr) =
-        let eachArg (typ, nm) = [SynArgInfo.SynArgInfo([], false, Some(new Ident(nm, FsAst.defaultRange)))]
+    static member SingleLet(name: string, args: (string * SynType) list, body: SynExpr) =
+        let eachArg (nm, _) = [SynArgInfo.SynArgInfo([], false, Some(new Ident(nm, FsAst.defaultRange)))]
         let argInfos = List.map eachArg args
         let valData =
             SynValData.SynValData(
@@ -74,7 +74,7 @@ type FsModule =
                     argInfos,
                     SynArgInfo.SynArgInfo([], false, None)),
                 None)
-        let eachCtorArg (typ, nm) =
+        let eachCtorArg (nm, typ) =
             SynPat.Paren(
                 SynPat.Typed(
                     SynPat.Named(
@@ -83,7 +83,7 @@ type FsModule =
                         false,
                         None,
                         FsAst.defaultRange),
-                    FsType.Of(typ),
+                    typ,
                     FsAst.defaultRange),
                 FsAst.defaultRange)
         let ctorArgs = List.map eachCtorArg args
@@ -153,25 +153,29 @@ type FsExpr =
         SynExpr.ArrayOrList(false, exprs, FsAst.defaultRange)
 
     static member Lambda(body: SynExpr) =
-        SynExpr.Lambda(
-            false,
-            false,
-            SynSimplePats.Typed(
-                SynSimplePats.SimplePats(
-                    [SynSimplePat.Typed(
-                        SynSimplePat.Id(
-                            new Ident("args", FsAst.defaultRange),
-                            None,
-                            true,
-                            false,
-                            false,
-                            FsAst.defaultRange),
-                        FsType.ListOf(FsType.Of("KlValue")),
-                        FsAst.defaultRange)],
+        SynExpr.Paren(
+            SynExpr.Lambda(
+                false,
+                false,
+                SynSimplePats.Typed(
+                    SynSimplePats.SimplePats(
+                        [SynSimplePat.Typed(
+                            SynSimplePat.Id(
+                                new Ident("args", FsAst.defaultRange),
+                                None,
+                                true,
+                                false,
+                                false,
+                                FsAst.defaultRange),
+                            FsType.ListOf(FsType.Of("KlValue")),
+                            FsAst.defaultRange)],
+                        FsAst.defaultRange),
+                    FsType.Of("Work"),
                     FsAst.defaultRange),
-                FsType.Of("Work"),
+                body,
                 FsAst.defaultRange),
-            body,
+            FsAst.defaultRange,
+            None,
             FsAst.defaultRange)
 
     static member If(condition: SynExpr, ifTrue: SynExpr, ifFalse: SynExpr) =
@@ -205,7 +209,6 @@ type FsExpr =
     static member Infix(lhs: SynExpr, op: SynExpr, rhs: SynExpr) =
         FsExpr.App(op, [lhs; rhs])
 
-    // TODO: unused?
     static member Match(key: SynExpr, clauses: SynMatchClause list) =
         SynExpr.Match(
             SequencePointInfoForBinding.SequencePointAtBinding FsAst.defaultRange,
@@ -213,6 +216,32 @@ type FsExpr =
             clauses,
             false,
             FsAst.defaultRange)
+
+type FsPat =
+
+    static member Name(nm: string) =
+        SynPat.LongIdent(
+            LongIdentWithDots.LongIdentWithDots([new Ident(nm, FsAst.defaultRange)], []),
+            None,
+            None,
+            SynConstructorArgs.Pats([]),
+            None,
+            FsAst.defaultRange)
+
+    static member List(items: SynPat list) =
+        SynPat.ArrayOrList(false, items, FsAst.defaultRange)
+
+    static member Wild = SynPat.Wild(FsAst.defaultRange)
+
+type FsMatchClause =
+
+    static member Of(pat: SynPat, body: SynExpr) =
+        SynMatchClause.Clause(
+            pat,
+            None,
+            body,
+            FsAst.defaultRange,
+            SequencePointInfoForTarget.SequencePointAtTarget)
 
 type FsBinding =
 
@@ -239,6 +268,11 @@ type FsBinding =
             FsAst.defaultRange,
             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
 
+type FsFail =
+
+    static member With(s: string) =
+        FsExpr.App(FsExpr.Id("failwith"), [FsConst.String(s)])
+
 module KlCompiler =
     let sscs = new SimpleSourceCodeServices()
     let checker = FSharpChecker.Create()
@@ -256,7 +290,7 @@ module KlCompiler =
         match parseFileResults.ParseTree with
         | Some tree -> tree
         | None -> failwith "Something went wrong during parsing!"
-    let idExpr id = SynExpr.Ident(new Ident(id, range.Zero))
+    let idExpr = FsExpr.Id
     let longIdExpr ids =
         let ident id = new Ident(id, FsAst.defaultRange)
         SynExpr.LongIdent(
@@ -286,6 +320,7 @@ module KlCompiler =
                 | '\t' -> "\\t"
                 | _ -> ch.ToString()
             String.collect escapeChar s
+        let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
         match expr with
         | EmptyExpr -> longIdExpr ["KlValue"; "EmptyValue"]
         | BoolExpr b -> FsExpr.App(longIdExpr ["KlValue"; "BoolValue"], [SynExpr.Const(SynConst.Bool b, range.Zero)])
@@ -293,7 +328,7 @@ module KlCompiler =
         | DecimalExpr d -> FsExpr.App(longIdExpr ["KlValue"; "DecimalValue"], [SynExpr.Const(SynConst.Decimal d, range.Zero)])
         | StringExpr s -> FsExpr.App(longIdExpr ["KlValue"; "StringValue"], [FsConst.String (escape s)])
         | SymbolExpr s ->
-            if System.Char.IsUpper(s.Chars 0) // Let and Defun variables start with uppercase char
+            if isVar s
                 then idExpr (klToFsId s)
                 else FsExpr.App(longIdExpr ["KlValue"; "SymbolValue"], [FsConst.String s])
         | AndExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanAnd"), build right |> seBool)
@@ -304,7 +339,7 @@ module KlCompiler =
                 | (BoolExpr false, _) :: rest -> buildClauses rest
                 | (BoolExpr true, ifTrue) :: _ -> build ifTrue
                 | (condition, ifTrue) :: rest -> FsExpr.If(build condition |> seBool, build ifTrue, buildClauses rest)
-                | [] -> FsExpr.App(idExpr "failwith", [FsConst.String("No condition was true")])
+                | [] -> FsFail.With("No condition was true")
             buildClauses clauses
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) -> //failwith "lambda not impl"
@@ -378,22 +413,29 @@ module KlCompiler =
                 | _                 -> None
             match f with
             | SymbolExpr op ->
+                let builtArgs = [idExpr "envGlobals"; FsExpr.List(List.map build args)]
                 match primitiveOp op with
-                | Some(op) -> FsExpr.App(op, [idExpr "envGlobals"; FsExpr.List(List.map build args)])
-                | _ -> FsExpr.App(longIdExpr["KlImpl"; op], [idExpr "envGlobals"; FsExpr.List(List.map build args)])
+                | Some(pop) -> FsExpr.App(pop, builtArgs)
+                | _ when isVar op -> FsExpr.App(idExpr op, builtArgs)
+                | _ -> FsExpr.App(longIdExpr["KlImpl"; op], builtArgs)
             | _ -> failwith "application expression or special form must start with symbol"
     let topLevelBuild expr =
         match expr with
         | DefunExpr(symbol, paramz, body) ->
-            let typedParamz = List.Cons(("Globals", "envGlobals"), (List.map (fun p -> "KlValue", p) paramz))
-            FsModule.SingleLet(symbol, typedParamz, build body)
+            let typedParamz = ["envGlobals", FsType.Of("Globals"); "args", FsType.ListOf(FsType.Of("KlValue"))]
+            FsModule.SingleLet(
+                symbol,
+                typedParamz,
+                FsExpr.Match(idExpr "args",
+                    [FsMatchClause.Of(FsPat.List(List.map FsPat.Name paramz), build body)
+                     FsMatchClause.Of(FsPat.Wild, FsFail.With("Wrong number or type of arguments"))]))
         | expr -> failwith "not a defun expr"
     let buildInit exprs =
         let rec buildSeq exprs =
             match exprs with
             | expr :: rest -> FsExpr.ConsSequential(expr, buildSeq rest)
             | [] -> FsConst.Unit
-        FsModule.SingleLet("init", ["Globals", "envGlobals"], buildSeq exprs)
+        FsModule.SingleLet("init", ["envGlobals", FsType.Of("Globals")], buildSeq exprs)
     let buildModule exprs =
         let isDefun = function
             | DefunExpr _ -> true
