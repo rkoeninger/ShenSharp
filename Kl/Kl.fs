@@ -31,10 +31,11 @@ type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit
 type Defines = System.Collections.Generic.Dictionary<string, KlValue>
 and Globals = {Symbols: Defines; Functions: Defines}
 and Locals = Map<string, KlValue> list
-and Function(name: string, arity: int, f: KlValue list -> Work) =
+and Function(name: string, arity: int, locals: Locals, f: Globals -> KlValue list -> Work) =
     member this.Name = name
     member this.Arity = arity
-    member this.Apply(args: KlValue list) = f args
+    member this.Locals = locals
+    member this.Apply(globals: Globals, args: KlValue list) = f globals args
     override this.ToString() = this.Name
 and Thunk(cont: unit -> Work) =
     member this.Run = cont
@@ -158,11 +159,11 @@ module KlEvaluator =
     let branch f g x y v = if vBool v then f x else g y
     let branch1 f = branch f f
     let thunkW f = new Thunk(f) |> Pending
-    let funcW name arity f = new Function(name, arity, f) |> FunctionValue |> ValueResult |> Completed
+    let funcW name arity locals f = new Function(name, arity, locals, f) |> FunctionValue |> ValueResult |> Completed
     let append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
     let append1 env k v = append env [(k, v)]
-    let closure eval env (paramz: string list) body =
-        new Function("Anonymous", paramz.Length, fun args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
+    let closure eval env (paramz: string list) body = // TODO: should only close over locals
+        new Function("Anonymous", paramz.Length, env.Locals, fun _ args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
     let vFunc (env: Env) = function
         | FunctionValue f -> FunctionResult f
         | SymbolValue s ->
@@ -174,7 +175,7 @@ module KlEvaluator =
     let rec go = function
         | Pending thunk -> thunk.Run() |> go
         | Completed result -> result
-    let rec apply pos fr (args: KlValue list) =
+    let rec apply pos globals fr (args: KlValue list) =
         match fr with
         | FunctionResolveError e -> ErrorResult e |> Completed
         | FunctionResult f ->
@@ -182,10 +183,11 @@ module KlEvaluator =
             | Greater -> "Too many arguments" |> ErrorResult |> Completed
             | Lesser -> funcW ("Partial " + f.Name)
                               (f.Arity - args.Length)
-                              (List.append args >> apply pos fr)
+                              f.Locals
+                              (fun globals moreArgs -> apply pos globals fr (List.append args moreArgs))
             | Equal -> match pos with
-                       | Head -> f.Apply args
-                       | Tail -> thunkW (fun () -> f.Apply args)
+                       | Head -> f.Apply(globals, args)
+                       | Tail -> thunkW (fun () -> f.Apply(globals, args))
     let (>>=) result f =
         match result with
         | ValueResult value -> f value
@@ -233,10 +235,10 @@ module KlEvaluator =
         | FreezeExpr expr -> closure evalw env [] expr |> ValueResult |> Completed
         | TrapExpr (pos, body, handler) ->
             match eval env body with
-            | ErrorResult e -> eval env handler >>= (fun v -> apply pos (vFunc env v) [ErrorValue e])
+            | ErrorResult e -> eval env handler >>= (fun v -> apply pos env.Globals (vFunc env v) [ErrorValue e])
             | r -> Completed r
         | AppExpr (pos, f, args) ->
-            eval env f >>= (fun v -> choice (apply pos (vFunc env v))
+            eval env f >>= (fun v -> choice (apply pos env.Globals (vFunc env v))
                                             (ErrorResult >> Completed)
                                             (evalArgs (evalw env) [] args))
 
@@ -251,19 +253,23 @@ module KlBuiltins =
         | _ -> failwith "Boolean value expected"
     let trueV = BoolValue true
     let falseV = BoolValue false
-    let klIntern = function
+    let klIntern _ args =
+        match args with
         | [StringValue s] -> SymbolValue s
         | _ -> invalidArgs ()
-    let klStringPos = function
+    let klStringPos _ args =
+        match args with
         | [StringValue s; IntValue index] ->
             if index >= 0 && index < s.Length
                 then s.[index] |> string |> StringValue |> ValueResult
                 else "string index out of bounds" |> ErrorResult
         | _ -> invalidArgs ()
-    let klStringTail = function
+    let klStringTail _ args =
+        match args with
         | [StringValue s] -> s.Substring(1) |> StringValue
         | _ -> invalidArgs ()
-    let klStringConcat = function
+    let klStringConcat _ args =
+        match args with
         | [StringValue x; StringValue y] -> x + y |> StringValue
         | _ -> invalidArgs ()
     let rec klStr = function
@@ -279,45 +285,57 @@ module KlBuiltins =
         | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
         | InStreamValue s -> sprintf "<InStream %s>" (s.ToString())
         | OutStreamValue s -> sprintf "<OutStream %s>" (s.ToString())
-    let rec klToString = function
+    let klToString _ args =
+        match args with
         | [x] -> x |> klStr |> StringValue
         | _ -> invalidArgs ()
-    let klIsString = function
+    let klIsString _ args =
+        match args with
         | [StringValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let klIntToString = function
+    let klIntToString _ args =
+        match args with
         | [IntValue n] -> int n |> char |> string |> StringValue
         | _ -> invalidArgs ()
-    let klStringToInt = function
+    let klStringToInt _ args =
+        match args with
         | [StringValue s] -> s.[0] |> int |> IntValue
         | _ -> invalidArgs ()
-    let klSet (symbols: Defines) = function
-        | [SymbolValue s; x] -> symbols.[s] <- x
+    let klSet globals args =
+        match args with
+        | [SymbolValue s; x] -> globals.Symbols.[s] <- x
                                 x
         | _ -> invalidArgs ()
-    let klValue (symbols: Defines) = function
+    let klValue globals args =
+        match args with
         | [SymbolValue s] ->
-            match symbols.GetMaybe(s) with
+            match globals.Symbols.GetMaybe(s) with
             | Some v -> ValueResult v
             | None -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
         | _ -> invalidArgs ()
-    let klSimpleError = function
+    let klSimpleError _ args =
+        match args with
         | [StringValue s] -> ErrorResult s
         | _ -> invalidArgs ()
-    let klErrorToString = function
+    let klErrorToString _ args =
+        match args with
         | [ErrorValue s] -> StringValue s
         | _ -> invalidArgs ()
-    let klNewCons = function
+    let klNewCons _ args =
+        match args with
         | [x; y] -> ConsValue (x, y)
         | _ -> invalidArgs ()
-    let klHead = function
+    let klHead _ args =
+        match args with
         | [ConsValue (x, _)] -> x
         | _ -> invalidArgs ()
-    let klTail = function
+    let klTail _ args =
+        match args with
         | [ConsValue (_, y)] -> y
         | _ -> invalidArgs ()
-    let klIsCons = function
+    let klIsCons _ args =
+        match args with
         | [ConsValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
@@ -338,7 +356,8 @@ module KlBuiltins =
         | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq x1 y1 && klEq x2 y2
         | VectorValue xs,     VectorValue ys     -> xs.Length = ys.Length && Array.forall2 klEq xs ys
         | (_, _) -> false
-    let klEquals = function
+    let klEquals _ args =
+        match args with
         | [x; y] -> klEq x y |> BoolValue
         | _ -> invalidArgs ()
     let rec klValueToToken = function
@@ -354,33 +373,40 @@ module KlBuiltins =
                                      | _ -> invalidArgs ()
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
         | x -> invalidArg "_" <| x.ToString()
-    let klEval env = function
-        | [v] -> klValueToToken v |> KlParser.parse Head |> KlEvaluator.eval env
+    let klEval globals args =
+        match args with
+        | [v] -> klValueToToken v |> KlParser.parse Head |> KlEvaluator.eval {Locals = []; Globals = globals}
         | _ -> invalidArgs ()
-    let klType = function
+    let klType globals args =
+        match args with
         | [x; _] -> x // TODO label the type of an expression (what does that mean?)
         | _ -> invalidArgs ()
-    let klNewVector = function
+    let klNewVector _ args =
+        match args with
         | [IntValue length] -> Array.create length (SymbolValue "fail!") |> VectorValue
         | _ -> invalidArgs ()
-    let klReadVector = function
+    let klReadVector _ args =
+        match args with
         | [VectorValue vector; IntValue index] ->
             if index >= 0 && index < vector.Length
                 then vector.[index] |> ValueResult
                 else ErrorResult "Vector index out of bounds"
         | _ -> invalidArgs ()
-    let klWriteVector = function
+    let klWriteVector _ args =
+        match args with
         | [VectorValue vector as vv; IntValue index; value] ->
             if index >= 0 && index < vector.Length
                 then vector.[index] <- value
                      ValueResult vv
                 else ErrorResult "Vector index out of bounds"
         | _ -> invalidArgs ()
-    let klIsVector = function
+    let klIsVector _ args =
+        match args with
         | [VectorValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let klWriteByte = function
+    let klWriteByte _ args =
+        match args with
         | [IntValue i; OutStreamValue stream] ->
             if 0 <= i && i <= 255
                 then let b = byte i
@@ -388,10 +414,12 @@ module KlBuiltins =
                      b |> int |> IntValue
                 else invalidArgs ()
         | _ -> invalidArgs ()
-    let klReadByte = function
+    let klReadByte _ args =
+        match args with
         | [InStreamValue stream] -> stream.Read() |> IntValue
         | _ -> invalidArgs ()
-    let klOpen = function
+    let klOpen _ args =
+        match args with
         | [StringValue path; SymbolValue "in"] ->
             try let stream = File.OpenRead(path)
                 InStreamValue {Read = stream.ReadByte; Close = stream.Close} |> ValueResult
@@ -403,85 +431,101 @@ module KlBuiltins =
             with | :? IOException as e -> ErrorResult e.Message
                  | e -> raise e
         | _ -> invalidArgs ()
-    let klClose = function
+    let klClose _ args =
+        match args with
         | [InStreamValue stream]  -> stream.Close(); EmptyValue
         | [OutStreamValue stream] -> stream.Close(); EmptyValue
         | _ -> invalidArgs ()
     let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     let startTime = DateTime.UtcNow
     let stopwatch = Diagnostics.Stopwatch.StartNew()
-    let klGetTime = function // All returned values are in milliseconds
+    let klGetTime _ args = // All returned values are in milliseconds
+        match args with
         | [SymbolValue "run"] -> stopwatch.ElapsedTicks / 10000L |> int |> IntValue
         | [SymbolValue "unix"] -> (DateTime.UtcNow - epoch).TotalSeconds |> int |> IntValue
         | _ -> invalidArgs ()
-    let klAdd = function
+    let klAdd _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> x + y |> IntValue
         | [IntValue x;     DecimalValue y] -> decimal x + y |> DecimalValue
         | [DecimalValue x; IntValue y]     -> x + decimal y |> DecimalValue
         | [DecimalValue x; DecimalValue y] -> x + y |> DecimalValue
         | _ -> invalidArgs ()
-    let klSubtract = function
+    let klSubtract _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> x - y |> IntValue
         | [IntValue x;     DecimalValue y] -> decimal x - y |> DecimalValue
         | [DecimalValue x; IntValue y]     -> x - decimal y |> DecimalValue
         | [DecimalValue x; DecimalValue y] -> x - y |> DecimalValue
         | _ -> invalidArgs ()
-    let klMultiply = function
+    let klMultiply _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> x * y |> IntValue
         | [IntValue x;     DecimalValue y] -> decimal x * y |> DecimalValue
         | [DecimalValue x; IntValue y]     -> x * decimal y |> DecimalValue
         | [DecimalValue x; DecimalValue y] -> x * y |> DecimalValue
         | _ -> invalidArgs ()
-    let klDivide = function
+    let klDivide _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> decimal x / decimal y |> DecimalValue
         | [IntValue x;     DecimalValue y] -> decimal x / y |> DecimalValue
         | [DecimalValue x; IntValue y]     -> x / decimal y |> DecimalValue
         | [DecimalValue x; DecimalValue y] -> x / y |> DecimalValue
         | _ -> invalidArgs ()
-    let klGreaterThan = function
+    let klGreaterThan _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> x > y |> BoolValue
         | [IntValue x;     DecimalValue y] -> decimal x > y |> BoolValue
         | [DecimalValue x; IntValue y]     -> x > decimal y |> BoolValue
         | [DecimalValue x; DecimalValue y] -> x > y |> BoolValue
         | _ -> invalidArgs ()
-    let klLessThan = function
+    let klLessThan _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> x < y |> BoolValue
         | [IntValue x;     DecimalValue y] -> decimal x < y |> BoolValue
         | [DecimalValue x; IntValue y]     -> x < decimal y |> BoolValue
         | [DecimalValue x; DecimalValue y] -> x < y |> BoolValue
         | _ -> invalidArgs ()
-    let klGreaterThanEqual = function
+    let klGreaterThanEqual _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> x >= y |> BoolValue
         | [IntValue x;     DecimalValue y] -> decimal x >= y |> BoolValue
         | [DecimalValue x; IntValue y]     -> x >= decimal y |> BoolValue
         | [DecimalValue x; DecimalValue y] -> x >= y |> BoolValue
         | _ -> invalidArgs ()
-    let klLessThanEqual = function
+    let klLessThanEqual _ args =
+        match args with
         | [IntValue x;     IntValue y]     -> x <= y |> BoolValue
         | [IntValue x;     DecimalValue y] -> decimal x <= y |> BoolValue
         | [DecimalValue x; IntValue y]     -> x <= decimal y |> BoolValue
         | [DecimalValue x; DecimalValue y] -> x <= y |> BoolValue
         | _ -> invalidArgs ()
-    let klIsNumber = function
+    let klIsNumber _ args =
+        match args with
         | [IntValue _] -> trueV
         | [DecimalValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let funW name arity f = name, FunctionValue(new Function(name, arity, f))
-    let funR name arity f = funW name arity (f >> Completed)
-    let funV name arity f = funR name arity (f >> ValueResult)
+    let trapError r c =
+        match r with
+        | ErrorResult e -> c (ErrorValue e)
+        | r -> r
+    let funW name arity f = name, FunctionValue(new Function(name, arity, [], f))
+    let funR name arity f = funW name arity (fun globals args -> Completed (f globals args))
+    let funV name arity f = funR name arity (fun globals args -> ValueResult (f globals args))
     let stinput =
         let consoleIn = new ConsoleIn(Console.OpenStandardInput())
         InStreamValue {Read = consoleIn.Read; Close = consoleIn.Close}
     let stoutput =
         let consoleOutStream = Console.OpenStandardOutput()
         OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
-    let rec install (globals: System.Collections.Generic.Dictionary<string, KlValue>) = function
+    let rec install (functions: Defines) = function
         | [] -> ()
         | (name, value) :: defs ->
-            globals.[name] <- value
-            install globals defs
-    let emptyEnv () = {Globals = {Symbols = new Defines(); Functions = new Defines()}; Locals = []}
+            functions.[name] <- value
+            install functions defs
+    let newGlobals() = {Symbols = new Defines(); Functions = new Defines()}
+    let emptyEnv () = {Globals = newGlobals(); Locals = []}
     let baseEnv () =
         let env = emptyEnv ()
         install env.Globals.Functions [
@@ -493,8 +537,8 @@ module KlBuiltins =
             funV "string?"         1 klIsString
             funV "n->string"       1 klIntToString
             funV "string->n"       1 klStringToInt
-            funV "set"             2 (klSet env.Globals.Symbols)
-            funR "value"           1 (klValue env.Globals.Symbols)
+            funV "set"             2 klSet
+            funR "value"           1 klValue
             funR "simple-error"    1 klSimpleError
             funV "error-to-string" 1 klErrorToString
             funV "cons"            2 klNewCons
@@ -503,7 +547,7 @@ module KlBuiltins =
             funV "cons?"           1 klIsCons
             funV "="               2 klEquals
             funV "type"            1 klType
-            funR "eval-kl"         1 (klEval env)
+            funR "eval-kl"         1 klEval
             funV "absvector"       1 klNewVector
             funR "<-address"       2 klReadVector
             funR "address->"       3 klWriteVector

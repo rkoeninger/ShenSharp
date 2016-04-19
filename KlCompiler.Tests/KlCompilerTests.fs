@@ -31,6 +31,9 @@ namespace Testing
 
 open Kl
 
+type Stuff = Num of int
+           | Str of string
+
 module Test =
     let thing =
         printfn "hi"
@@ -42,6 +45,10 @@ module Test =
     let rec f (y:int) = if y >= 0 then y else f (y + 1)
     and g x y = if y = 1 then x else x + (y - 1 |> g x)
     let h = 123
+    let matchStuff xs =
+        match xs with
+        | Num i -> i.ToString()
+        | Str s -> s
         """
         let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
         let ast = FsFile.Of(
@@ -51,21 +58,22 @@ module Test =
                           [openKl
                            FsModule.SingleLet(
                               "f",
-                              [("KlValue", "x")
-                               ("KlValue", "y")],
+                              ["Globals", "envGlobals"
+                               "KlValue", "X"
+                               "KlValue", "Y"],
                               KlCompiler.build(
                                 KlExpr.AppExpr(
                                   Position.Head,
                                   KlExpr.SymbolExpr "+",
-                                  [SymbolExpr "x"; SymbolExpr "y"])))])])
+                                  [SymbolExpr "X"; SymbolExpr "Y"])))])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
-            Assert.IsEmpty(errors)
+            Assert.AreEqual(0, i)
             let types = asm.Value.GetTypes()
-            let res1 = types.[0].GetMethods().[0].Invoke(null, [|IntValue 1; IntValue 2|])
+            let res1 = types.[0].GetMethods().[0].Invoke(null, [|KlBuiltins.newGlobals(); IntValue 1; IntValue 2|])
             assert (res1 = (IntValue 3 :> obj))
         with
             ex -> printfn "%s" <| ex.ToString()
@@ -76,18 +84,18 @@ module Test =
     member this.KlExprToSynExpr() =
         let kl = KlExpr.AndExpr(KlExpr.BoolExpr true, KlExpr.BoolExpr false)
         let syn = KlCompiler.build kl
-        let ast = singleBinding [] syn
+        let ast = singleBinding ["Globals", "envGlobals"] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.IsEmpty(errors)
+            Assert.AreEqual(0, i)
             let types = asm.Value.GetTypes()
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = props.[0].GetValue(null)
+            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
             Assert.AreEqual(false, v)
             ()
         with
@@ -96,22 +104,22 @@ module Test =
         ()
 
     [<Test>]
-    [<Ignore("")>]
+    [<Ignore("freeze expr not implemented")>]
     member this.BuildFreezeExpr() =
         let kl = KlExpr.FreezeExpr(KlExpr.AppExpr(Head, KlExpr.SymbolExpr "number?", [KlExpr.StringExpr "hi"]))
         let syn = KlCompiler.build kl
-        let ast = singleBinding [] syn
+        let ast = singleBinding ["Globals", "envGlobals"] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.IsEmpty(errors)
+            Assert.AreEqual(0, i)
             let types = asm.Value.GetTypes()
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = props.[0].GetValue(null)
+            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
             //Assert.AreEqual(false, v)
             ()
         with
@@ -121,24 +129,24 @@ module Test =
 
     [<Test>]
     member this.BuildCondExpr() =
-        let kl = "(cond ((> x 0) \"positive\") ((< x 0) \"negative\") (true \"zero\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
+        let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
-        let ast = singleBinding ["KlValue", "x"] syn
+        let ast = singleBinding ["Globals", "envGlobals"; "KlValue", "X"] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.IsEmpty(errors)
+            Assert.AreEqual(0, i)
             let types = asm.Value.GetTypes()
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|KlValue.IntValue(5)|])
+            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); KlValue.IntValue(5)|])
             Assert.AreEqual(KlValue.StringValue "positive", v)
-            let v2 = methods.[0].Invoke(null, [|KlValue.IntValue(-5)|])
+            let v2 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); KlValue.IntValue(-5)|])
             Assert.AreEqual(KlValue.StringValue "negative", v2)
-            let v3 = methods.[0].Invoke(null, [|KlValue.IntValue(0)|])
+            let v3 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); KlValue.IntValue(0)|])
             Assert.AreEqual(KlValue.StringValue "zero", v3)
             ()
         with
@@ -148,20 +156,20 @@ module Test =
 
     [<Test>]
     member this.BuildLetExpr() =
-        let kl = "(let x 5 (if (> x 0) \"positive\" \"non-positive\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
+        let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
-        let ast = singleBinding [] syn
+        let ast = singleBinding ["Globals", "envGlobals"] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
             let s = new SimpleSourceCodeServices()
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.IsEmpty(errors)
+            Assert.AreEqual(0, i)
             let types = asm.Value.GetTypes()
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = props.[0].GetValue(null)
+            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
             Assert.AreEqual(KlValue.StringValue "positive", v)
             ()
         with
@@ -173,6 +181,8 @@ module Test =
     [<Test>]
     member this.BuildModule() =
         let src = System.IO.File.ReadAllText(@"..\..\..\KLambda\toplevel.kl")
-        let exprs = src |> KlTokenizer.tokenizeAll |> List.map (KlParser.parse Head)
-        let decls = KlCompiler.buildModule exprs
+        let exprs = src |> KlTokenizer.tokenizeAll |> List.map (KlParser.parse Head) |> Seq.take 3 |> Seq.toList
+        let parsedInput = KlCompiler.buildModule exprs
+        let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
+        System.Console.WriteLine(str)
         ()

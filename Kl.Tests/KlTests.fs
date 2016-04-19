@@ -60,7 +60,7 @@ type KlTests() =
     let intE = IntExpr
     let intV = IntValue
     let intR = intV >> ValueResult
-    let funcV n f = FunctionValue <| new Function("", n, f)
+    let funcV n f = FunctionValue <| new Function("", n, [], f)
     let strV = StringValue
     let strR = StringValue >> ValueResult
     let str x = x.ToString()
@@ -122,19 +122,28 @@ type KlTests() =
     [<Test>]
     member this.DefunAndResolutionOfDefinedFunctions() =
         let env = emptyEnv ()
-        env.Globals.Functions.["not"] <- funcV 1 (function | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
-                                                                     | _             -> failwith "must be bool")
+        let klNot _ args =
+            match args with
+            | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
+            | _ -> failwith "must be bool"
+        env.Globals.Functions.["not"] <- funcV 1 klNot
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
     [<Test>]
     member this.SymbolResolution() =
         let env = emptyEnv ()
-        env.Globals.Functions.["symbol?"] <- funcV 1 (function | [SymbolValue _] -> trueW
-                                                                         | _               -> falseW)
+        let klIsSymbol _ args =
+            match args with
+            | [SymbolValue _] -> trueW
+            | _ -> falseW
+        env.Globals.Functions.["symbol?"] <- funcV 1 klIsSymbol
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
-        env.Globals.Functions.["id"] <- funcV 1 (function | [x] -> ValueResult x |> Completed
-                                                                    | _   -> failwith "must be 1 arg")
+        let klId _ args =
+            match args with
+            | [x] -> ValueResult x |> Completed
+            | _ -> failwith "must be 1 arg"
+        env.Globals.Functions.["id"] <- funcV 1 klId
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<Test>]
@@ -227,7 +236,7 @@ type KlTests() =
     member this.EvalFunction() =
         Assert.AreEqual(intR 3, runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
         let inc = (runIt >> rFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
-        Assert.AreEqual(intR 5, (inc.Apply[intV 4]) |> go)
+        Assert.AreEqual(intR 5, inc.Apply({Symbols = new Defines(); Functions = new Defines()}, [intV 4]) |> go)
 
     [<Test>]
     member this.SanityChecks() =

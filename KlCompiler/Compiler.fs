@@ -205,6 +205,15 @@ type FsExpr =
     static member Infix(lhs: SynExpr, op: SynExpr, rhs: SynExpr) =
         FsExpr.App(op, [lhs; rhs])
 
+    // TODO: unused?
+    static member Match(key: SynExpr, clauses: SynMatchClause list) =
+        SynExpr.Match(
+            SequencePointInfoForBinding.SequencePointAtBinding FsAst.defaultRange,
+            key,
+            clauses,
+            false,
+            FsAst.defaultRange)
+
 type FsBinding =
 
     static member Of(symbol: string, body: SynExpr) =
@@ -274,8 +283,11 @@ module KlCompiler =
         | BoolExpr b -> FsExpr.App(longIdExpr ["KlValue"; "BoolValue"], [SynExpr.Const(SynConst.Bool b, range.Zero)])
         | IntExpr i -> FsExpr.App(longIdExpr ["KlValue"; "IntValue"], [SynExpr.Const(SynConst.Int32 i, range.Zero)])
         | DecimalExpr d -> FsExpr.App(longIdExpr ["KlValue"; "DecimalValue"], [SynExpr.Const(SynConst.Decimal d, range.Zero)])
-        | StringExpr s -> FsExpr.App(longIdExpr ["KlValue"; "StringValue"], [SynExpr.Const(SynConst.String(s, range.Zero), range.Zero)]) // TODO escape special chars
-        | SymbolExpr s -> idExpr (klToFsId s)
+        | StringExpr s -> FsExpr.App(longIdExpr ["KlValue"; "StringValue"], [FsConst.String s]) // TODO escape special chars
+        | SymbolExpr s ->
+            if System.Char.IsUpper(s.Chars 0) // Let and Defun variables start with uppercase char
+                then idExpr (klToFsId s)
+                else FsExpr.App(longIdExpr ["KlValue"; "SymbolValue"], [FsConst.String s])
         | AndExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanAnd"), build right |> seBool)
         | OrExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanOr"), build right |> seBool)
         | IfExpr(condition, ifTrue, ifFalse) -> FsExpr.If(build condition |> seBool, build ifTrue, build ifFalse)
@@ -287,8 +299,24 @@ module KlCompiler =
                 | [] -> FsExpr.App(idExpr "failwith", [FsConst.String("No condition was true")])
             buildClauses clauses
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
-        | LambdaExpr(symbol, body) -> failwith "lambda not impl"
-            (*SynExpr.Lambda(false, false, [], body, FsAst.defaultRange)*)
+        | LambdaExpr(symbol, body) -> //failwith "lambda not impl"
+            SynExpr.Lambda(
+                false,
+                false,
+                SynSimplePats.SimplePats(
+                    [SynSimplePat.Typed(
+                        SynSimplePat.Id(
+                            new Ident(symbol, FsAst.defaultRange),
+                            None,
+                            false,
+                            false,
+                            false,
+                            FsAst.defaultRange),
+                        FsType.Of("KlValue"),
+                        FsAst.defaultRange)],
+                    FsAst.defaultRange),
+                build body,
+                FsAst.defaultRange)
         | DefunExpr(symbol, paramz, body) -> failwith "Defun expr must be at top level"
         | FreezeExpr(expr) ->
             FsExpr.App(
@@ -297,8 +325,9 @@ module KlCompiler =
                                     FsExpr.Tuple([FsConst.String("Anonymous");
                                                   FsConst.Int32(0);
                                                   FsExpr.Lambda(build expr)]))])
-        | TrapExpr(pos, t, c) -> failwith "trap compilation not implemented"
-        | AppExpr(pos, f, args) ->
+        | TrapExpr(_, t, c) -> //failwith "trap not impl"
+            FsExpr.App(longIdExpr["KlBuiltins"; "trapError"], [build t; build c])
+        | AppExpr(_, f, args) ->
             let primitiveOp op =
                 match op with
                 | "intern"          -> Some(builtin "klIntern")
@@ -319,7 +348,7 @@ module KlCompiler =
                 | "cons?"           -> Some(builtin "klIsCons")
                 | "="               -> Some(builtin "klEquals")
                 | "type"            -> Some(builtin "klType")
-                | "eval-kl"         -> Some(builtin "klEval") // needs env
+                | "eval-kl"         -> Some(builtin "klEval") // needs env.Globals
                 | "absvector"       -> Some(builtin "klNewVector")
                 | "<-address"       -> Some(builtin "klReadVector")
                 | "address->"       -> Some(builtin "klWriteVector")
@@ -342,13 +371,13 @@ module KlCompiler =
             match f with
             | SymbolExpr op ->
                 match primitiveOp op with
-                | Some(op) -> FsExpr.Paren(FsExpr.App(op, [FsExpr.List(List.map build args)]))
-                | _ -> failwith "unrecognized op or number of args"
+                | Some(op) -> FsExpr.App(op, [idExpr "envGlobals"; FsExpr.List(List.map build args)])
+                | _ -> FsExpr.App(longIdExpr["KlImpl"; op], [idExpr "envGlobals"; FsExpr.List(List.map build args)])
             | _ -> failwith "application expression or special form must start with symbol"
     let topLevelBuild expr =
         match expr with
         | DefunExpr(symbol, paramz, body) ->
-            let typedParamz = List.map (fun p -> "KlValue", p) paramz
+            let typedParamz = List.Cons(("Globals", "envGlobals"), (List.map (fun p -> "KlValue", p) paramz))
             FsModule.SingleLet(symbol, typedParamz, build body)
         | expr -> failwith "not a defun expr"
     let buildInit exprs =
@@ -356,7 +385,7 @@ module KlCompiler =
             match exprs with
             | expr :: rest -> FsExpr.ConsSequential(expr, buildSeq rest)
             | [] -> FsConst.Unit
-        FsModule.SingleLet("init", ["unit", "x"], buildSeq exprs)
+        FsModule.SingleLet("init", ["Globals", "envGlobals"], buildSeq exprs)
     let buildModule exprs =
         let isDefun = function
             | DefunExpr _ -> true
@@ -366,4 +395,6 @@ module KlCompiler =
             | _ -> false
         let decls = exprs |> List.filter isDefun |> List.map topLevelBuild
         let init = exprs |> List.filter isApp |> List.map build |> buildInit
-        List.append decls [init]
+        let members = List.append decls [init]
+        let openKl = SynModuleDecl.Open(LongIdentWithDots.LongIdentWithDots([new Ident("Kl", FsAst.defaultRange)], []), FsAst.defaultRange)
+        FsFile.Of("KlImpl", [FsModule.Of("KlImpl", List.Cons(openKl, members))])
