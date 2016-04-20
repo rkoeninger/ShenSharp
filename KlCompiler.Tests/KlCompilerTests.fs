@@ -26,24 +26,13 @@ type CompilerTests() =
     member this.CompilerServicesBuildAst() =
         let p = KlTokenizer.tokenize >> KlParser.parse Head >> KlCompiler.build
         let r = AndExpr(BoolExpr true, BoolExpr false) |> KlCompiler.build
-        let text = """
-namespace Testing
+        let text = """namespace Testing
 
 open Kl
 
-type Stuff = Num of int
-           | Str of string
-
 module Test =
-    let (args: Stuff list) =
-        match args with
-        | [X; Y] -> ()
-        | _ -> ()
-    let matchStuff xs =
-        match xs with
-        | Num i -> i.ToString()
-        | Str s -> s
-        """
+    let f = fun () -> ()
+"""
         let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
         let ast = FsFile.Of(
                       "ShenNs",

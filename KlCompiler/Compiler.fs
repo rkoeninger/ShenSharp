@@ -152,26 +152,29 @@ type FsExpr =
     static member List(exprs: SynExpr list) =
         SynExpr.ArrayOrList(false, exprs, FsAst.defaultRange)
 
-    static member Lambda(body: SynExpr) =
+    static member Lambda(isInnerLambda: bool, arg: (string * SynType) option, body: SynExpr) =
+        let pats =
+            match arg with
+            | Some(nm, typ) ->
+                SynSimplePats.SimplePats(
+                    [SynSimplePat.Typed(
+                        SynSimplePat.Id(
+                            new Ident(nm, FsAst.defaultRange),
+                            None,
+                            false,
+                            false,
+                            false,
+                            FsAst.defaultRange),
+                        typ,
+                        FsAst.defaultRange)],
+                    FsAst.defaultRange)
+            | None ->
+                SynSimplePats.SimplePats([], FsAst.defaultRange)
         SynExpr.Paren(
             SynExpr.Lambda(
                 false,
-                false,
-                SynSimplePats.Typed(
-                    SynSimplePats.SimplePats(
-                        [SynSimplePat.Typed(
-                            SynSimplePat.Id(
-                                new Ident("args", FsAst.defaultRange),
-                                None,
-                                true,
-                                false,
-                                false,
-                                FsAst.defaultRange),
-                            FsType.ListOf(FsType.Of("KlValue")),
-                            FsAst.defaultRange)],
-                        FsAst.defaultRange),
-                    FsType.Of("Work"),
-                    FsAst.defaultRange),
+                isInnerLambda,
+                pats,
                 body,
                 FsAst.defaultRange),
             FsAst.defaultRange,
@@ -312,6 +315,7 @@ module KlCompiler =
                 .TrimEnd('_')
         let builtin id = longIdExpr ["KlBuiltins"; id]
         let seBool synExpr = FsExpr.App(builtin "vBool", [synExpr])
+        let seResult synExpr = FsExpr.App(idExpr "Completed", [FsExpr.App(idExpr "ValueResult", [synExpr])])
         let escape s =
             let escapeChar ch =
                 match ch with
@@ -321,6 +325,19 @@ module KlCompiler =
                 | _ -> ch.ToString()
             String.collect escapeChar s
         let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
+        let klFunction argCount lambda =
+            FsExpr.App(
+                longIdExpr ["KlValue"; "FunctionValue"],
+                [FsExpr.Constructor(
+                    "Function",
+                    FsExpr.Tuple(
+                        [FsConst.String("Anonymous")
+                         FsConst.Int32(argCount)
+                         FsExpr.List([])
+                         FsExpr.Lambda(
+                            false,
+                            Some("envGlobals", FsType.Of("Globals")),
+                            lambda)]))])
         match expr with
         | EmptyExpr -> longIdExpr ["KlValue"; "EmptyValue"]
         | BoolExpr b -> FsExpr.App(longIdExpr ["KlValue"; "BoolValue"], [SynExpr.Const(SynConst.Bool b, range.Zero)])
@@ -343,31 +360,10 @@ module KlCompiler =
             buildClauses clauses
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) -> //failwith "lambda not impl"
-            SynExpr.Lambda(
-                false,
-                false,
-                SynSimplePats.SimplePats(
-                    [SynSimplePat.Typed(
-                        SynSimplePat.Id(
-                            new Ident(symbol, FsAst.defaultRange),
-                            None,
-                            false,
-                            false,
-                            false,
-                            FsAst.defaultRange),
-                        FsType.Of("KlValue"),
-                        FsAst.defaultRange)],
-                    FsAst.defaultRange),
-                build body,
-                FsAst.defaultRange)
+            klFunction 1 (FsExpr.Lambda(false, Some(symbol, FsType.Of("KlValue")), seResult (build body)))
         | DefunExpr(symbol, paramz, body) -> failwith "Defun expr must be at top level"
-        | FreezeExpr(expr) ->
-            FsExpr.App(
-                longIdExpr ["KlValue"; "FunctionValue"],
-                [FsExpr.Constructor("Function",
-                                    FsExpr.Tuple([FsConst.String("Anonymous");
-                                                  FsConst.Int32(0);
-                                                  FsExpr.Lambda(build expr)]))])
+        | FreezeExpr(expr) -> //failwith "freeze not impl"
+            klFunction 1 (FsExpr.Lambda(false, Some("args", FsType.ListOf(FsType.Of("KlValue"))), seResult (build expr)))
         | TrapExpr(_, t, c) -> //failwith "trap not impl"
             FsExpr.App(longIdExpr["KlBuiltins"; "trapError"], [build t; build c])
         | AppExpr(_, f, args) ->

@@ -162,7 +162,7 @@ module KlEvaluator =
     let funcW name arity locals f = new Function(name, arity, locals, f) |> FunctionValue |> ValueResult |> Completed
     let append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
     let append1 env k v = append env [(k, v)]
-    let closure eval env (paramz: string list) body = // TODO: should only close over locals
+    let closure eval env (paramz: string list) body =
         new Function("Anonymous", paramz.Length, env.Locals, fun _ args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
     let vFunc (env: Env) = function
         | FunctionValue f -> FunctionResult f
