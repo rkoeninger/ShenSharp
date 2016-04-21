@@ -32,6 +32,7 @@ type Defines = System.Collections.Generic.Dictionary<string, KlValue>
 and Globals = {Symbols: Defines; Functions: Defines}
 and Locals = Map<string, KlValue> list
 and Function(name: string, arity: int, locals: Locals, f: Globals -> KlValue list -> Work) =
+    static member func n a l f = new Function(n, a, l, f)
     member this.Name = name
     member this.Arity = arity
     member this.Locals = locals

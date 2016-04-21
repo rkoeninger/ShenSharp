@@ -328,16 +328,15 @@ module KlCompiler =
         let klFunction argCount lambda =
             FsExpr.App(
                 longIdExpr ["KlValue"; "FunctionValue"],
-                [FsExpr.Constructor(
-                    "Function",
-                    FsExpr.Tuple(
-                        [FsConst.String("Anonymous")
-                         FsConst.Int32(argCount)
-                         FsExpr.List([])
-                         FsExpr.Lambda(
-                            false,
-                            Some("envGlobals", FsType.Of("Globals")),
-                            lambda)]))])
+                [FsExpr.App(
+                    longIdExpr ["Function"; "func"],
+                    [FsConst.String("Anonymous")
+                     FsConst.Int32(argCount)
+                     FsExpr.List([])
+                     FsExpr.Lambda(
+                        false,
+                        Some("envGlobals", FsType.Of("Globals")),
+                        lambda)])])
         match expr with
         | EmptyExpr -> longIdExpr ["KlValue"; "EmptyValue"]
         | BoolExpr b -> FsExpr.App(longIdExpr ["KlValue"; "BoolValue"], [SynExpr.Const(SynConst.Bool b, range.Zero)])

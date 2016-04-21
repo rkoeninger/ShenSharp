@@ -26,12 +26,11 @@ type CompilerTests() =
     member this.CompilerServicesBuildAst() =
         let p = KlTokenizer.tokenize >> KlParser.parse Head >> KlCompiler.build
         let r = AndExpr(BoolExpr true, BoolExpr false) |> KlCompiler.build
-        let text = """namespace Testing
-
+        let text = """module Stuff
+        
 open Kl
 
-module Test =
-    let f = fun () -> ()
+let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(KlBuiltins.klIsCons globals X))))
 """
         let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
         let ast = FsFile.Of(
@@ -85,9 +84,8 @@ module Test =
             ex -> printfn "%s" <| ex.ToString()
                   assert false
         ()
-
+    
     [<Test>]
-    [<Ignore("freeze expr not implemented")>]
     member this.BuildFreezeExpr() =
         let kl = KlExpr.FreezeExpr(KlExpr.AppExpr(Head, KlExpr.SymbolExpr "number?", [KlExpr.StringExpr "hi"]))
         let syn = KlCompiler.build kl
@@ -103,7 +101,9 @@ module Test =
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
             let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
-            //Assert.AreEqual(false, v)
+            match v :?> KlValue with
+            | FunctionValue _ -> ()
+            | _ -> assert false
             ()
         with
             ex -> printfn "%s" <| ex.ToString()
