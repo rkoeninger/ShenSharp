@@ -1,4 +1,5 @@
 ﻿open Kl
+open Kl.Tokenizer
 open System
 open System.IO
 
@@ -36,7 +37,7 @@ let main0 args =
         printfn ""
         stdout.Flush()
         let text = System.IO.File.ReadAllText(file)
-        for ast in KlTokenizer.tokenizeAll text do
+        for ast in tokenizeAll text do
             match ast with
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)

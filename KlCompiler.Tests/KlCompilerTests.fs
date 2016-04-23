@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open Kl
+open Kl.Tokenizer
 open KlCompiler
 open Fantomas
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
@@ -24,7 +25,7 @@ type CompilerTests() =
 
     [<Test>]
     member this.CompilerServicesBuildAst() =
-        let p = KlTokenizer.tokenize >> KlParser.parse Head >> KlCompiler.build
+        let p = tokenize >> KlParser.parse Head >> KlCompiler.build
         let r = AndExpr(BoolExpr true, BoolExpr false) |> KlCompiler.build
         let text = """module Stuff
         
@@ -112,7 +113,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
 
     [<Test>]
     member this.BuildCondExpr() =
-        let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
+        let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals"); "X", FsType.Of("KlValue")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -139,7 +140,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
 
     [<Test>]
     member this.BuildLetExpr() =
-        let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> KlTokenizer.tokenize |> KlParser.parse Position.Head
+        let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> tokenize |> KlParser.parse Position.Head
         let syn = KlCompiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -164,7 +165,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     [<Test>]
     member this.BuildModule() =
         let src = System.IO.File.ReadAllText(@"..\..\..\KLambda\toplevel.kl")
-        let exprs = src |> KlTokenizer.tokenizeAll |> List.map (KlParser.parse Head) |> Seq.take 6 |> Seq.toList
+        let exprs = src |> tokenizeAll |> List.map (KlParser.parse Head) |> Seq.take 6 |> Seq.toList
         let parsedInput = KlCompiler.buildModule exprs
         let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
         System.Console.WriteLine(str)

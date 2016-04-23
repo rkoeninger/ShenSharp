@@ -3,7 +3,7 @@
 open NUnit.Framework
 open FParsec
 open Kl
-open Kl.KlTokenizer
+open Kl.Tokenizer
 open Kl.KlParser
 open Kl.KlEvaluator
 open Kl.KlBuiltins
@@ -79,17 +79,6 @@ type KlTests() =
         tryit "(a   \" b c \"  d)"
         let all = tokenizeAll "\"long copyright string\n\rwith line breaks\r\n\"\r\n\r\n(defun form () (stuff 0))\r\n\r\n(defun form2 (a b) (+ a b))"
         Assert.AreEqual(3, all.Length)
-
-    [<Test>]
-    member this.ParserTest() =
-        let tryit syntax expr = 
-            match run pKlToken syntax with
-                | Success(result, _, _)   -> Assert.AreEqual(expr, parse Head result)
-                | Failure(errorMsg, _, _) -> Assert.Fail(errorMsg)
-
-        tryit "2" (intE 2)
-        tryit "()" EmptyExpr
-        tryit "(add 1 2)" (symApp2 "add" (intE 1) (intE 2))
 
     [<Test>]
     member this.LazyBooleanOperations() =
