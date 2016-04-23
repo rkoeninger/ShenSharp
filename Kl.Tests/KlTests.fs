@@ -4,7 +4,7 @@ open NUnit.Framework
 open FParsec
 open Kl
 open Kl.Tokenizer
-open Kl.KlParser
+open Kl.Parser
 open Kl.KlEvaluator
 open Kl.KlBuiltins
 open System.Reflection

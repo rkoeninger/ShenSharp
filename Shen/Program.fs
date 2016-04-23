@@ -1,5 +1,6 @@
 ﻿open Kl
 open Kl.Tokenizer
+open Kl.Parser
 open System
 open System.IO
 
@@ -41,7 +42,7 @@ let main0 args =
             match ast with
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)
-                let expr = KlParser.parse Head ast
+                let expr = parse Head ast
                 KlEvaluator.eval env expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
