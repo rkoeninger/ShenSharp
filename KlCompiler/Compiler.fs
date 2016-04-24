@@ -15,7 +15,7 @@ module Compiler =
                 .TrimEnd('_')
         let builtin id = FsExpr.LongId ["Builtins"; id]
         let seBool synExpr = FsExpr.App(builtin "vBool", [synExpr])
-        let seResult synExpr = FsExpr.App(FsExpr.Id "Completed", [FsExpr.App(FsExpr.Id "ValueResult", [synExpr])])
+        let seResult synExpr = FsExpr.App(FsExpr.Id "Done", [FsExpr.App(FsExpr.Id "Ok", [synExpr])])
         let escape s =
             let escapeChar ch =
                 match ch with

@@ -16,53 +16,53 @@ type KlTests() =
 
     let runInEnv env = tokenize >> rootParse >> rootEval env.Globals
     let runIt = runInEnv (baseEnv ())
-    let isIntR = function | ValueResult (IntValue _) -> true | _ -> false
-    let isDecimalR = function | ValueResult (DecimalValue _) -> true | _ -> false
+    let isIntR = function | Ok (IntValue _) -> true | _ -> false
+    let isDecimalR = function | Ok (DecimalValue _) -> true | _ -> false
     let rError = function
-        | ValueResult (ErrorValue e) -> e
+        | Ok (ErrorValue e) -> e
         | _ -> failwith "not an Error"
     let rInt = function
-        | ValueResult (IntValue n) -> n
+        | Ok (IntValue n) -> n
         | _ -> failwith "not an int"
     let rString = function
-        | ValueResult (StringValue s) -> s
+        | Ok (StringValue s) -> s
         | _ -> failwith "not a String"
     let rVector = function
-        | ValueResult (VectorValue s) -> s
+        | Ok (VectorValue s) -> s
         | _ -> failwith "not a Vector"
     let rUncaught = function
-        | ErrorResult s -> s
+        | Err s -> s
         | _ -> failwith "not an Error"
     let isUncaught = function
-        | ErrorResult _ -> true
+        | Err _ -> true
         | _ -> false
     let arrayEqual (xs : 'a[]) (ys : 'a[]) =
         xs.Length = ys.Length && Array.forall2 (=) xs ys
     let rFunc = function
-        | ValueResult (FunctionValue f) -> f
+        | Ok (FunctionValue f) -> f
         | _ -> failwith "not a Function"
     let isThunk = function
-        | Completed _ -> true
+        | Done _ -> true
         | _ -> false
     let rBool = function
-        | ValueResult (BoolValue b) -> b
+        | Ok (BoolValue b) -> b
         | _ -> failwith "not a Bool"
     let trueV = BoolValue true
     let falseV = BoolValue false
-    let trueR = BoolValue true |> ValueResult
-    let falseR = BoolValue false |> ValueResult
-    let trueW = trueR |> Completed
-    let falseW = falseR |> Completed
+    let trueR = BoolValue true |> Ok
+    let falseR = BoolValue false |> Ok
+    let trueW = trueR |> Done
+    let falseW = falseR |> Done
     let eApp1 f arg1 = AppExpr(Head, f, [arg1])
     let symApp1 sym arg1 = AppExpr (Head, SymbolExpr sym, [arg1])
     let symApp2 sym arg1 arg2 = AppExpr (Head, SymbolExpr sym, [arg1; arg2])
     let symApp3 sym arg1 arg2 arg3 = AppExpr (Head, SymbolExpr sym, [arg1; arg2; arg3])
     let intE = IntExpr
     let intV = IntValue
-    let intR = intV >> ValueResult
+    let intR = intV >> Ok
     let funcV n f = FunctionValue <| new Function("", n, [], f)
     let strV = StringValue
-    let strR = StringValue >> ValueResult
+    let strR = StringValue >> Ok
     let str x = x.ToString()
 
     [<Test>]
@@ -94,7 +94,7 @@ type KlTests() =
             runInEnv env "(defun do (X Y) Y)" |> ignore
             env.Globals.Symbols.["results"] <- EmptyValue
             match runInEnv env syntax with
-            | ValueResult (BoolValue b) ->
+            | Ok (BoolValue b) ->
                 Assert.IsTrue((b && expectedBool) || not(b || expectedBool))
                 let results = env.Globals.Symbols.["results"] |> consToArray
                 Assert.IsTrue(arrayEqual expectedResults results)
@@ -113,7 +113,7 @@ type KlTests() =
         let env = emptyEnv ()
         let klNot _ args =
             match args with
-            | [BoolValue b] -> not b |> BoolValue |> ValueResult |> Completed
+            | [BoolValue b] -> not b |> BoolValue |> Ok |> Done
             | _ -> failwith "must be bool"
         env.Globals.Functions.["not"] <- funcV 1 klNot
         runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
@@ -130,14 +130,14 @@ type KlTests() =
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
         let klId _ args =
             match args with
-            | [x] -> ValueResult x |> Completed
+            | [x] -> Ok x |> Done
             | _ -> failwith "must be 1 arg"
         env.Globals.Functions.["id"] <- funcV 1 klId
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<Test>]
     member this.``result of interning a string is equal to symbol with name that is equal to that string``() =
-        Assert.AreEqual(ValueResult (SymbolValue "hi"), runIt "(intern \"hi\")")
+        Assert.AreEqual(Ok (SymbolValue "hi"), runIt "(intern \"hi\")")
 
     [<Test>]
     member this.PartialApplicationForBuiltins() =
@@ -232,8 +232,8 @@ type KlTests() =
         Assert.AreEqual(BoolToken true, BoolToken true)
         Assert.AreEqual(BoolExpr true, BoolExpr true)
         Assert.AreEqual(BoolValue true, BoolValue true) // this was failing when KlValue had a case containing a function type
-        Assert.AreEqual(true |> BoolValue |> ValueResult, true |> BoolValue |> ValueResult) // this might start failing for the same reason
-        Assert.AreEqual(true |> BoolValue |> ValueResult |> Completed, true |> BoolValue |> ValueResult |> Completed)
+        Assert.AreEqual(true |> BoolValue |> Ok, true |> BoolValue |> Ok) // this might start failing for the same reason
+        Assert.AreEqual(true |> BoolValue |> Ok |> Done, true |> BoolValue |> Ok |> Done)
 
     [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =
@@ -247,7 +247,7 @@ type KlTests() =
         let env = baseEnv ()
         runInEnv env "(defun odd? (x) (if (= 1 x) true (even? (- x 1))))" |> ignore
         runInEnv env "(defun even? (x) (if (= 1 x) false (odd? (- x 1))))" |> ignore
-        Assert.AreEqual(ValueResult (BoolValue false), runInEnv env "(odd? 20000)")
+        Assert.AreEqual(Ok (BoolValue false), runInEnv env "(odd? 20000)")
 
     [<Test>]
     member this.HeadTailPositionsParsed() =
@@ -279,11 +279,11 @@ type KlTests() =
 
     [<Test>]
     member this.``simple-error should be caught by trap-error``() =
-        Assert.AreEqual(ValueResult EmptyValue, runIt "(trap-error (simple-error \"whoops\") (lambda E ()))")
+        Assert.AreEqual(Ok EmptyValue, runIt "(trap-error (simple-error \"whoops\") (lambda E ()))")
 
     [<Test>]
     member this.``trap-error should prevent uncaught error from propogating``() =
-        Assert.AreEqual(ValueResult EmptyValue, runIt "(trap-error (pos \"\" 0) (lambda E ()))")
+        Assert.AreEqual(Ok EmptyValue, runIt "(trap-error (pos \"\" 0) (lambda E ()))")
 
     [<Test>]
     member this.``trap-error should eval and apply second expression if eval of first results in uncaught error``() =

@@ -14,12 +14,12 @@ module Evaluator =
         match x with
         | BoolValue b -> b
         | _ -> failwith "Boolean value expected"
-    let trueR = BoolValue true |> ValueResult
-    let falseR = BoolValue false |> ValueResult
-    let trueW = Completed trueR
-    let falseW = Completed falseR
+    let trueR = BoolValue true |> Ok
+    let falseR = BoolValue false |> Ok
+    let trueW = Done trueR
+    let falseW = Done falseR
     let thunkW f = new Thunk(f) |> Pending
-    let funcW name arity locals f = new Function(name, arity, locals, f) |> FunctionValue |> ValueResult |> Completed
+    let funcW name arity locals f = new Function(name, arity, locals, f) |> FunctionValue |> Ok |> Done
     let append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
     let append1 env k v = append env [(k, v)]
     let closure eval env (paramz: string list) body =
@@ -34,13 +34,13 @@ module Evaluator =
         | _ -> sprintf "Function value or symbol expected" |> FunctionResolveError
     let rec go = function
         | Pending thunk -> thunk.Run() |> go
-        | Completed result -> result
+        | Done result -> result
     let rec private apply pos globals fr (args: Value list) =
         match fr with
-        | FunctionResolveError e -> ErrorResult e |> Completed
+        | FunctionResolveError e -> Err e |> Done
         | FunctionResult f ->
             match args.Length, f.Arity with
-            | Greater -> "Too many arguments" |> ErrorResult |> Completed
+            | Greater -> "Too many arguments" |> Err |> Done
             | Lesser -> funcW ("Partial " + f.Name)
                               (f.Arity - args.Length)
                               f.Locals
@@ -50,12 +50,12 @@ module Evaluator =
                        | Tail -> thunkW (fun () -> f.Apply(globals, args))
     let (>>=) result f =
         match result with
-        | ValueResult value -> f value
-        | ErrorResult _ as error -> Completed error
+        | Ok value -> f value
+        | Err _ as error -> Done error
     let (>>>=) result f =
         match result with
-        | ValueResult value -> f value |> Completed
-        | ErrorResult _ as error -> error |> Completed
+        | Ok value -> f value |> Done
+        | Err _ as error -> error |> Done
     let resolve locals symbolName =
         Seq.map (Map.tryFind symbolName) locals
         |> Seq.tryFind Option.isSome
@@ -66,46 +66,39 @@ module Evaluator =
         | [] -> Choice1Of2 vals
         | arg :: args ->
             match evalE arg |> go with
-            | ValueResult v -> evalArgs evalE (List.append vals [v]) args
-            | ErrorResult e -> Choice2Of2 e
+            | Ok v -> evalArgs evalE (List.append vals [v]) args
+            | Err e -> Choice2Of2 e
+
+    let private vbranch ifTrue ifFalse value = if vBool value then ifTrue() else ifFalse()
+
     let rec eval env expr = evalw env expr |> go
-    and evalw env = function
-        | EmptyExpr     -> EmptyValue           |> ValueResult |> Completed
-        | BoolExpr b    -> BoolValue b          |> ValueResult |> Completed
-        | IntExpr n     -> IntValue n           |> ValueResult |> Completed
-        | DecimalExpr n -> DecimalValue n       |> ValueResult |> Completed
-        | StringExpr s  -> StringValue s        |> ValueResult |> Completed
-        | SymbolExpr s  -> resolve env.Locals s |> ValueResult |> Completed
+
+    and evalw env expr =
+        let evale = eval env
+        let evalwe = evalw env
+
+        match expr with
+        | EmptyExpr     -> EmptyValue           |> Ok |> Done
+        | BoolExpr b    -> BoolValue b          |> Ok |> Done
+        | IntExpr n     -> IntValue n           |> Ok |> Done
+        | DecimalExpr n -> DecimalValue n       |> Ok |> Done
+        | StringExpr s  -> StringValue s        |> Ok |> Done
+        | SymbolExpr s  -> resolve env.Locals s |> Ok |> Done
 
         | AndExpr(left, right) ->
-            let evalRight b =
-                match b with
-                | BoolValue true -> evalw env right
-                | _ -> falseW
-            eval env left >>= evalRight
+            evale left >>= vbranch (fun () -> evalwe right) (fun () -> falseW)
 
         | OrExpr(left, right) ->
-            let evalRight b =
-                match b with
-                | BoolValue true -> trueW
-                | _ -> evalw env right
-            eval env left >>= evalRight
+            evale left >>= vbranch (fun () -> trueW) (fun () -> evalwe right)
 
         | IfExpr (condition, consequent, alternative) ->
-            let evalBranch b =
-                match b with
-                | BoolValue true -> evalw env consequent
-                | _ -> evalw env alternative
-            eval env condition >>= evalBranch
+            evale condition >>= vbranch (fun () -> evalwe consequent) (fun () -> evalwe alternative)
 
         | CondExpr clauses ->
             let rec evalClauses = function
                 | [] -> failwith "No condition was true"
                 | (condition, consequent) :: rest ->
-                    match eval env condition with
-                    | ValueResult(BoolValue true) -> evalw env consequent
-                    | ValueResult _ -> evalClauses rest
-                    | ErrorResult _ as e -> Completed e
+                    evale condition >>= vbranch (fun () -> evalwe consequent) (fun () -> evalClauses rest)
             evalClauses clauses
 
         | LetExpr (symbol, binding, body) ->
@@ -113,26 +106,28 @@ module Evaluator =
             eval env binding >>>= evalBody
 
         | LambdaExpr (param, body) ->
-            closure evalw env [param] body |> ValueResult |> Completed
+            closure evalw env [param] body |> Ok |> Done
 
         | FreezeExpr expr ->
-            closure evalw env [] expr |> ValueResult |> Completed
+            closure evalw env [] expr |> Ok |> Done
 
         | TrapExpr (pos, body, handler) ->
             match eval env body with
-            | ErrorResult e -> eval env handler >>= (fun v -> apply pos env.Globals (vFunc env v) [ErrorValue e])
-            | r -> Completed r
+            | Err e -> eval env handler >>= (fun v -> apply pos env.Globals (vFunc env v) [ErrorValue e])
+            | r -> Done r
 
         | AppExpr (pos, f, args) ->
+            //List.fold (fun argvs arge -> ()) () args |> ignore
             eval env f >>= (fun v -> choice (apply pos env.Globals (vFunc env v))
-                                            (ErrorResult >> Completed)
+                                            (Err >> Done)
                                             (evalArgs (evalw env) [] args))
     let rootEval globals expr =
         let env = {Globals = globals; Locals = []}
+
         match expr with
         | DefunExpr(name, paramz, body) ->
             let f = closure evalw env paramz body
             globals.Functions.[name] <- f
-            ValueResult f
+            Ok f
 
         | OtherExpr expr -> eval env expr

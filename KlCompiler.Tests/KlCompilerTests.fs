@@ -32,7 +32,7 @@ type CompilerTests() =
         
 open Kl
 
-let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(Builtins.klIsCons globals X))))
+let f = new Function("f", 1, [], fun globals -> (fun X -> Done(ValueResult(Builtins.klIsCons globals X))))
 """
         let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
         let ast = FsFile.Of(

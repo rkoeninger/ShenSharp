@@ -38,14 +38,14 @@ type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit
 type Defines = Dictionary<string, Value>
 and Globals = {Symbols: Defines; Functions: Defines}
 and Locals = Map<string, Value> list
-and Function(name: string, arity: int, locals: Locals, f: Globals -> Value list -> Work) =
+and Function(name: string, arity: int, locals: Locals, f: Globals -> Value list -> Work<Value>) =
     static member func n a l f = new Function(n, a, l, f)
     member this.Name = name
     member this.Arity = arity
     member this.Locals = locals
     member this.Apply(globals: Globals, args: Value list) = f globals args
     override this.ToString() = this.Name
-and Thunk(cont: unit -> Work) =
+and Thunk(cont: unit -> Work<Value>) =
     member this.Run = cont
 and Value =
     | EmptyValue
@@ -65,11 +65,11 @@ and Value =
     | ErrorValue     of string
     | InStreamValue  of InStream
     | OutStreamValue of OutStream
-and Result = // TODO: remove result and just use exceptions?
-    | ValueResult of Value
-    | ErrorResult of string
-and Work =
-    | Completed of Result
-    | Pending   of Thunk
+and Result<'a> =
+    | Ok  of 'a
+    | Err of string
+and Work<'a> =
+    | Done    of Result<'a>
+    | Pending of Thunk
 
 type Env = {Globals: Globals; Locals: Locals}

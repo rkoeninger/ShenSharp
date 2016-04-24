@@ -22,8 +22,8 @@ module Builtins =
         match args with
         | [StringValue s; IntValue index] ->
             if index >= 0 && index < s.Length
-                then s.[index] |> string |> StringValue |> ValueResult
-                else "string index out of bounds" |> ErrorResult
+                then s.[index] |> string |> StringValue |> Ok
+                else "string index out of bounds" |> Err
         | _ -> invalidArgs ()
     let klStringTail _ args =
         match args with
@@ -72,12 +72,12 @@ module Builtins =
         match args with
         | [SymbolValue s] ->
             match globals.Symbols.GetMaybe(s) with
-            | Some v -> ValueResult v
-            | None -> sprintf "Symbol \"%s\" is undefined" s |> ErrorResult
+            | Some v -> Ok v
+            | None -> sprintf "Symbol \"%s\" is undefined" s |> Err
         | _ -> invalidArgs ()
     let klSimpleError _ args =
         match args with
-        | [StringValue s] -> ErrorResult s
+        | [StringValue s] -> Err s
         | _ -> invalidArgs ()
     let klErrorToString _ args =
         match args with
@@ -150,16 +150,16 @@ module Builtins =
         match args with
         | [VectorValue vector; IntValue index] ->
             if index >= 0 && index < vector.Length
-                then vector.[index] |> ValueResult
-                else ErrorResult "Vector index out of bounds"
+                then vector.[index] |> Ok
+                else Err "Vector index out of bounds"
         | _ -> invalidArgs ()
     let klWriteVector _ args =
         match args with
         | [VectorValue vector as vv; IntValue index; value] ->
             if index >= 0 && index < vector.Length
                 then vector.[index] <- value
-                     ValueResult vv
-                else ErrorResult "Vector index out of bounds"
+                     Ok vv
+                else Err "Vector index out of bounds"
         | _ -> invalidArgs ()
     let klIsVector _ args =
         match args with
@@ -183,13 +183,13 @@ module Builtins =
         match args with
         | [StringValue path; SymbolValue "in"] ->
             try let stream = File.OpenRead(path)
-                InStreamValue {Read = stream.ReadByte; Close = stream.Close} |> ValueResult
-            with | :? IOException as e -> ErrorResult e.Message
+                InStreamValue {Read = stream.ReadByte; Close = stream.Close} |> Ok
+            with | :? IOException as e -> Err e.Message
                  | e -> raise e
         | [StringValue path; SymbolValue "out"] ->
             try let stream = File.OpenWrite(path)
-                OutStreamValue {Write = stream.WriteByte; Close = stream.Close} |> ValueResult
-            with | :? IOException as e -> ErrorResult e.Message
+                OutStreamValue {Write = stream.WriteByte; Close = stream.Close} |> Ok
+            with | :? IOException as e -> Err e.Message
                  | e -> raise e
         | _ -> invalidArgs ()
     let klClose _ args =
@@ -269,11 +269,11 @@ module Builtins =
         | _ -> invalidArgs ()
     let trapError r c =
         match r with
-        | ErrorResult e -> c (ErrorValue e)
+        | Err e -> c (ErrorValue e)
         | r -> r
     let funW name arity f = name, FunctionValue(new Function(name, arity, [], f))
-    let funR name arity f = funW name arity (fun globals args -> Completed (f globals args))
-    let funV name arity f = funR name arity (fun globals args -> ValueResult (f globals args))
+    let funR name arity f = funW name arity (fun globals args -> Done (f globals args))
+    let funV name arity f = funR name arity (fun globals args -> Ok (f globals args))
     let stinput =
         let consoleIn = new ConsoleIn(Console.OpenStandardInput())
         InStreamValue {Read = consoleIn.Read; Close = consoleIn.Close}
