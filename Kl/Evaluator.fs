@@ -30,7 +30,7 @@ module Evaluator =
     let rec go = function
         | Pending thunk -> thunk.Run() |> go
         | Completed result -> result
-    let rec apply pos globals fr (args: KlValue list) =
+    let rec apply pos globals fr (args: Value list) =
         match fr with
         | FunctionResolveError e -> ErrorResult e |> Completed
         | FunctionResult f ->

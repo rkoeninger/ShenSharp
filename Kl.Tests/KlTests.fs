@@ -210,7 +210,7 @@ type KlTests() =
         
     [<Test>]
     member this.Vectors() =
-        Assert.IsTrue(arrayEqual Array.empty<KlValue> (runIt "(absvector 0)" |> rVector))
+        Assert.IsTrue(arrayEqual Array.empty<Value> (runIt "(absvector 0)" |> rVector))
         Assert.IsTrue(arrayEqual [|SymbolValue "fail!"|] (runIt "(absvector 1)" |> rVector))
         Assert.IsTrue(arrayEqual [|BoolValue true|] (runIt "(address-> (absvector 1) 0 true)" |> rVector))
 

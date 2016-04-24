@@ -43,12 +43,12 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
                            FsModule.SingleLet(
                               "f",
                               ["envGlobals", FsType.Of("Globals")
-                               "X", FsType.Of("KlValue")
-                               "Y", FsType.Of("KlValue")],
+                               "X", FsType.Of("Value")
+                               "Y", FsType.Of("Value")],
                               KlCompiler.build(
-                                KlExpr.AppExpr(
+                                Expr.AppExpr(
                                   Position.Head,
-                                  KlExpr.SymbolExpr "+",
+                                  Expr.SymbolExpr "+",
                                   [SymbolExpr "X"; SymbolExpr "Y"])))])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
@@ -66,7 +66,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
 
     [<Test>]
     member this.KlExprToSynExpr() =
-        let kl = KlExpr.AndExpr(KlExpr.BoolExpr true, KlExpr.BoolExpr false)
+        let kl = Expr.AndExpr(Expr.BoolExpr true, Expr.BoolExpr false)
         let syn = KlCompiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -89,7 +89,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     
     [<Test>]
     member this.BuildFreezeExpr() =
-        let kl = KlExpr.FreezeExpr(KlExpr.AppExpr(Head, KlExpr.SymbolExpr "number?", [KlExpr.StringExpr "hi"]))
+        let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymbolExpr "number?", [Expr.StringExpr "hi"]))
         let syn = KlCompiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -103,7 +103,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
             let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
-            match v :?> KlValue with
+            match v :?> Value with
             | FunctionValue _ -> ()
             | _ -> assert false
             ()
@@ -116,7 +116,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     member this.BuildCondExpr() =
         let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> tokenize |> parse Position.Head
         let syn = KlCompiler.build kl
-        let ast = singleBinding ["envGlobals", FsType.Of("Globals"); "X", FsType.Of("KlValue")] syn
+        let ast = singleBinding ["envGlobals", FsType.Of("Globals"); "X", FsType.Of("Value")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         try
@@ -127,12 +127,12 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); KlValue.IntValue(5)|])
-            Assert.AreEqual(KlValue.StringValue "positive", v)
-            let v2 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); KlValue.IntValue(-5)|])
-            Assert.AreEqual(KlValue.StringValue "negative", v2)
-            let v3 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); KlValue.IntValue(0)|])
-            Assert.AreEqual(KlValue.StringValue "zero", v3)
+            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); Value.IntValue(5)|])
+            Assert.AreEqual(Value.StringValue "positive", v)
+            let v2 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); Value.IntValue(-5)|])
+            Assert.AreEqual(Value.StringValue "negative", v2)
+            let v3 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); Value.IntValue(0)|])
+            Assert.AreEqual(Value.StringValue "zero", v3)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()
@@ -155,7 +155,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
             let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
-            Assert.AreEqual(KlValue.StringValue "positive", v)
+            Assert.AreEqual(Value.StringValue "positive", v)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()

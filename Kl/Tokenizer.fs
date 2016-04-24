@@ -6,7 +6,7 @@ open FParsec
 /// <remarks>Tokenizer is strict about spacing. It will not handle extra spaces inside of parens.</remarks>
 module Tokenizer =
 
-    let private pToken, pTokenRef = createParserForwardedToRef<KlToken, unit>()
+    let private pToken, pTokenRef = createParserForwardedToRef<Token, unit>()
     let private pBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
     let private pNumber = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> (decimal >> NumberToken)
     let private stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
