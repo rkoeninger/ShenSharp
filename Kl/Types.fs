@@ -65,7 +65,7 @@ and Value =
     | ErrorValue     of string
     | InStreamValue  of InStream
     | OutStreamValue of OutStream
-and Result =
+and Result = // TODO: remove result and just use exceptions?
     | ValueResult of Value
     | ErrorResult of string
 and Work =
