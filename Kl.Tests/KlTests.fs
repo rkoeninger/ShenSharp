@@ -5,7 +5,7 @@ open FParsec
 open Kl
 open Kl.Tokenizer
 open Kl.Parser
-open Kl.KlEvaluator
+open Kl.Evaluator
 open Kl.KlBuiltins
 open System.Reflection
 open System

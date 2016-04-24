@@ -1,6 +1,7 @@
 ﻿open Kl
 open Kl.Tokenizer
 open Kl.Parser
+open Kl.Evaluator
 open System
 open System.IO
 
@@ -43,13 +44,13 @@ let main0 args =
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)
                 let expr = parse Head ast
-                KlEvaluator.eval env expr |> ignore
+                eval env expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
-    let load path = KlEvaluator.eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr path])) |> ignore
+    let load path = eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr path])) |> ignore
 //    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
 //    printfn "Starting shen repl..."
 //    printfn ""

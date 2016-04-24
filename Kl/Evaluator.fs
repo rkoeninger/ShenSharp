@@ -4,7 +4,7 @@ open Extensions
 open FSharpx.Option
 open FSharpx.Choice
 
-module KlEvaluator =
+module Evaluator =
     let vBool x =
         match x with
         | BoolValue b -> b
@@ -13,8 +13,6 @@ module KlEvaluator =
     let falseR = BoolValue false |> ValueResult
     let trueW = Completed trueR
     let falseW = Completed falseR
-    let branch f g x y v = if vBool v then f x else g y
-    let branch1 f = branch f f
     let thunkW f = new Thunk(f) |> Pending
     let funcW name arity locals f = new Function(name, arity, locals, f) |> FunctionValue |> ValueResult |> Completed
     let append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
@@ -67,33 +65,64 @@ module KlEvaluator =
             | ErrorResult e -> Choice2Of2 e
     let rec eval env expr = evalw env expr |> go
     and evalw env = function
-        | EmptyExpr     -> EmptyValue |> ValueResult |> Completed
-        | BoolExpr b    -> BoolValue b |> ValueResult |> Completed
-        | IntExpr n     -> IntValue n |> ValueResult |> Completed
-        | DecimalExpr n -> DecimalValue n |> ValueResult |> Completed
-        | StringExpr s  -> StringValue s |> ValueResult |> Completed
-        | SymbolExpr "true"  -> trueW
-        | SymbolExpr "false" -> falseW
-        | SymbolExpr s       -> resolve env.Locals s |> ValueResult |> Completed
-        | AndExpr (left, right) -> eval env left >>= branch (evalw env) id right falseW
-        | OrExpr  (left, right) -> eval env left >>= branch id (evalw env) trueW right
-        | IfExpr (condition, ifTrue, ifFalse) -> eval env condition >>= branch1 (evalw env) ifTrue ifFalse
+        | EmptyExpr     -> EmptyValue           |> ValueResult |> Completed
+        | BoolExpr b    -> BoolValue b          |> ValueResult |> Completed
+        | IntExpr n     -> IntValue n           |> ValueResult |> Completed
+        | DecimalExpr n -> DecimalValue n       |> ValueResult |> Completed
+        | StringExpr s  -> StringValue s        |> ValueResult |> Completed
+        | SymbolExpr s  -> resolve env.Locals s |> ValueResult |> Completed
+
+        | AndExpr(left, right) ->
+            let evalRight b =
+                match b with
+                | BoolValue true -> evalw env right
+                | _ -> falseW
+            eval env left >>= evalRight
+
+        | OrExpr(left, right) ->
+            let evalRight b =
+                match b with
+                | BoolValue true -> trueW
+                | _ -> evalw env right
+            eval env left >>= evalRight
+
+        | IfExpr (condition, consequent, alternative) ->
+            let evalBranch b =
+                match b with
+                | BoolValue true -> evalw env consequent
+                | _ -> evalw env alternative
+            eval env condition >>= evalBranch
+
         | CondExpr clauses ->
             let rec evalClauses = function
-                | (condition, ifTrue) :: rest -> eval env condition >>= branch (evalw env) evalClauses ifTrue rest
                 | [] -> failwith "No condition was true"
+                | (condition, consequent) :: rest ->
+                    match eval env condition with
+                    | ValueResult(BoolValue true) -> evalw env consequent
+                    | ValueResult _ -> evalClauses rest
+                    | ErrorResult _ as e -> Completed e
             evalClauses clauses
-        | LetExpr (symbol, binding, body) -> eval env binding >>>= (fun v -> eval (append1 env symbol v) body)
-        | LambdaExpr (param, body) -> closure evalw env [param] body |> ValueResult |> Completed
+
+        | LetExpr (symbol, binding, body) ->
+            let evalBody v = eval (append1 env symbol v) body
+            eval env binding >>>= evalBody
+
+        | LambdaExpr (param, body) ->
+            closure evalw env [param] body |> ValueResult |> Completed
+
         | DefunExpr (name, paramz, body) ->
             let f = closure evalw env paramz body
             env.Globals.Functions.[name] <- f
             f |> ValueResult |> Completed
-        | FreezeExpr expr -> closure evalw env [] expr |> ValueResult |> Completed
+
+        | FreezeExpr expr ->
+            closure evalw env [] expr |> ValueResult |> Completed
+
         | TrapExpr (pos, body, handler) ->
             match eval env body with
             | ErrorResult e -> eval env handler >>= (fun v -> apply pos env.Globals (vFunc env v) [ErrorValue e])
             | r -> Completed r
+
         | AppExpr (pos, f, args) ->
             eval env f >>= (fun v -> choice (apply pos env.Globals (vFunc env v))
                                             (ErrorResult >> Completed)
