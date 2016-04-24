@@ -5,6 +5,11 @@ open FSharpx.Option
 open FSharpx.Choice
 
 module Evaluator =
+
+    type private FunctionResolveResult =
+        | FunctionResult of Function
+        | FunctionResolveError of string
+
     let vBool x =
         match x with
         | BoolValue b -> b
@@ -19,7 +24,7 @@ module Evaluator =
     let append1 env k v = append env [(k, v)]
     let closure eval env (paramz: string list) body =
         new Function("Anonymous", paramz.Length, env.Locals, fun _ args -> eval (append env (List.zip paramz args)) body) |> FunctionValue
-    let vFunc (env: Env) = function
+    let private vFunc (env: Env) = function
         | FunctionValue f -> FunctionResult f
         | SymbolValue s ->
             match env.Globals.Functions.GetMaybe(s) with
@@ -30,7 +35,7 @@ module Evaluator =
     let rec go = function
         | Pending thunk -> thunk.Run() |> go
         | Completed result -> result
-    let rec apply pos globals fr (args: Value list) =
+    let rec private apply pos globals fr (args: Value list) =
         match fr with
         | FunctionResolveError e -> ErrorResult e |> Completed
         | FunctionResult f ->

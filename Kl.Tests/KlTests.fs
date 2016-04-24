@@ -6,7 +6,7 @@ open Kl
 open Kl.Tokenizer
 open Kl.Parser
 open Kl.Evaluator
-open Kl.KlBuiltins
+open Kl.Builtins
 open System.Reflection
 open System
 open System.IO

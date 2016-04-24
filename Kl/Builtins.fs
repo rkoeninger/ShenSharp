@@ -6,7 +6,7 @@ open FSharpx.Choice
 open System
 open System.IO
 
-module KlBuiltins =
+module Builtins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
     let vBool x =
         match x with
@@ -100,7 +100,7 @@ module KlBuiltins =
         | [ConsValue _] -> trueV
         | [_] -> falseV
         | _ -> invalidArgs ()
-    let rec klEq a b =
+    let rec private klEq a b =
         match a, b with
         | EmptyValue,         EmptyValue         -> true
         | BoolValue x,        BoolValue y        -> x = y
@@ -121,7 +121,7 @@ module KlBuiltins =
         match args with
         | [x; y] -> klEq x y |> BoolValue
         | _ -> invalidArgs ()
-    let rec klValueToToken = function
+    let rec private klValueToToken = function
         | EmptyValue -> ComboToken []
         | BoolValue b -> BoolToken b
         | IntValue n -> n |> decimal |> NumberToken
@@ -140,7 +140,7 @@ module KlBuiltins =
         | _ -> invalidArgs ()
     let klType globals args =
         match args with
-        | [x; _] -> x // TODO label the type of an expression (what does that mean?)
+        | [x; _] -> x
         | _ -> invalidArgs ()
     let klNewVector _ args =
         match args with
@@ -197,9 +197,9 @@ module KlBuiltins =
         | [InStreamValue stream]  -> stream.Close(); EmptyValue
         | [OutStreamValue stream] -> stream.Close(); EmptyValue
         | _ -> invalidArgs ()
-    let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-    let startTime = DateTime.UtcNow
-    let stopwatch = Diagnostics.Stopwatch.StartNew()
+    let private epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+    let private startTime = DateTime.UtcNow
+    let private stopwatch = Diagnostics.Stopwatch.StartNew()
     let klGetTime _ args = // All returned values are in milliseconds
         match args with
         | [SymbolValue "run"] -> stopwatch.ElapsedTicks / 10000L |> int |> IntValue

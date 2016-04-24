@@ -13,7 +13,7 @@ module KlCompiler =
                 .Replace("+", "_PLUS_")
                 .Replace("*", "_STAR_")
                 .TrimEnd('_')
-        let builtin id = FsExpr.LongId ["KlBuiltins"; id]
+        let builtin id = FsExpr.LongId ["Builtins"; id]
         let seBool synExpr = FsExpr.App(builtin "vBool", [synExpr])
         let seResult synExpr = FsExpr.App(FsExpr.Id "Completed", [FsExpr.App(FsExpr.Id "ValueResult", [synExpr])])
         let escape s =
@@ -64,7 +64,7 @@ module KlCompiler =
         | FreezeExpr(expr) ->
             klFunction 1 (FsExpr.Lambda(false, Some("args", FsType.ListOf(FsType.Of("Value"))), seResult (build expr)))
         | TrapExpr(_, t, c) ->
-            FsExpr.App(FsExpr.LongId ["KlBuiltins"; "trapError"], [build t; build c])
+            FsExpr.App(FsExpr.LongId ["Builtins"; "trapError"], [build t; build c])
         | AppExpr(_, f, args) ->
             let primitiveOp op =
                 match op with

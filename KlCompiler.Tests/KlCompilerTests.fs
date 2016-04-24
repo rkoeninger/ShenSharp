@@ -32,7 +32,7 @@ type CompilerTests() =
         
 open Kl
 
-let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(KlBuiltins.klIsCons globals X))))
+let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(Builtins.klIsCons globals X))))
 """
         let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
         let ast = FsFile.Of(
@@ -57,7 +57,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
             Assert.AreEqual(0, i)
             let types = asm.Value.GetTypes()
-            let res1 = types.[0].GetMethods().[0].Invoke(null, [|KlBuiltins.newGlobals(); IntValue 1; IntValue 2|])
+            let res1 = types.[0].GetMethods().[0].Invoke(null, [|Builtins.newGlobals(); IntValue 1; IntValue 2|])
             assert (res1 = (IntValue 3 :> obj))
         with
             ex -> printfn "%s" <| ex.ToString()
@@ -79,7 +79,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
+            let v = methods.[0].Invoke(null, [|Builtins.newGlobals()|])
             Assert.AreEqual(false, v)
             ()
         with
@@ -102,7 +102,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
+            let v = methods.[0].Invoke(null, [|Builtins.newGlobals()|])
             match v :?> Value with
             | FunctionValue _ -> ()
             | _ -> assert false
@@ -127,11 +127,11 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); Value.IntValue(5)|])
+            let v = methods.[0].Invoke(null, [|Builtins.newGlobals(); Value.IntValue(5)|])
             Assert.AreEqual(Value.StringValue "positive", v)
-            let v2 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); Value.IntValue(-5)|])
+            let v2 = methods.[0].Invoke(null, [|Builtins.newGlobals(); Value.IntValue(-5)|])
             Assert.AreEqual(Value.StringValue "negative", v2)
-            let v3 = methods.[0].Invoke(null, [|KlBuiltins.newGlobals(); Value.IntValue(0)|])
+            let v3 = methods.[0].Invoke(null, [|Builtins.newGlobals(); Value.IntValue(0)|])
             Assert.AreEqual(Value.StringValue "zero", v3)
             ()
         with
@@ -154,7 +154,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
             let methods = types.[0].GetMethods()
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|KlBuiltins.newGlobals()|])
+            let v = methods.[0].Invoke(null, [|Builtins.newGlobals()|])
             Assert.AreEqual(Value.StringValue "positive", v)
             ()
         with

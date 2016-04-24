@@ -1,5 +1,7 @@
 ﻿namespace Kl
 
+open System.Collections.Generic
+
 type Token =
     | BoolToken   of bool
     | NumberToken of decimal
@@ -34,7 +36,7 @@ type Expr =
 type [<ReferenceEquality>] InStream = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
 
-type Defines = System.Collections.Generic.Dictionary<string, Value>
+type Defines = Dictionary<string, Value>
 and Globals = {Symbols: Defines; Functions: Defines}
 and Locals = Map<string, Value> list
 and Function(name: string, arity: int, locals: Locals, f: Globals -> Value list -> Work) =
@@ -72,7 +74,3 @@ and Work =
     | Pending   of Thunk
 
 type Env = {Globals: Globals; Locals: Locals}
-
-// TODO: find some other way to do this (?)
-type FunctionResolveResult = FunctionResult of Function
-                           | FunctionResolveError of string
