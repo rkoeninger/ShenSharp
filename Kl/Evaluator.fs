@@ -115,11 +115,6 @@ module Evaluator =
         | LambdaExpr (param, body) ->
             closure evalw env [param] body |> ValueResult |> Completed
 
-        | DefunExpr (name, paramz, body) ->
-            let f = closure evalw env paramz body
-            env.Globals.Functions.[name] <- f
-            f |> ValueResult |> Completed
-
         | FreezeExpr expr ->
             closure evalw env [] expr |> ValueResult |> Completed
 
@@ -132,3 +127,12 @@ module Evaluator =
             eval env f >>= (fun v -> choice (apply pos env.Globals (vFunc env v))
                                             (ErrorResult >> Completed)
                                             (evalArgs (evalw env) [] args))
+    let rootEval globals expr =
+        let env = {Globals = globals; Locals = []}
+        match expr with
+        | DefunExpr(name, paramz, body) ->
+            let f = closure evalw env paramz body
+            globals.Functions.[name] <- f
+            ValueResult f
+
+        | OtherExpr expr -> eval env expr

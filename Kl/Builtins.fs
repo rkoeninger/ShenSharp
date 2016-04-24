@@ -136,7 +136,7 @@ module Builtins =
         | x -> invalidArg "_" <| x.ToString()
     let klEval globals args =
         match args with
-        | [v] -> klValueToToken v |> Parser.parse Head |> Evaluator.eval {Locals = []; Globals = globals}
+        | [v] -> klValueToToken v |> Parser.rootParse |> Evaluator.rootEval globals
         | _ -> invalidArgs ()
     let klType globals args =
         match args with

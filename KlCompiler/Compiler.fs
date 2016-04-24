@@ -60,7 +60,6 @@ module KlCompiler =
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) ->
             klFunction 1 (FsExpr.Lambda(false, Some(symbol, FsType.Of("Value")), seResult (build body)))
-        | DefunExpr(symbol, paramz, body) -> failwith "Defun expr must be at top level"
         | FreezeExpr(expr) ->
             klFunction 1 (FsExpr.Lambda(false, Some("args", FsType.ListOf(FsType.Of("Value"))), seResult (build expr)))
         | TrapExpr(_, t, c) ->
@@ -135,11 +134,14 @@ module KlCompiler =
         let isDefun = function
             | DefunExpr _ -> true
             | _ -> false
-        let isApp = function
-            | AppExpr _ -> true
+        let isOther = function
+            | OtherExpr _ -> true
             | _ -> false
+        let other = function
+            | OtherExpr e -> e
+            | _ -> failwith "not other"
         let decls = exprs |> List.filter isDefun |> List.map topLevelBuild
-        let init = exprs |> List.filter isApp |> List.map build |> buildInit
+        let init = exprs |> List.filter isOther |> List.map other |> List.map build |> buildInit
         let members = List.append decls [init]
         let openKl = FsModule.Open ["Kl"]
         FsFile.Of("KlImpl", [FsModule.Of("KlImpl", List.Cons(openKl, members))])

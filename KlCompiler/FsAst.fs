@@ -107,7 +107,7 @@ type FsModule =
                 SynConstructorArgs.Pats(ctorArgs),
                 None,
                 FsAst.defaultRange)
-        let returnType = FsType.Of("KlValue")
+        let returnType = FsType.Of("Value")
         let returnInfo = SynBindingReturnInfo.SynBindingReturnInfo(returnType, FsAst.defaultRange, [])
         let binding =
             SynBinding.Binding(

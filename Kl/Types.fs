@@ -24,14 +24,13 @@ type Expr =
     | CondExpr    of (Expr * Expr) list
     | LetExpr     of string * Expr * Expr
     | LambdaExpr  of string * Expr
-    | DefunExpr   of string * string list * Expr
     | FreezeExpr  of Expr
     | TrapExpr    of Position * Expr * Expr
     | AppExpr     of Position * Expr * Expr list
-  
-// TODO: make defun top-level only (thanks, shentong)
-//type KlTopLevelExpr = DefunExpr of string
-//                    | OtherExpr of KlExpr
+
+type RootExpr =
+    | DefunExpr of string * string list * Expr
+    | OtherExpr of Expr
 
 type [<ReferenceEquality>] InStream = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}

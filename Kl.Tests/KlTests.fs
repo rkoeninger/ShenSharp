@@ -14,7 +14,7 @@ open System.IO
 [<TestFixture>]
 type KlTests() =
 
-    let runInEnv env = tokenize >> parse Head >> eval env
+    let runInEnv env = tokenize >> rootParse >> rootEval env.Globals
     let runIt = runInEnv (baseEnv ())
     let isIntR = function | ValueResult (IntValue _) -> true | _ -> false
     let isDecimalR = function | ValueResult (DecimalValue _) -> true | _ -> false
@@ -251,7 +251,7 @@ type KlTests() =
 
     [<Test>]
     member this.HeadTailPositionsParsed() =
-        let e = "(defun ! (acc n) (if (= 0 n) acc (! (* n acc) (- n 1))))" |> tokenize |> parse Head
+        let e = "(defun ! (acc n) (if (= 0 n) acc (! (* n acc) (- n 1))))" |> tokenize |> rootParse
         let e0 = DefunExpr ("!",
                             ["acc"; "n"],
                             IfExpr (AppExpr (Head,

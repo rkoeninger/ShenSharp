@@ -51,14 +51,6 @@ module Parser =
         | ComboToken [(SymbolToken "lambda"); (SymbolToken arg); body] ->
             LambdaExpr (arg, parse Tail body)
 
-        // (defun ~name ~paramz ~body)
-        | ComboToken [(SymbolToken "defun"); (SymbolToken name); (ComboToken paramz); body] ->
-            let tSymbol t =
-                match t with
-                | (SymbolToken s) -> s
-                | _ -> failwith "Defun parameters must be symbols"
-            DefunExpr (name, List.map tSymbol paramz, parse Tail body)
-
         // (freeze ~expr)
         | ComboToken [(SymbolToken "freeze"); expr] ->
             FreezeExpr (parse Tail expr)
@@ -67,6 +59,26 @@ module Parser =
         | ComboToken [(SymbolToken "trap-error"); body; handler] ->
             TrapExpr (pos, parse Head body, parse pos handler)
 
+        // (defun ...)
+        | ComboToken(SymbolToken "defun" :: _) ->
+            failwith "defun expressions cannot appear below the root level"
+
         // (~f ~@args)
         | ComboToken (f :: args) ->
             AppExpr (pos, parse Head f, List.map (parse Head) args)
+            
+    /// <summary>Parse a token into a root-level expression.</summary>
+    /// <exception>Throws on invalid cond clauses and defuns with parameters that are not symbols.</exception>
+    let rootParse token =
+        match token with
+
+        // (defun ~name ~paramz ~body)
+        | ComboToken [SymbolToken "defun"; SymbolToken name; ComboToken paramz; body] ->
+            let paramName t =
+                match t with
+                | (SymbolToken s) -> s
+                | _ -> failwith "Defun parameters must be symbols"
+            DefunExpr (name, List.map paramName paramz, parse Tail body)
+
+        // Any other expr
+        | _ -> OtherExpr(parse Head token)
