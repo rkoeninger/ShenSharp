@@ -2,8 +2,8 @@
 
 open Kl
 
-module KlCompiler =
-    let rec build expr = // Throws on DefunExpr
+module Compiler =
+    let rec build expr =
         let klToFsId (klId:string) =
             klId.Replace("?", "_P_")
                 .Replace("<", "_LT_")

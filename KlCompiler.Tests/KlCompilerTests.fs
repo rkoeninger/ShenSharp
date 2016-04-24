@@ -26,8 +26,8 @@ type CompilerTests() =
 
     [<Test>]
     member this.CompilerServicesBuildAst() =
-        let p = tokenize >> parse Head >> KlCompiler.build
-        let r = AndExpr(BoolExpr true, BoolExpr false) |> KlCompiler.build
+        let p = tokenize >> parse Head >> Compiler.build
+        let r = AndExpr(BoolExpr true, BoolExpr false) |> Compiler.build
         let text = """module Stuff
         
 open Kl
@@ -45,7 +45,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
                               ["envGlobals", FsType.Of("Globals")
                                "X", FsType.Of("Value")
                                "Y", FsType.Of("Value")],
-                              KlCompiler.build(
+                              Compiler.build(
                                 Expr.AppExpr(
                                   Position.Head,
                                   Expr.SymbolExpr "+",
@@ -67,7 +67,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     [<Test>]
     member this.KlExprToSynExpr() =
         let kl = Expr.AndExpr(Expr.BoolExpr true, Expr.BoolExpr false)
-        let syn = KlCompiler.build kl
+        let syn = Compiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
@@ -90,7 +90,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     [<Test>]
     member this.BuildFreezeExpr() =
         let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymbolExpr "number?", [Expr.StringExpr "hi"]))
-        let syn = KlCompiler.build kl
+        let syn = Compiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
@@ -115,7 +115,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     [<Test>]
     member this.BuildCondExpr() =
         let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> tokenize |> parse Position.Head
-        let syn = KlCompiler.build kl
+        let syn = Compiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals"); "X", FsType.Of("Value")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
@@ -142,7 +142,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     [<Test>]
     member this.BuildLetExpr() =
         let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> tokenize |> parse Position.Head
-        let syn = KlCompiler.build kl
+        let syn = Compiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
@@ -167,7 +167,7 @@ let f = new Function("f", 1, [], fun globals -> (fun X -> Completed(ValueResult(
     member this.BuildModule() =
         let src = System.IO.File.ReadAllText(@"..\..\..\KLambda\toplevel.kl")
         let exprs = src |> tokenizeAll |> List.map rootParse |> Seq.take 6 |> Seq.toList
-        let parsedInput = KlCompiler.buildModule exprs
+        let parsedInput = Compiler.buildModule exprs
         let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
         System.Console.WriteLine(str)
         ()
