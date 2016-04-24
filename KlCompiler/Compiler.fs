@@ -27,7 +27,7 @@ module KlCompiler =
         let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
         let klFunction argCount lambda =
             FsExpr.App(
-                FsExpr.LongId ["KlValue"; "FunctionValue"],
+                FsExpr.LongId ["Value"; "FunctionValue"],
                 [FsExpr.App(
                     FsExpr.LongId ["Function"; "func"],
                     [FsConst.String("Anonymous")
@@ -38,15 +38,15 @@ module KlCompiler =
                         Some("envGlobals", FsType.Of("Globals")),
                         lambda)])])
         match expr with
-        | EmptyExpr -> FsExpr.LongId ["KlValue"; "EmptyValue"]
-        | BoolExpr b -> FsExpr.App(FsExpr.LongId ["KlValue"; "BoolValue"], [FsConst.Bool b])
-        | IntExpr i -> FsExpr.App(FsExpr.LongId ["KlValue"; "IntValue"], [FsConst.Int32 i])
-        | DecimalExpr d -> FsExpr.App(FsExpr.LongId ["KlValue"; "DecimalValue"], [FsConst.Decimal d])
-        | StringExpr s -> FsExpr.App(FsExpr.LongId ["KlValue"; "StringValue"], [FsConst.String (escape s)])
+        | EmptyExpr -> FsExpr.LongId ["Value"; "EmptyValue"]
+        | BoolExpr b -> FsExpr.App(FsExpr.LongId ["Value"; "BoolValue"], [FsConst.Bool b])
+        | IntExpr i -> FsExpr.App(FsExpr.LongId ["Value"; "IntValue"], [FsConst.Int32 i])
+        | DecimalExpr d -> FsExpr.App(FsExpr.LongId ["Value"; "DecimalValue"], [FsConst.Decimal d])
+        | StringExpr s -> FsExpr.App(FsExpr.LongId ["Value"; "StringValue"], [FsConst.String (escape s)])
         | SymbolExpr s ->
             if isVar s
                 then FsExpr.Id (klToFsId s)
-                else FsExpr.App(FsExpr.LongId ["KlValue"; "SymbolValue"], [FsConst.String s])
+                else FsExpr.App(FsExpr.LongId ["Value"; "SymbolValue"], [FsConst.String s])
         | AndExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanAnd"), build right |> seBool)
         | OrExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanOr"), build right |> seBool)
         | IfExpr(condition, ifTrue, ifFalse) -> FsExpr.If(build condition |> seBool, build ifTrue, build ifFalse)
@@ -59,10 +59,10 @@ module KlCompiler =
             buildClauses clauses
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) ->
-            klFunction 1 (FsExpr.Lambda(false, Some(symbol, FsType.Of("KlValue")), seResult (build body)))
+            klFunction 1 (FsExpr.Lambda(false, Some(symbol, FsType.Of("Value")), seResult (build body)))
         | DefunExpr(symbol, paramz, body) -> failwith "Defun expr must be at top level"
         | FreezeExpr(expr) ->
-            klFunction 1 (FsExpr.Lambda(false, Some("args", FsType.ListOf(FsType.Of("KlValue"))), seResult (build expr)))
+            klFunction 1 (FsExpr.Lambda(false, Some("args", FsType.ListOf(FsType.Of("Value"))), seResult (build expr)))
         | TrapExpr(_, t, c) ->
             FsExpr.App(FsExpr.LongId ["KlBuiltins"; "trapError"], [build t; build c])
         | AppExpr(_, f, args) ->
@@ -117,7 +117,7 @@ module KlCompiler =
     let topLevelBuild expr =
         match expr with
         | DefunExpr(symbol, paramz, body) ->
-            let typedParamz = ["envGlobals", FsType.Of("Globals"); "args", FsType.ListOf(FsType.Of("KlValue"))]
+            let typedParamz = ["envGlobals", FsType.Of("Globals"); "args", FsType.ListOf(FsType.Of("Value"))]
             FsModule.SingleLet(
                 symbol,
                 typedParamz,
