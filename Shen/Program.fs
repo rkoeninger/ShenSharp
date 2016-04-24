@@ -43,8 +43,8 @@ let main0 args =
             match ast with
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)
-                let expr = parse Head ast
-                eval env expr |> ignore
+                let expr = rootParse ast
+                rootEval env.Globals expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
