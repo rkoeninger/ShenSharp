@@ -26,22 +26,9 @@ module Builtins =
         match args with
         | [StringValue x; StringValue y] -> x + y |> StringValue
         | _ -> invalidArgs ()
-    let rec klStr = function
-        | EmptyValue -> "()"
-        | BoolValue b -> if b then "true" else "false"
-        | IntValue n -> n.ToString()
-        | DecimalValue n -> n.ToString()
-        | StringValue s -> "\"" + s + "\""
-        | SymbolValue s -> s
-        | ConsValue (head, tail) -> sprintf "(cons %s %s)" (klStr head) (klStr tail)
-        | VectorValue value -> sprintf "(@v%s)" (String.Join("", (Array.map (fun s -> " " + klStr s) value)))
-        | ErrorValue message -> sprintf "(simple-error \"%s\")" message
-        | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
-        | InStreamValue s -> sprintf "<InStream %s>" (s.ToString())
-        | OutStreamValue s -> sprintf "<OutStream %s>" (s.ToString())
     let klToString _ args =
         match args with
-        | [x] -> x |> klStr |> StringValue
+        | [x] -> StringValue(Values.toStr x)
         | _ -> invalidArgs ()
     let klIsString _ args =
         match args with
@@ -58,8 +45,9 @@ module Builtins =
         | _ -> invalidArgs ()
     let klSet globals args =
         match args with
-        | [SymbolValue s; x] -> globals.Symbols.[s] <- x
-                                x
+        | [SymbolValue s; x] ->
+            globals.Symbols.[s] <- x
+            x
         | _ -> invalidArgs ()
     let klValue globals args =
         match args with
@@ -93,43 +81,13 @@ module Builtins =
         | [ConsValue _] -> Values.truev
         | [_] -> Values.falsev
         | _ -> invalidArgs ()
-    let rec private klEq a b =
-        match a, b with
-        | EmptyValue,         EmptyValue         -> true
-        | BoolValue x,        BoolValue y        -> x = y
-        | IntValue x,         IntValue y         -> x = y
-        | DecimalValue x,     DecimalValue y     -> x = y
-        | IntValue x,         DecimalValue y     -> decimal x = y
-        | DecimalValue x,     IntValue y         -> x = decimal y
-        | StringValue x,      StringValue y      -> x = y
-        | SymbolValue x,      SymbolValue y      -> x = y
-        | InStreamValue x,    InStreamValue y    -> x = y
-        | OutStreamValue x,   OutStreamValue y   -> x = y
-        | FunctionValue x,    FunctionValue y    -> x = y
-        | ErrorValue x,       ErrorValue y       -> x = y
-        | ConsValue (x1, x2), ConsValue (y1, y2) -> klEq x1 y1 && klEq x2 y2
-        | VectorValue xs,     VectorValue ys     -> xs.Length = ys.Length && Array.forall2 klEq xs ys
-        | (_, _) -> false
     let klEquals _ args =
         match args with
-        | [x; y] -> klEq x y |> BoolValue
+        | [x; y] -> BoolValue(Values.eq x y)
         | _ -> invalidArgs ()
-    let rec private klValueToToken = function
-        | EmptyValue -> ComboToken []
-        | BoolValue b -> BoolToken b
-        | IntValue n -> n |> decimal |> NumberToken
-        | DecimalValue n -> n |> NumberToken
-        | StringValue s -> StringToken s
-        | SymbolValue s -> SymbolToken s
-        | ConsValue _ as cons ->
-            let generator = function | ConsValue (head, tail) -> Some(klValueToToken head, tail)
-                                     | EmptyValue -> None
-                                     | _ -> invalidArgs ()
-            cons |> Seq.unfold generator |> Seq.toList |> ComboToken
-        | x -> invalidArg "_" <| x.ToString()
     let klEval globals args =
         match args with
-        | [v] -> klValueToToken v |> Parser.rootParse |> Evaluator.rootEval globals
+        | [v] -> Values.toToken v |> Parser.rootParse |> Evaluator.rootEval globals
         | _ -> invalidArgs ()
     let klType globals args =
         match args with
@@ -271,7 +229,7 @@ module Builtins =
         let consoleOutStream = Console.OpenStandardOutput()
         OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
     let klPrint = function
-        | [x] -> Console.Write(klStr x)
+        | [x] -> Console.Write(Values.toStr x)
                  EmptyValue
         | _ -> invalidArgs()
     let klFillVector = function
@@ -281,6 +239,6 @@ module Builtins =
         | _ -> invalidArgs()
     let rec klElement = function
         | [_; EmptyValue] -> Values.falsev
-        | [key; ConsValue(head, _)] when klEq key head -> Values.truev
+        | [key; ConsValue(head, _)] when Values.eq key head -> Values.truev
         | [key; ConsValue(_, tail)] -> klElement [key; tail]
         | _ -> invalidArgs()
