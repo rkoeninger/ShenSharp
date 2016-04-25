@@ -47,12 +47,6 @@ type KlTests() =
     let rBool = function
         | Ok (BoolValue b) -> b
         | _ -> failwith "not a Bool"
-    let trueV = BoolValue true
-    let falseV = BoolValue false
-    let trueR = BoolValue true |> Ok
-    let falseR = BoolValue false |> Ok
-    let trueW = trueR |> Done
-    let falseW = falseR |> Done
     let eApp1 f arg1 = AppExpr(Head, f, [arg1])
     let symApp1 sym arg1 = AppExpr (Head, SymbolExpr sym, [arg1])
     let symApp2 sym arg1 arg2 = AppExpr (Head, SymbolExpr sym, [arg1; arg2])
@@ -118,23 +112,23 @@ type KlTests() =
             | _ -> failwith "must be bool"
         env.Globals.Functions.["not"] <- func 1 klNot
         runInEnv env "(defun xor (L R) (or (and L (not R)) (and (not L) R)))" |> ignore
-        Assert.AreEqual(trueR, runInEnv env "(xor true false)")
+        Assert.AreEqual(Values.truer, runInEnv env "(xor true false)")
 
     [<Test>]
     member this.SymbolResolution() =
         let env = Values.newEnv()
         let klIsSymbol _ args =
             match args with
-            | [SymbolValue _] -> trueW
-            | _ -> falseW
+            | [SymbolValue _] -> Values.truew
+            | _ -> Values.falsew
         env.Globals.Functions.["symbol?"] <- func 1 klIsSymbol
-        Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
+        Assert.AreEqual(Values.truer, runInEnv env "(symbol? run)")
         let klId _ args =
             match args with
             | [x] -> Ok x |> Done
             | _ -> failwith "must be 1 arg"
         env.Globals.Functions.["id"] <- func 1 klId
-        Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
+        Assert.AreEqual(Values.truer, runInEnv env "(symbol? (id run))")
 
     [<Test>]
     member this.``result of interning a string is equal to symbol with name that is equal to that string``() =
@@ -212,14 +206,14 @@ type KlTests() =
     member this.Vectors() =
         Assert.IsTrue(arrayEqual Array.empty<Value> (runIt "(absvector 0)" |> rVector))
         Assert.IsTrue(arrayEqual [|SymbolValue "fail!"|] (runIt "(absvector 1)" |> rVector))
-        Assert.IsTrue(arrayEqual [|BoolValue true|] (runIt "(address-> (absvector 1) 0 true)" |> rVector))
+        Assert.IsTrue(arrayEqual [|Values.truev|] (runIt "(address-> (absvector 1) 0 true)" |> rVector))
 
     [<Test>]
     member this.Conses() =
-        Assert.AreEqual(trueR, runIt "(= () (tl (cons 1 ())))")
-        Assert.AreEqual(falseR, runIt "(cons? ())")
-        Assert.AreEqual(falseR, runIt "(cons? 0)")
-        Assert.AreEqual(trueR, runIt "(cons? (cons 0 0))")
+        Assert.AreEqual(Values.truer, runIt "(= () (tl (cons 1 ())))")
+        Assert.AreEqual(Values.falser, runIt "(cons? ())")
+        Assert.AreEqual(Values.falser, runIt "(cons? 0)")
+        Assert.AreEqual(Values.truer, runIt "(cons? (cons 0 0))")
 
     [<Test>]
     member this.EvalFunction() =
@@ -227,14 +221,6 @@ type KlTests() =
         let incR = runIt "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
         let inc = rFunc incR
         Assert.AreEqual(intR 5, inc.Apply(Values.newGlobals(), [intV 4]) |> go)
-
-    [<Test>]
-    member this.SanityChecks() =
-        Assert.AreEqual(BoolToken true, BoolToken true)
-        Assert.AreEqual(BoolExpr true, BoolExpr true)
-        Assert.AreEqual(BoolValue true, BoolValue true) // this was failing when KlValue had a case containing a function type
-        Assert.AreEqual(true |> BoolValue |> Ok, true |> BoolValue |> Ok) // this might start failing for the same reason
-        Assert.AreEqual(true |> BoolValue |> Ok |> Done, true |> BoolValue |> Ok |> Done)
 
     [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =
@@ -248,7 +234,7 @@ type KlTests() =
         let env = baseEnv ()
         runInEnv env "(defun odd? (X) (if (= 1 X) true (even? (- X 1))))" |> ignore
         runInEnv env "(defun even? (X) (if (= 1 X) false (odd? (- X 1))))" |> ignore
-        Assert.AreEqual(Ok (BoolValue false), runInEnv env "(odd? 20000)")
+        Assert.AreEqual(Values.falser, runInEnv env "(odd? 20000)")
 
     [<Test>]
     member this.HeadTailPositionsParsed() =

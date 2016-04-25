@@ -85,3 +85,8 @@ module Values =
     let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv() = {Globals = newGlobals(); Locals = []}
+    let vbool v =
+        match v with
+        | BoolValue b -> b
+        | _ -> failwith "Boolean expected"
+

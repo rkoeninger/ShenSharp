@@ -6,10 +6,6 @@ open FSharpx.Choice
 
 module Evaluator =
 
-    let vBool x =
-        match x with
-        | BoolValue b -> b
-        | _ -> failwith "Boolean value expected"
     let funcW name arity locals f = new Function(name, arity, locals, f) |> FunctionValue |> Ok |> Done
     let append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
     let append1 env k v = append env [(k, v)]
@@ -68,7 +64,7 @@ module Evaluator =
             | Some f -> Ok f
             | None -> Err "Symbol not defined"
 
-    let private vbranch ifTrue ifFalse value = if vBool value then ifTrue() else ifFalse()
+    let private vbranch ifTrue ifFalse value = if Values.vbool value then ifTrue() else ifFalse()
 
     let rec private evalw env expr =
         let evale = eval env
