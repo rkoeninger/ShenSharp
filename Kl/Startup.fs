@@ -43,7 +43,7 @@ module Startup =
             funv "read-byte"       1 klReadByte
             funr "open"            2 klOpen
             funv "close"           1 klClose
-            funv "get-time"        1 klGetTime
+            funr "get-time"        1 klGetTime
             funv "+"               2 klAdd
             funv "-"               2 klSubtract
             funv "*"               2 klMultiply

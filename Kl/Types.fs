@@ -80,6 +80,10 @@ module Values =
     let truew = Done truer
     let falsew = Done falser
     let thunkw f = new Thunk(f) |> Pending
+    let rec go work =
+        match work with
+        | Pending thunk -> thunk.Run() |> go
+        | Done result -> result
     let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv() = {Globals = newGlobals(); Locals = []}
@@ -137,4 +141,7 @@ module Values =
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
         | x -> invalidArg "_" <| x.ToString()
 
-
+    let (>>=) result f =
+        match result with
+        | Ok value -> f value
+        | Err _ as error -> Done error

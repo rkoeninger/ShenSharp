@@ -220,7 +220,7 @@ type KlTests() =
         Assert.AreEqual(intR 3, evalResult) // (+ 1 2)
         let incR = runIt "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
         let inc = rFunc incR
-        let applyResult = Evaluator.apply Head (Startup.baseEnv()).Globals inc [intV 4] |> go
+        let applyResult = Evaluator.apply Head (Startup.baseEnv()).Globals inc [intV 4] |> Values.go
         Assert.AreEqual(intR 5, applyResult)
 
     [<Test>]

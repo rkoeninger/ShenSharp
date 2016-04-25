@@ -2,8 +2,12 @@
 
 open FParsec
 
-/// <summary>The tokenizer turns KL source code into a token tree.</summary>
-/// <remarks>Tokenizer is strict about spacing. It will not handle extra spaces inside of parens.</remarks>
+/// <summary>
+/// The tokenizer turns KL source code into a token tree.
+/// </summary>
+/// <remarks>
+/// Tokenizer is strict about spacing. It will not handle extra spaces inside of parens.
+/// </remarks>
 module Tokenizer =
 
     let private pToken, pTokenRef = createParserForwardedToRef<Token, unit>()
@@ -16,15 +20,23 @@ module Tokenizer =
     let private pTokens = spaces >>. (many (pToken .>> spaces))
     do pTokenRef := choice [pBool; pNumber; pString; pSymbol; pCombo]
 
-    /// <summary>Tokenize first complete KL source expression into token tree.</summary>
-    /// <exception>Throws when syntax is invalid.</exception>
+    /// <summary>
+    /// Tokenize first complete KL source expression into token tree.
+    /// </summary>
+    /// <exception>
+    /// Throws when syntax is invalid.
+    /// </exception>
     let tokenize s =
         match run pToken s with
         | Success(result, _, _) -> result
         | Failure(error, _, _) -> failwith error
 
-    /// <summary>Tokenize all KL source expressions into a list of token trees.</summary>
-    /// <exception>Throws when syntax is invalid.</exception>
+    /// <summary>
+    /// Tokenize all KL source expressions into a list of token trees.
+    /// </summary>
+    /// <exception>
+    /// Throws when syntax is invalid.
+    /// </exception>
     let tokenizeAll s =
         match run pTokens s with
         | Success(result, _, _) -> result

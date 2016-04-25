@@ -4,21 +4,9 @@ open Extensions
 
 module Evaluator =
 
-    let rec go = function
-        | Pending thunk -> thunk.Run() |> go
-        | Done result -> result
+    let private (>>=) = Values.(>>=)
 
     let private append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
-
-    let (>>=) result f =
-        match result with
-        | Ok value -> f value
-        | Err _ as error -> Done error
-
-    let (>>>=) result f =
-        match result with
-        | Ok value -> f value |> Done
-        | Err _ as error -> error |> Done
 
     let rec private resolveLocalSymbol locals id =
         match locals with
@@ -60,10 +48,22 @@ module Evaluator =
         if Values.vbool value
             then ifTrue()
             else ifFalse()
-            
+
+    let private tailCall pos f =
+        match pos with
+        | Head -> f()
+        | Tail -> Values.thunkw f
+    
+    /// <summary>
+    /// Applies a function to a set of arguments and a global
+    /// environment, considering whether to full evaluate
+    /// passed on the Head/Tail position of the application
+    /// </summary>
     let rec apply pos globals f args =
         let env = {Globals = globals; Locals = []}
 
+        // Applying functions to zero args just returns the same function,
+        // except for freezes, which fail if applied to any arguments
         match f with
         | Freeze(locals, body) ->
             match args with
@@ -74,6 +74,9 @@ module Evaluator =
             | [] -> Done(Ok(FunctionValue(lambda)))
             | [x] -> evalw (append env [(param, x)]) body
             | _ -> Done(Err "Lambdas take exactly 1 argument")
+
+        // Defuns and Primitives can have any number of arguments and
+        // can be partially applied
         | Defun(_, paramz, body) as defun ->
             match args with
             | [] -> Done(Ok(FunctionValue(defun)))
@@ -83,9 +86,7 @@ module Evaluator =
                 | Lesser -> Done(Ok(FunctionValue(Partial(args, defun))))
                 | Equal ->
                     let env = (append env (List.zip paramz args))
-                    match pos with
-                    | Head -> evalw env body
-                    | Tail -> Values.thunkw(fun () -> evalw env body)
+                    tailCall pos (fun () -> evalw env body)
         | Primitive(_, arity, f) as primitive ->
             match args with
             | [] -> Done(Ok(FunctionValue primitive))
@@ -93,10 +94,7 @@ module Evaluator =
                 match args.Length, arity with
                 | Greater -> Done(Err "Too many arguments")
                 | Lesser -> Done(Ok(FunctionValue(Partial(args, primitive))))
-                | Equal ->
-                    match pos with
-                    | Head -> Done(f globals args)
-                    | Tail -> Values.thunkw(fun () -> Done(f globals args))
+                | Equal -> tailCall pos (fun () -> Done(f globals args))
         | Partial(args0, f) as partial ->
             match args with
             | [] -> Done(Ok(FunctionValue(partial)))
@@ -109,14 +107,15 @@ module Evaluator =
         match expr with
 
         // Atomic values besides symbols are self-evaluating
-        | EmptyExpr     -> EmptyValue     |> Ok |> Done
-        | BoolExpr b    -> BoolValue b    |> Ok |> Done
-        | IntExpr n     -> IntValue n     |> Ok |> Done
-        | DecimalExpr n -> DecimalValue n |> Ok |> Done
-        | StringExpr s  -> StringValue s  |> Ok |> Done
+        | EmptyExpr     -> Done(Ok(EmptyValue))
+        | BoolExpr b    -> Done(Ok(BoolValue b))
+        | IntExpr n     -> Done(Ok(IntValue n))
+        | DecimalExpr n -> Done(Ok(DecimalValue n))
+        | StringExpr s  -> Done(Ok(StringValue s))
 
         // Should only get here in the case of symbols not in operator position
-        | SymbolExpr s  -> resolveSymbol env s |> Ok |> Done
+        // In this case, symbols always evaluate without error
+        | SymbolExpr s -> Done(Ok(resolveSymbol env s))
 
         // And/Or expressions are lazily evaluated
 
@@ -152,11 +151,11 @@ module Evaluator =
 
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr (param, body) ->
-            Lambda(param, env.Locals, body) |> FunctionValue |> Ok |> Done
+            Done(Ok(FunctionValue(Lambda(param, env.Locals, body))))
 
         // Evaluating a freeze just captures the local state and the body expression
         | FreezeExpr expr ->
-            Freeze(env.Locals, expr) |> FunctionValue |> Ok |> Done
+            Done(Ok(FunctionValue(Freeze(env.Locals, expr))))
 
         // Handler expression is not evaluated unless body results in an error
         // Handler expression must evaluate to a function
@@ -195,9 +194,17 @@ module Evaluator =
                     | Err message -> Done(Err message)
                 | Err message -> Done(Err message)
             | _ -> Done(Err "Application must begin with a symbol")
-            
-    and eval env expr = evalw env expr |> go
+    
+    /// <summary>
+    /// Evaluates an sub-expression into a value, running all side effects
+    /// in the process.
+    /// </summary>
+    and eval env expr = evalw env expr |> Values.go
 
+    /// <summary>
+    /// Evaluates a root-level expression into a value, running all side
+    /// effects in the process.
+    /// </summary>
     let rootEval globals expr =
         let env = {Globals = globals; Locals = []}
 

@@ -2,11 +2,17 @@
 
 open Extensions
 
-/// <summary>The parser turns a token tree into an expression tree.</summary>
+/// <summary>
+/// The parser turns a token tree into an expression tree.
+/// </summary>
 module Parser =
 
-    /// <summary>Parse a token into an expression.</summary>
-    /// <exception>Throws on invalid cond clauses and defuns with parameters that are not symbols.</exception>
+    /// <summary>
+    /// Parse a token into an expression.
+    /// </summary>
+    /// <exception>
+    /// Throws on invalid cond clauses and defuns with parameters that are not symbols.
+    /// </exception>
     let rec parse pos token =
         match token with
 
@@ -67,8 +73,12 @@ module Parser =
         | ComboToken (f :: args) ->
             AppExpr (pos, parse Head f, List.map (parse Head) args)
             
-    /// <summary>Parse a token into a root-level expression.</summary>
-    /// <exception>Throws on invalid cond clauses and defuns with parameters that are not symbols.</exception>
+    /// <summary>
+    /// Parse a token into a root-level expression.
+    /// </summary>
+    /// <exception>
+    /// Throws on invalid cond clauses and defuns with parameters that are not symbols.
+    /// </exception>
     let rootParse token =
         match token with
 

@@ -15,16 +15,16 @@ module Builtins =
         match args with
         | [StringValue s; IntValue index] ->
             if index >= 0 && index < s.Length
-                then s.[index] |> string |> StringValue |> Ok
-                else "string index out of bounds" |> Err
+                then Ok(StringValue(string s.[index]))
+                else Err "string index out of bounds"
         | _ -> invalidArgs ()
     let klStringTail _ args =
         match args with
-        | [StringValue s] -> s.Substring(1) |> StringValue
+        | [StringValue s] -> StringValue(s.Substring 1)
         | _ -> invalidArgs ()
     let klStringConcat _ args =
         match args with
-        | [StringValue x; StringValue y] -> x + y |> StringValue
+        | [StringValue x; StringValue y] -> StringValue(x + y)
         | _ -> invalidArgs ()
     let klToString _ args =
         match args with
@@ -37,11 +37,11 @@ module Builtins =
         | _ -> invalidArgs ()
     let klIntToString _ args =
         match args with
-        | [IntValue n] -> int n |> char |> string |> StringValue
+        | [IntValue n] -> StringValue(string(char(int n)))
         | _ -> invalidArgs ()
     let klStringToInt _ args =
         match args with
-        | [StringValue s] -> s.[0] |> int |> IntValue
+        | [StringValue s] -> IntValue(int s.[0])
         | _ -> invalidArgs ()
     let klSet globals args =
         match args with
@@ -54,7 +54,7 @@ module Builtins =
         | [SymbolValue s] ->
             match globals.Symbols.GetMaybe(s) with
             | Some v -> Ok v
-            | None -> sprintf "Symbol \"%s\" is undefined" s |> Err
+            | None -> Err(sprintf "Symbol \"%s\" is undefined" s)
         | _ -> invalidArgs ()
     let klSimpleError _ args =
         match args with
@@ -66,7 +66,7 @@ module Builtins =
         | _ -> invalidArgs ()
     let klNewCons _ args =
         match args with
-        | [x; y] -> ConsValue (x, y)
+        | [x; y] -> ConsValue(x, y)
         | _ -> invalidArgs ()
     let klHead _ args =
         match args with
@@ -95,13 +95,15 @@ module Builtins =
         | _ -> invalidArgs ()
     let klNewVector _ args =
         match args with
-        | [IntValue length] -> Array.create length (SymbolValue "fail!") |> VectorValue
+        | [IntValue length] ->
+            let failSymbol = SymbolValue "fail!"
+            VectorValue(Array.create length failSymbol)
         | _ -> invalidArgs ()
     let klReadVector _ args =
         match args with
         | [VectorValue vector; IntValue index] ->
             if index >= 0 && index < vector.Length
-                then vector.[index] |> Ok
+                then Ok vector.[index]
                 else Err "Vector index out of bounds"
         | _ -> invalidArgs ()
     let klWriteVector _ args =
@@ -123,23 +125,23 @@ module Builtins =
             if 0 <= i && i <= 255
                 then let b = byte i
                      stream.Write(b)
-                     b |> int |> IntValue
+                     IntValue(int b)
                 else invalidArgs ()
         | _ -> invalidArgs ()
     let klReadByte _ args =
         match args with
-        | [InStreamValue stream] -> stream.Read() |> IntValue
+        | [InStreamValue stream] -> IntValue(stream.Read())
         | _ -> invalidArgs ()
     let klOpen _ args =
         match args with
         | [StringValue path; SymbolValue "in"] ->
             try let stream = File.OpenRead(path)
-                InStreamValue {Read = stream.ReadByte; Close = stream.Close} |> Ok
+                Ok(InStreamValue{Read = stream.ReadByte; Close = stream.Close})
             with | :? IOException as e -> Err e.Message
                  | e -> raise e
         | [StringValue path; SymbolValue "out"] ->
             try let stream = File.OpenWrite(path)
-                OutStreamValue {Write = stream.WriteByte; Close = stream.Close} |> Ok
+                Ok(OutStreamValue{Write = stream.WriteByte; Close = stream.Close})
             with | :? IOException as e -> Err e.Message
                  | e -> raise e
         | _ -> invalidArgs ()
@@ -153,9 +155,9 @@ module Builtins =
     let private stopwatch = Diagnostics.Stopwatch.StartNew()
     let klGetTime _ args = // All returned values are in milliseconds
         match args with
-        | [SymbolValue "run"] -> stopwatch.ElapsedTicks / 10000L |> int |> IntValue
-        | [SymbolValue "unix"] -> (DateTime.UtcNow - epoch).TotalSeconds |> int |> IntValue
-        | _ -> invalidArgs ()
+        | [SymbolValue "run"] -> Ok(IntValue(int (stopwatch.ElapsedTicks / 10000L)))
+        | [SymbolValue "unix"] -> Ok(IntValue(int (DateTime.UtcNow - epoch).TotalSeconds))
+        | _ -> Err "get-time only takes 'run or 'unix as an argument"
     let klAdd _ args =
         match args with
         | [IntValue x;     IntValue y]     -> x + y |> IntValue
