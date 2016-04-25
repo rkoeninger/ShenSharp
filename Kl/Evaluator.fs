@@ -83,7 +83,7 @@ module Evaluator =
             | _ ->
                 match args.Length, paramz.Length with
                 | Greater -> Done(Err "Too many arguments")
-                | Lesser -> Done(Ok(FunctionValue(Partial(args, defun))))
+                | Lesser -> Done(Ok(FunctionValue(Partial(defun, args))))
                 | Equal ->
                     let env = (append env (List.zip paramz args))
                     tailCall pos (fun () -> evalw env body)
@@ -93,9 +93,9 @@ module Evaluator =
             | _ ->
                 match args.Length, arity with
                 | Greater -> Done(Err "Too many arguments")
-                | Lesser -> Done(Ok(FunctionValue(Partial(args, primitive))))
+                | Lesser -> Done(Ok(FunctionValue(Partial(primitive, args))))
                 | Equal -> tailCall pos (fun () -> Done(f globals args))
-        | Partial(args0, f) as partial ->
+        | Partial(f, args0) as partial ->
             match args with
             | [] -> Done(Ok(FunctionValue(partial)))
             | _ -> apply pos globals f (List.append args0 args)
