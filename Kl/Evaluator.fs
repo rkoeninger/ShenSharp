@@ -100,22 +100,28 @@ module Evaluator =
 
         // And/Or expressions are lazily evaluated
 
-        // If the first expression evaluates to false,
+        // When the first expression evaluates to false,
         // false is the result without evaluating the second expression
+        // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
             evale left >>= vbranch (fun () -> evalwe right) (fun () -> Values.falsew)
             
-        // If the first expression evaluates to true,
+        // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
+        // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
             evale left >>= vbranch (fun () -> Values.truew) (fun () -> evalwe right)
 
+        // If expressions selectively evaluate depending on the result
+        // of evaluating the condition expression
+        // The condition must evaluate to a boolean value
         | IfExpr (condition, consequent, alternative) ->
             evale condition >>= vbranch (fun () -> evalwe consequent) (fun () -> evalwe alternative)
-
+        
+        // Condition expressions must evaluate to boolean values
         | CondExpr clauses ->
             let rec evalClauses = function
-                | [] -> failwith "No condition was true"
+                | [] -> Done(Err "No condition was true")
                 | (condition, consequent) :: rest ->
                     evale condition >>= vbranch (fun () -> evalwe consequent) (fun () -> evalClauses rest)
             evalClauses clauses
@@ -132,15 +138,22 @@ module Evaluator =
         | FreezeExpr expr ->
             closure evalw env [] expr |> FunctionValue |> Ok |> Done
 
+        // Handler expression is not evaluated unless body results in an error
+        // Handler expression must evaluate to a function
         | TrapExpr (pos, body, handler) ->
             match evale body with
             | Err e ->
                 match evale handler with
                 | Ok(FunctionValue f) -> apply pos env.Globals f [ErrorValue e]
-                | Ok(_) -> Err "Trap handler did not evaluate to a function" |> Done
-                | Err message -> Err message |> Done
+                | Ok(_) -> Done(Err "Trap handler did not evaluate to a function")
+                | Err message -> Done(Err message)
             | r -> Done r
 
+        // Applications expect a symbol to be in operator position
+        // That symbol must evaluate to a function
+        // If evaluating any of the argument expressions results in an error,
+        // then the application expression results in that error without
+        // the function being applied
         | AppExpr (pos, f, args) ->
             match f with
             | SymbolExpr s ->
@@ -153,15 +166,15 @@ module Evaluator =
                             match evale arg with
                             | Ok value ->
                                 match evalArgs rest with
-                                | Ok values -> Ok (value :: values)
+                                | Ok values -> Ok(value :: values)
                                 | Err _ as error -> error
                             | Err message -> Err message
 
                     match evalArgs args with
                     | Ok argsv -> apply pos env.Globals f argsv
-                    | Err message -> Err message |> Done
-                | Err message -> Err message |> Done
-            | _ -> failwith "Application must begin with a symbol"
+                    | Err message -> Done(Err message)
+                | Err message -> Done(Err message)
+            | _ -> Done(Err "Application must begin with a symbol")
             
     and eval env expr = evalw env expr |> go
 
@@ -172,6 +185,6 @@ module Evaluator =
         | DefunExpr(name, paramz, body) ->
             let f = closure evalw env paramz body
             globals.Functions.[name] <- f
-            FunctionValue f |> Ok
+            Ok(FunctionValue f)
 
         | OtherExpr expr -> eval env expr
