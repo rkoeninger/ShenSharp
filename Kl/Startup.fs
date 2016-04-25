@@ -5,60 +5,61 @@ open Builtins
 
 module Startup =
     
-    let rec install (functions: Defines<'a>) = function
+    let rec install (functions: Defines<'a>) defs =
+        match defs with
         | [] -> ()
-        | (name, value) :: defs ->
+        | (name, value) :: rest ->
             functions.[name] <- value
-            install functions defs
+            install functions rest
 
-    let private funv name arity f = name, Values.primitivev name arity f
-    let private funr name arity f = name, Values.primitiver name arity f
+    let private fn name arity f = name, Values.primitiver name arity f
 
     let installBase env =
         install env.Globals.Functions [
-            funv "intern"          1 klIntern
-            funr "pos"             2 klStringPos
-            funv "tlstr"           1 klStringTail
-            funv "cn"              2 klStringConcat
-            funv "str"             1 klToString
-            funv "string?"         1 klIsString
-            funv "n->string"       1 klIntToString
-            funv "string->n"       1 klStringToInt
-            funv "set"             2 klSet
-            funr "value"           1 klValue
-            funr "simple-error"    1 klSimpleError
-            funv "error-to-string" 1 klErrorToString
-            funv "cons"            2 klNewCons
-            funv "hd"              1 klHead
-            funv "tl"              1 klTail
-            funv "cons?"           1 klIsCons
-            funv "="               2 klEquals
-            funv "type"            1 klType
-            funr "eval-kl"         1 klEval
-            funv "absvector"       1 klNewVector
-            funr "<-address"       2 klReadVector
-            funr "address->"       3 klWriteVector
-            funv "absvector?"      1 klIsVector
-            funv "write-byte"      2 klWriteByte
-            funv "read-byte"       1 klReadByte
-            funr "open"            2 klOpen
-            funv "close"           1 klClose
-            funr "get-time"        1 klGetTime
-            funv "+"               2 klAdd
-            funv "-"               2 klSubtract
-            funv "*"               2 klMultiply
-            funv "/"               2 klDivide
-            funv ">"               2 klGreaterThan
-            funv "<"               2 klLessThan
-            funv ">="              2 klGreaterThanEqual
-            funv "<="              2 klLessThanEqual
-            funv "number?"         1 klIsNumber
+            fn "intern"          1 klIntern
+            fn "pos"             2 klStringPos
+            fn "tlstr"           1 klStringTail
+            fn "cn"              2 klStringConcat
+            fn "str"             1 klToString
+            fn "string?"         1 klIsString
+            fn "n->string"       1 klIntToString
+            fn "string->n"       1 klStringToInt
+            fn "set"             2 klSet
+            fn "value"           1 klValue
+            fn "simple-error"    1 klSimpleError
+            fn "error-to-string" 1 klErrorToString
+            fn "cons"            2 klNewCons
+            fn "hd"              1 klHead
+            fn "tl"              1 klTail
+            fn "cons?"           1 klIsCons
+            fn "="               2 klEquals
+            fn "type"            1 klType
+            fn "eval-kl"         1 klEval
+            fn "absvector"       1 klNewVector
+            fn "<-address"       2 klReadVector
+            fn "address->"       3 klWriteVector
+            fn "absvector?"      1 klIsVector
+            fn "write-byte"      2 klWriteByte
+            fn "read-byte"       1 klReadByte
+            fn "open"            2 klOpen
+            fn "close"           1 klClose
+            fn "get-time"        1 klGetTime
+            fn "+"               2 klAdd
+            fn "-"               2 klSubtract
+            fn "*"               2 klMultiply
+            fn "/"               2 klDivide
+            fn ">"               2 klGreaterThan
+            fn "<"               2 klLessThan
+            fn ">="              2 klGreaterThanEqual
+            fn "<="              2 klLessThanEqual
+            fn "number?"         1 klIsNumber
         ]
         let onMono = Type.GetType("Mono.Runtime") <> null
+        let clrImpl = if onMono then "Mono" else ".NET"
         let ver = Environment.Version
         install env.Globals.Symbols [
             "*language*",       StringValue "F# 3.1"
-            "*implementation*", StringValue(if onMono then "Mono" else ".NET")
+            "*implementation*", StringValue(sprintf "CLR (%s)" clrImpl)
             "*release*",        StringValue(sprintf "%i.%i" ver.Major ver.Minor)
             "*version*",        StringValue "19.2"
             "*port*",           StringValue "0.1"

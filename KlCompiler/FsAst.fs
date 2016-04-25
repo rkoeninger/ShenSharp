@@ -29,19 +29,15 @@ type FsFile =
 
 type FsConst =
 
-    static member Bool(b: bool) =
-        SynExpr.Const(SynConst.Bool(b), FsAst.defaultRange)
+    static member Bool(b: bool) = SynConst.Bool b
 
-    static member Int32(x: int) =
-        SynExpr.Const(SynConst.Int32(x), FsAst.defaultRange)
+    static member Int32(x: int) = SynConst.Int32 x
 
-    static member Decimal(d: decimal) =
-        SynExpr.Const(SynConst.Decimal(d), FsAst.defaultRange)
+    static member Decimal(d: decimal) = SynConst.Decimal d
 
-    static member String(x: string) =
-        SynExpr.Const(SynConst.String(x, FsAst.defaultRange), FsAst.defaultRange)
+    static member String(x: string) = SynConst.String(x, FsAst.defaultRange)
 
-    static member Unit = SynExpr.Const(SynConst.Unit, FsAst.defaultRange)
+    static member Unit = SynConst.Unit
         
 type FsType =
 
@@ -130,6 +126,20 @@ type FsModule =
 
 type FsExpr =
 
+    static member Bool(b: bool) =
+        SynExpr.Const(SynConst.Bool b, FsAst.defaultRange)
+        
+    static member Int32(x: int) =
+        SynExpr.Const(SynConst.Int32 x, FsAst.defaultRange)
+
+    static member Decimal(d: decimal) =
+        SynExpr.Const(SynConst.Decimal d, FsAst.defaultRange)
+
+    static member String(x: string) =
+        SynExpr.Const(SynConst.String(x, FsAst.defaultRange), FsAst.defaultRange)
+
+    static member Unit = SynExpr.Const(SynConst.Unit, FsAst.defaultRange)
+        
     static member Paren(expr: SynExpr) =
         SynExpr.Paren(expr, FsAst.defaultRange, None, FsAst.defaultRange)
 
@@ -234,19 +244,35 @@ type FsExpr =
 
 type FsPat =
 
-    static member Name(nm: string) =
-        SynPat.LongIdent(
-            LongIdentWithDots.LongIdentWithDots([new Ident(nm, FsAst.defaultRange)], []),
-            None,
-            None,
-            SynConstructorArgs.Pats([]),
-            None,
+    static member Const(c: SynConst) =
+        SynPat.Const(c, FsAst.defaultRange)
+
+    static member Name(ids: string list, pats: SynPat list) =
+        SynPat.Paren(
+            SynPat.LongIdent(
+                FsId.Long ids,
+                None,
+                None,
+                SynConstructorArgs.Pats(pats),
+                None,
+                FsAst.defaultRange),
             FsAst.defaultRange)
+
+    static member Name(ids: string list) = FsPat.Name(ids, [])
+
+    static member Name(id: string, pats: SynPat list) = FsPat.Name([id], pats)
+
+    static member Name(id: string, pat: SynPat) = FsPat.Name([id], [pat])
+
+    static member Name(id: string) = FsPat.Name([id], [])
+
+    static member SimpleName(id: string) = FsPat.Name(id)
 
     static member List(items: SynPat list) =
         SynPat.ArrayOrList(false, items, FsAst.defaultRange)
 
     static member Wild = SynPat.Wild(FsAst.defaultRange)
+         
 
 type FsMatchClause =
 
@@ -286,4 +312,4 @@ type FsBinding =
 type FsFail =
 
     static member With(s: string) =
-        FsExpr.App(FsExpr.Id("failwith"), [FsConst.String(s)])
+        FsExpr.App(FsExpr.Id("failwith"), [FsExpr.String(s)])

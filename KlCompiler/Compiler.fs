@@ -31,8 +31,8 @@ module Compiler =
                 [FsExpr.App(
                     FsExpr.Id "Primitive",
                     [FsExpr.Tuple(
-                        [FsConst.String "anonymous"
-                         FsConst.Int32 1
+                        [FsExpr.String "anonymous"
+                         FsExpr.Int32 1
                          FsExpr.Lambda(
                             false,
                             Some("envGlobals", FsType.Of("Globals")),
@@ -43,25 +43,46 @@ module Compiler =
                 [FsExpr.App(
                     FsExpr.Id "Primitive",
                     [FsExpr.Tuple(
-                        [FsConst.String "anonymous"
-                         FsConst.Int32 0
+                        [FsExpr.String "anonymous"
+                         FsExpr.Int32 0
                          FsExpr.Lambda(
                             false,
                             Some("envGlobals", FsType.Of("Globals")),
                             body)])])])
         match expr with
-        | EmptyExpr -> FsExpr.LongId ["Value"; "EmptyValue"]
-        | BoolExpr b -> FsExpr.App(FsExpr.LongId ["Value"; "BoolValue"], [FsConst.Bool b])
-        | IntExpr i -> FsExpr.App(FsExpr.LongId ["Value"; "IntValue"], [FsConst.Int32 i])
-        | DecimalExpr d -> FsExpr.App(FsExpr.LongId ["Value"; "DecimalValue"], [FsConst.Decimal d])
-        | StringExpr s -> FsExpr.App(FsExpr.LongId ["Value"; "StringValue"], [FsConst.String (escape s)])
+        | EmptyExpr -> FsExpr.App(FsExpr.Id "Ok", [FsExpr.Id "EmptyValue"])
+        | BoolExpr b -> FsExpr.App(FsExpr.Id "Ok", [FsExpr.App(FsExpr.Id "BoolValue", [FsExpr.Bool b])])
+        | IntExpr i -> FsExpr.App(FsExpr.LongId ["Value"; "IntValue"], [FsExpr.Int32 i])
+        | DecimalExpr d -> FsExpr.App(FsExpr.LongId ["Value"; "DecimalValue"], [FsExpr.Decimal d])
+        | StringExpr s -> FsExpr.App(FsExpr.Id "Ok", [FsExpr.App(FsExpr.Id "StringValue", [FsExpr.String (escape s)])])
         | SymbolExpr s ->
+            // TODO: need to maintain a set of local variables so we know what's an idle symbol
             if isVar s
                 then FsExpr.Id (klToFsId s)
-                else FsExpr.App(FsExpr.LongId ["Value"; "SymbolValue"], [FsConst.String s])
+                else FsExpr.App(FsExpr.LongId ["Value"; "SymbolValue"], [FsExpr.String s])
         | AndExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanAnd"), build right |> seBool)
         | OrExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanOr"), build right |> seBool)
-        | IfExpr(condition, ifTrue, ifFalse) -> FsExpr.If(build condition |> seBool, build ifTrue, build ifFalse)
+        
+        // match ~condition with
+        // | Ok(BoolValue true) -> ~ifTrue
+        // | Ok(BoolValue false) -> ifFalse
+        // | Ok _ -> Err "if expects boolean conditional"
+        // | Err message -> Err message
+        | IfExpr(condition, ifTrue, ifFalse) ->
+            FsExpr.Match(
+                build condition,
+                [FsMatchClause.Of(
+                    FsPat.Name("Ok", FsPat.Name("BoolValue", FsPat.Const(FsConst.Bool true))),
+                    build ifTrue)
+                 FsMatchClause.Of(
+                    FsPat.Name("Ok", FsPat.Name("BoolValue", FsPat.Const(FsConst.Bool false))),
+                    build ifFalse)
+                 FsMatchClause.Of(
+                    FsPat.Name("Ok", FsPat.Wild),
+                    FsExpr.App(FsExpr.Id "Err", [FsExpr.String "if expects boolean conditional"]))
+                 FsMatchClause.Of(
+                    FsPat.Name("Err", FsPat.Name("message")),
+                    FsExpr.App(FsExpr.Id "Err", [FsExpr.Id "message"]))])
         | CondExpr(clauses) ->
             let rec buildClauses = function
                 | (BoolExpr false, _) :: rest -> buildClauses rest
@@ -133,14 +154,14 @@ module Compiler =
                 symbol,
                 typedParamz,
                 FsExpr.Match(FsExpr.Id "args",
-                    [FsMatchClause.Of(FsPat.List(List.map FsPat.Name paramz), build body)
+                    [FsMatchClause.Of(FsPat.List(List.map FsPat.SimpleName paramz), build body)
                      FsMatchClause.Of(FsPat.Wild, FsFail.With("Wrong number or type of arguments"))]))
         | expr -> failwith "not a defun expr"
     let buildInit exprs =
         let rec buildSeq exprs =
             match exprs with
             | expr :: rest -> FsExpr.ConsSequential(expr, buildSeq rest)
-            | [] -> FsConst.Unit
+            | [] -> FsExpr.Unit
         FsModule.SingleLet("init", ["envGlobals", FsType.Of("Globals")], buildSeq exprs)
     let buildModule exprs =
         let isDefun = function
