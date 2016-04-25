@@ -10,13 +10,6 @@ module Evaluator =
 
     let private append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
 
-    let private closure eval env (paramz: string list) body =
-        Values.func
-            "Anonymous"
-            paramz.Length
-            env.Locals
-            (fun _ args -> eval (append env (List.zip paramz args)) body)
-
     let (>>=) result f =
         match result with
         | Ok value -> f value
@@ -26,20 +19,6 @@ module Evaluator =
         match result with
         | Ok value -> f value |> Done
         | Err _ as error -> error |> Done
-
-    let rec private apply pos globals (f: Function) (args: Value list) =
-        match args.Length, f.Arity with
-        | Greater -> "Too many arguments" |> Err |> Done
-        | Lesser ->
-            Values.funcw
-                ("Partial " + f.Name)
-                (f.Arity - args.Length)
-                f.Locals
-                (fun globals moreArgs -> apply pos globals f (List.append args moreArgs))
-        | Equal ->
-            match pos with
-            | Head -> f.Apply(globals, args)
-            | Tail -> Values.thunkw(fun () -> f.Apply(globals, args))
 
     let rec private resolveLocalSymbol locals id =
         match locals with
@@ -53,7 +32,7 @@ module Evaluator =
     // Those starting with upper-case letter are idle if not defined.
     // Those not starting with upper-case letter are always idle.
     let private resolveSymbol env id =
-        if Values.isVar id then 
+        if Values.isVar id then
             match resolveLocalSymbol env.Locals id with
             | Some value -> value
             | None -> SymbolValue id
@@ -71,18 +50,59 @@ module Evaluator =
                 match value with
                 | FunctionValue f -> Ok f
                 | _ -> Err "Symbol does not represent a function"
-            | None -> Err "Symbol not defined"
+            | None -> Err("Symbol not defined: " + id)
         else
             match env.Globals.Functions.GetMaybe id with
             | Some f -> Ok f
-            | None -> Err "Symbol not defined"
+            | None -> Err("Symbol not defined: " + id)
 
     let private vbranch ifTrue ifFalse value =
         if Values.vbool value
             then ifTrue()
             else ifFalse()
+            
+    let rec apply pos globals f args =
+        let env = {Globals = globals; Locals = []}
 
-    let rec private evalw env expr =
+        match f with
+        | Freeze(locals, body) ->
+            match args with
+            | [] -> evalw {env with Locals = locals} body
+            | _ -> Done(Err "Freezes do not take arguments")
+        | Lambda(param, locals, body) as lambda ->
+            match args with
+            | [] -> Done(Ok(FunctionValue(lambda)))
+            | [x] -> evalw (append env [(param, x)]) body
+            | _ -> Done(Err "Lambdas take exactly 1 argument")
+        | Defun(_, paramz, body) as defun ->
+            match args with
+            | [] -> Done(Ok(FunctionValue(defun)))
+            | _ ->
+                match args.Length, paramz.Length with
+                | Greater -> Done(Err "Too many arguments")
+                | Lesser -> Done(Ok(FunctionValue(Partial(args, defun))))
+                | Equal ->
+                    let env = (append env (List.zip paramz args))
+                    match pos with
+                    | Head -> evalw env body
+                    | Tail -> Values.thunkw(fun () -> evalw env body)
+        | Primitive(_, arity, f) as primitive ->
+            match args with
+            | [] -> Done(Ok(FunctionValue primitive))
+            | _ ->
+                match args.Length, arity with
+                | Greater -> Done(Err "Too many arguments")
+                | Lesser -> Done(Ok(FunctionValue(Partial(args, primitive))))
+                | Equal ->
+                    match pos with
+                    | Head -> Done(f globals args)
+                    | Tail -> Values.thunkw(fun () -> Done(f globals args))
+        | Partial(args0, f) as partial ->
+            match args with
+            | [] -> Done(Ok(FunctionValue(partial)))
+            | _ -> apply pos globals f (List.append args0 args)
+
+    and private evalw env expr =
         let evale = eval env
         let evalwe = evalw env
 
@@ -132,11 +152,11 @@ module Evaluator =
 
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr (param, body) ->
-            closure evalw env [param] body |> FunctionValue |> Ok |> Done
+            Lambda(param, env.Locals, body) |> FunctionValue |> Ok |> Done
 
         // Evaluating a freeze just captures the local state and the body expression
         | FreezeExpr expr ->
-            closure evalw env [] expr |> FunctionValue |> Ok |> Done
+            Freeze(env.Locals, expr) |> FunctionValue |> Ok |> Done
 
         // Handler expression is not evaluated unless body results in an error
         // Handler expression must evaluate to a function
@@ -183,7 +203,7 @@ module Evaluator =
 
         match expr with
         | DefunExpr(name, paramz, body) ->
-            let f = closure evalw env paramz body
+            let f = Defun(name, paramz, body)
             globals.Functions.[name] <- f
             Ok(FunctionValue f)
 

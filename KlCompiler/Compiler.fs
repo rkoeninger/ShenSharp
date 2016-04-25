@@ -25,18 +25,30 @@ module Compiler =
                 | _ -> ch.ToString()
             String.collect escapeChar s
         let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
-        let klFunction argCount lambda =
+        let lambda param body =
             FsExpr.App(
                 FsExpr.LongId ["Value"; "FunctionValue"],
                 [FsExpr.App(
-                    FsExpr.LongId ["Function"; "func"],
-                    [FsConst.String("Anonymous")
-                     FsConst.Int32(argCount)
-                     FsExpr.List([])
-                     FsExpr.Lambda(
-                        false,
-                        Some("envGlobals", FsType.Of("Globals")),
-                        lambda)])])
+                    FsExpr.Id "Primitive",
+                    [FsExpr.Tuple(
+                        [FsConst.String "anonymous"
+                         FsConst.Int32 1
+                         FsExpr.Lambda(
+                            false,
+                            Some("envGlobals", FsType.Of("Globals")),
+                            body)])])])
+        let freeze body =
+            FsExpr.App(
+                FsExpr.LongId ["Value"; "FunctionValue"],
+                [FsExpr.App(
+                    FsExpr.Id "Primitive",
+                    [FsExpr.Tuple(
+                        [FsConst.String "anonymous"
+                         FsConst.Int32 0
+                         FsExpr.Lambda(
+                            false,
+                            Some("envGlobals", FsType.Of("Globals")),
+                            body)])])])
         match expr with
         | EmptyExpr -> FsExpr.LongId ["Value"; "EmptyValue"]
         | BoolExpr b -> FsExpr.App(FsExpr.LongId ["Value"; "BoolValue"], [FsConst.Bool b])
@@ -59,9 +71,9 @@ module Compiler =
             buildClauses clauses
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) ->
-            klFunction 1 (FsExpr.Lambda(false, Some(symbol, FsType.Of("Value")), seResult (build body)))
+            lambda symbol (build body)
         | FreezeExpr(expr) ->
-            klFunction 1 (FsExpr.Lambda(false, Some("args", FsType.ListOf(FsType.Of("Value"))), seResult (build expr)))
+            freeze (build expr)
         | TrapExpr(_, t, c) ->
             FsExpr.App(FsExpr.LongId ["Builtins"; "trapError"], [build t; build c])
         | AppExpr(_, f, args) ->

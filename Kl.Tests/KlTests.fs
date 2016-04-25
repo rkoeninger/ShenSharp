@@ -55,8 +55,6 @@ type KlTests() =
     let intE = IntExpr
     let intV = IntValue
     let intR = intV >> Ok
-    let func n f = new Function("", n, [], f)
-    let funcV n f = FunctionValue <| func n f
     let strV = StringValue
     let strR = StringValue >> Ok
     let str x = x.ToString()
@@ -109,9 +107,9 @@ type KlTests() =
         let env = Values.newEnv()
         let klNot _ args =
             match args with
-            | [BoolValue b] -> not b |> BoolValue |> Ok |> Done
-            | _ -> failwith "must be bool"
-        env.Globals.Functions.["not"] <- func 1 klNot
+            | [BoolValue b] -> Ok(BoolValue(not b))
+            | _ -> Err "Must be bool"
+        env.Globals.Functions.["not"] <- Values.primitiver "not" 1 klNot
         runInEnv env "(defun xor (L R) (or (and L (not R)) (and (not L) R)))" |> ignore
         Assert.AreEqual(Values.truer, runInEnv env "(xor true false)")
 
@@ -120,15 +118,15 @@ type KlTests() =
         let env = Values.newEnv()
         let klIsSymbol _ args =
             match args with
-            | [SymbolValue _] -> Values.truew
-            | _ -> Values.falsew
-        env.Globals.Functions.["symbol?"] <- func 1 klIsSymbol
+            | [SymbolValue _] -> Values.truer
+            | _ -> Values.falser
+        env.Globals.Functions.["symbol?"] <- Values.primitiver "symbol?" 1 klIsSymbol
         Assert.AreEqual(Values.truer, runInEnv env "(symbol? run)")
         let klId _ args =
             match args with
-            | [x] -> Ok x |> Done
-            | _ -> failwith "must be 1 arg"
-        env.Globals.Functions.["id"] <- func 1 klId
+            | [x] -> Ok x
+            | _ -> Err "id only takes 1 argument"
+        env.Globals.Functions.["id"] <- Values.primitiver "id" 1 klId
         Assert.AreEqual(Values.truer, runInEnv env "(symbol? (id run))")
 
     [<Test>]
@@ -218,10 +216,12 @@ type KlTests() =
 
     [<Test>]
     member this.EvalFunction() =
-        Assert.AreEqual(intR 3, runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
+        let evalResult = runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))"
+        Assert.AreEqual(intR 3, evalResult) // (+ 1 2)
         let incR = runIt "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
         let inc = rFunc incR
-        Assert.AreEqual(intR 5, inc.Apply(Values.newGlobals(), [intV 4]) |> go)
+        let applyResult = Evaluator.apply Head (Startup.baseEnv()).Globals inc [intV 4] |> go
+        Assert.AreEqual(intR 5, applyResult)
 
     [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =

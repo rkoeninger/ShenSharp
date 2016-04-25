@@ -38,13 +38,15 @@ type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit
 type Defines<'a> = Dictionary<string, 'a>
 and Globals = {Symbols: Defines<Value>; Functions: Defines<Function>}
 and Locals = Map<string, Value> list
-and Function(name: string, arity: int, locals: Locals, f: Globals -> Value list -> Work<Value>) =
-    static member func n a l f = new Function(n, a, l, f)
-    member this.Name = name
-    member this.Arity = arity
-    member this.Locals = locals
-    member this.Apply(globals: Globals, args: Value list) = f globals args
-    override this.ToString() = this.Name
+and [<ReferenceEquality>] Function =
+    // TODO: ??? add Native of int * (Globals -> Value list -> Result<Value>)
+    //               Primitive of string * Native
+    // or just remove names from Primitive and Defun?
+    | Primitive of string * int * (Globals -> Value list -> Result<Value>)
+    | Defun of string * string list * Expr
+    | Lambda of string * Locals * Expr
+    | Freeze of Locals * Expr
+    | Partial of Value list * Function
 and Thunk(cont: unit -> Work<Value>) =
     member this.Run = cont
 and Value =
@@ -55,11 +57,6 @@ and Value =
     | StringValue    of string
     | SymbolValue    of string
     | FunctionValue  of Function
-    // TODO: break function out into multiple cases
-    //| Primitive of Function : {Globals -> Value list -> Result, Arity}
-    //| Defun of Defun : {Body, Params, Name}
-    //| Lambda of Lambda : {Body, Param, Locals}
-    //| Freeze of Freeze : {Body, Locals}
     | VectorValue    of Value array
     | ConsValue      of Value * Value
     | ErrorValue     of string
@@ -82,10 +79,6 @@ module Values =
     let truew = Done truer
     let falsew = Done falser
     let thunkw f = new Thunk(f) |> Pending
-    let func n a l f = new Function(n, a, l, f)
-    let funcv n a l f = func n a l f |> FunctionValue
-    let funcr n a l f = funcv n a l f |> Ok
-    let funcw n a l f = funcr n a l f |> Done
     let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv() = {Globals = newGlobals(); Locals = []}
@@ -93,4 +86,7 @@ module Values =
         match v with
         | BoolValue b -> b
         | _ -> failwith "Boolean expected"
+    let primitiver name arity f = Primitive(name, arity, f)
+    let primitivev name arity f = primitiver name arity (fun globals args -> Ok(f globals args))
+
 
