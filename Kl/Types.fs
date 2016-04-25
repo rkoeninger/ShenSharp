@@ -35,8 +35,8 @@ type RootExpr =
 type [<ReferenceEquality>] InStream = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
 
-type Defines = Dictionary<string, Value>
-and Globals = {Symbols: Defines; Functions: Defines}
+type Defines<'a> = Dictionary<string, 'a>
+and Globals = {Symbols: Defines<Value>; Functions: Defines<Function>}
 and Locals = Map<string, Value> list
 and Function(name: string, arity: int, locals: Locals, f: Globals -> Value list -> Work<Value>) =
     static member func n a l f = new Function(n, a, l, f)
@@ -73,3 +73,15 @@ and Work<'a> =
     | Pending of Thunk
 
 type Env = {Globals: Globals; Locals: Locals}
+
+module Values =
+    let truev = BoolValue true
+    let falsev = BoolValue false
+    let truer = Ok truev
+    let falser = Ok falsev
+    let truew = Done truer
+    let falsew = Done falser
+    let thunkw f = new Thunk(f) |> Pending
+    let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
+    let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
+    let newEnv() = {Globals = newGlobals(); Locals = []}

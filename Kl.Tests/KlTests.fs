@@ -60,7 +60,8 @@ type KlTests() =
     let intE = IntExpr
     let intV = IntValue
     let intR = intV >> Ok
-    let funcV n f = FunctionValue <| new Function("", n, [], f)
+    let func n f = new Function("", n, [], f)
+    let funcV n f = FunctionValue <| func n f
     let strV = StringValue
     let strR = StringValue >> Ok
     let str x = x.ToString()
@@ -110,29 +111,29 @@ type KlTests() =
 
     [<Test>]
     member this.DefunAndResolutionOfDefinedFunctions() =
-        let env = emptyEnv ()
+        let env = Values.newEnv()
         let klNot _ args =
             match args with
             | [BoolValue b] -> not b |> BoolValue |> Ok |> Done
             | _ -> failwith "must be bool"
-        env.Globals.Functions.["not"] <- funcV 1 klNot
-        runInEnv env "(defun xor (l r) (or (and l (not r)) (and (not l) r)))" |> ignore
+        env.Globals.Functions.["not"] <- func 1 klNot
+        runInEnv env "(defun xor (L R) (or (and L (not R)) (and (not L) R)))" |> ignore
         Assert.AreEqual(trueR, runInEnv env "(xor true false)")
 
     [<Test>]
     member this.SymbolResolution() =
-        let env = emptyEnv ()
+        let env = Values.newEnv()
         let klIsSymbol _ args =
             match args with
             | [SymbolValue _] -> trueW
             | _ -> falseW
-        env.Globals.Functions.["symbol?"] <- funcV 1 klIsSymbol
+        env.Globals.Functions.["symbol?"] <- func 1 klIsSymbol
         Assert.AreEqual(trueR, runInEnv env "(symbol? run)")
         let klId _ args =
             match args with
             | [x] -> Ok x |> Done
             | _ -> failwith "must be 1 arg"
-        env.Globals.Functions.["id"] <- funcV 1 klId
+        env.Globals.Functions.["id"] <- func 1 klId
         Assert.AreEqual(trueR, runInEnv env "(symbol? (id run))")
 
     [<Test>]
@@ -141,16 +142,15 @@ type KlTests() =
 
     [<Test>]
     member this.PartialApplicationForBuiltins() =
-        let env = baseEnv ()
+        let env = baseEnv()
         Assert.AreEqual(intR 3, eval env (symApp2 "+" (intE 1) (intE 2)))
-        Assert.AreEqual(intR 3, eval env (eApp1 (symApp1 "+" (intE 1)) (intE 2)))
-        runInEnv env "(defun add4 (a b c d) (+ a (+ b (+ c d))))" |> ignore
-        Assert.AreEqual(intR 10, runInEnv env "(((add4 1) 2 3) 4)")
+        runInEnv env "(defun add4 (A B C D) (+ A (+ B (+ C D))))" |> ignore
+        Assert.AreEqual(intR 10, runInEnv env "(let X (add4 1) (let Y (X 2 3) (Y 4)))")
 
     [<Test>]
     member this.Builtins() =
-        Assert.AreEqual(intR 3, runIt "((+ 1) 2)")
-        Assert.AreEqual(intR 2, runIt "((- 4) 2)")
+        Assert.AreEqual(intR 3, runIt "(let X (+ 1) (X 2))")
+        Assert.AreEqual(intR 2, runIt "(let X (- 4) (X 2))")
     
     [<Test>]
     member this.``adding two integers gives integer``() =
@@ -224,8 +224,9 @@ type KlTests() =
     [<Test>]
     member this.EvalFunction() =
         Assert.AreEqual(intR 3, runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
-        let inc = (runIt >> rFunc) "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
-        Assert.AreEqual(intR 5, inc.Apply({Symbols = new Defines(); Functions = new Defines()}, [intV 4]) |> go)
+        let incR = runIt "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
+        let inc = rFunc incR
+        Assert.AreEqual(intR 5, inc.Apply(Values.newGlobals(), [intV 4]) |> go)
 
     [<Test>]
     member this.SanityChecks() =
@@ -238,15 +239,15 @@ type KlTests() =
     [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =
         let env = baseEnv ()
-        runInEnv env "(defun fill (vec start stop val) (if (= stop start) (address-> vec start val) (fill (address-> vec start val) (+ 1 start) stop val)))" |> ignore
+        runInEnv env "(defun fill (Vec Start Stop Val) (if (= Stop Start) (address-> Vec Start Val) (fill (address-> Vec Start Val) (+ 1 Start) Stop Val)))" |> ignore
         let x = runInEnv env "(fill (absvector 20000) 0 19999 0)"
         ()
     
     [<Test>]
     member this.``deep-running mutually-recursive functions do not stack overflow``() =
         let env = baseEnv ()
-        runInEnv env "(defun odd? (x) (if (= 1 x) true (even? (- x 1))))" |> ignore
-        runInEnv env "(defun even? (x) (if (= 1 x) false (odd? (- x 1))))" |> ignore
+        runInEnv env "(defun odd? (X) (if (= 1 X) true (even? (- X 1))))" |> ignore
+        runInEnv env "(defun even? (X) (if (= 1 X) false (odd? (- X 1))))" |> ignore
         Assert.AreEqual(Ok (BoolValue false), runInEnv env "(odd? 20000)")
 
     [<Test>]

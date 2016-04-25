@@ -271,7 +271,7 @@ module Builtins =
         match r with
         | Err e -> c (ErrorValue e)
         | r -> r
-    let funW name arity f = name, FunctionValue(new Function(name, arity, [], f))
+    let funW name arity f = name, new Function(name, arity, [], f)
     let funR name arity f = funW name arity (fun globals args -> Done (f globals args))
     let funV name arity f = funR name arity (fun globals args -> Ok (f globals args))
     let stinput =
@@ -280,15 +280,13 @@ module Builtins =
     let stoutput =
         let consoleOutStream = Console.OpenStandardOutput()
         OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
-    let rec install (functions: Defines) = function
+    let rec install (functions: Defines<'a>) = function
         | [] -> ()
         | (name, value) :: defs ->
             functions.[name] <- value
             install functions defs
-    let newGlobals() = {Symbols = new Defines(); Functions = new Defines()}
-    let emptyEnv () = {Globals = newGlobals(); Locals = []}
-    let baseEnv () =
-        let env = emptyEnv ()
+    let baseEnv() =
+        let env = Values.newEnv()
         install env.Globals.Functions [
             funV "intern"          1 klIntern
             funR "pos"             2 klStringPos
@@ -328,14 +326,20 @@ module Builtins =
             funV "<="              2 klLessThanEqual
             funV "number?"         1 klIsNumber
         ]
+        let onMono = Type.GetType("Mono.Runtime") <> null
         install env.Globals.Symbols [
-            "*language*",       "F# 3.1" |> StringValue
-            "*implementation*", "CLR " + Environment.Version.ToString() |> StringValue
-            "*port*",           "0.1" |> StringValue
-            "*porters*",        "Robert Koeninger" |> StringValue
-            "*version*",        "19.2" |> StringValue
+            "*language*",       StringValue "F# 3.1"
+            "*implementation*", StringValue(if onMono then "Mono" else ".NET")
+            "*release*",        StringValue(Environment.Version.ToString())
+            "*version*",        StringValue "19.2"
+            "*port*",           StringValue "0.1"
+            "*porters*",        StringValue "Robert Koeninger"
             "*stinput*",        stinput
             "*stoutput*",       stoutput
+            // TODO: *home-directory* is bound to a string which denotes the directory
+            // relative to which all files are read or written.
+            //
+            // Gets overwritten in KL
         ]
         env
     let klPrint = function
