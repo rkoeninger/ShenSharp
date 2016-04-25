@@ -12,7 +12,8 @@ module Tokenizer =
 
     let private pToken, pTokenRef = createParserForwardedToRef<Token, unit>()
     let private pBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
-    let private pNumber = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> (decimal >> NumberToken)
+    let private numberToken d = if d % 1.0m = 0m then IntToken(int d) else DecimalToken d
+    let private pNumber = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> (decimal >> numberToken)
     let private stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
     let private pString = stringLiteral |>> StringToken
     let private pSymbol = regex "[^\\s\\x28\\x29]+" |>> SymbolToken

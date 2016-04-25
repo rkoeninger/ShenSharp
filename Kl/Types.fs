@@ -4,11 +4,12 @@ open System
 open System.Collections.Generic
 
 type Token =
-    | BoolToken   of bool
-    | NumberToken of decimal
-    | StringToken of string
-    | SymbolToken of string
-    | ComboToken  of Token list
+    | BoolToken    of bool
+    | IntToken     of int
+    | DecimalToken of decimal
+    | StringToken  of string
+    | SymbolToken  of string
+    | ComboToken   of Token list
 
 type Position = Head | Tail
 
@@ -128,8 +129,8 @@ module Values =
         match value with
         | EmptyValue -> ComboToken []
         | BoolValue b -> BoolToken b
-        | IntValue n -> NumberToken(decimal n)
-        | DecimalValue n -> NumberToken n
+        | IntValue i -> IntToken i
+        | DecimalValue d -> DecimalToken d
         | StringValue s -> StringToken s
         | SymbolValue s -> SymbolToken s
         | ConsValue _ as cons ->

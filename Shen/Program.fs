@@ -29,7 +29,8 @@ let main0 args =
     let rec astToStr = function
         | ComboToken tokens -> sprintf "(%s)" <| String.concat " " (Seq.map astToStr tokens)
         | BoolToken b -> if b then "true" else "false"
-        | NumberToken n -> n.ToString()
+        | IntToken i -> i.ToString()
+        | DecimalToken d -> d.ToString()
         | StringToken s -> "\"" + s + "\""
         | SymbolToken s -> s
     let env = Startup.baseEnv()

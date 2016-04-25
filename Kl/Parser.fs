@@ -17,13 +17,11 @@ module Parser =
         match token with
 
         // Literals just get passed through
-        | BoolToken b -> BoolExpr b
-        | NumberToken n ->
-            match n with
-            | Integral -> IntExpr(int n)
-            | Fractional -> DecimalExpr n
-        | StringToken s -> StringExpr s
-        | SymbolToken s -> SymbolExpr s
+        | BoolToken b    -> BoolExpr b
+        | IntToken i     -> IntExpr i
+        | DecimalToken d -> DecimalExpr d
+        | StringToken s  -> StringExpr s
+        | SymbolToken s  -> SymbolExpr s
 
         // ()
         | ComboToken [] -> EmptyExpr

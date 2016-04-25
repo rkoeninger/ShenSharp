@@ -26,10 +26,6 @@ type ConsoleIn(stream: Stream) =
     member this.Close() = stream.Close()
 
 module Extensions =
-    let (|Integral|Fractional|) x =
-        if x % 1.0m = 0m
-            then Integral
-            else Fractional
     let (|Greater|Equal|Lesser|) (x, y) =
         if x > y
             then Greater
