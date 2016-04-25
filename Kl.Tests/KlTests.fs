@@ -291,3 +291,10 @@ type KlTests() =
         "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> runIt |> rString |> printfn "Vector: %s"
         "(trap-error (simple-error \"whoops\") (lambda E E))" |> runIt |> rError |> printfn "Error: %s"
         "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> runIt |> rString |> printfn "Error-string: %s"
+
+    [<Test>]
+    member this.``print platform information``() =
+        let env = Startup.baseEnv()
+        for pair in env.Globals.Symbols do
+            printfn "%s = %s" pair.Key (Values.toStr pair.Value)
+        ()

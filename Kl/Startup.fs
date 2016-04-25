@@ -55,10 +55,11 @@ module Startup =
             funv "number?"         1 klIsNumber
         ]
         let onMono = Type.GetType("Mono.Runtime") <> null
+        let ver = Environment.Version
         install env.Globals.Symbols [
             "*language*",       StringValue "F# 3.1"
             "*implementation*", StringValue(if onMono then "Mono" else ".NET")
-            "*release*",        StringValue(Environment.Version.ToString())
+            "*release*",        StringValue(sprintf "%i.%i" ver.Major ver.Minor)
             "*version*",        StringValue "19.2"
             "*port*",           StringValue "0.1"
             "*porters*",        StringValue "Robert Koeninger"
