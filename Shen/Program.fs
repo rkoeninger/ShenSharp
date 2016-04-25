@@ -32,7 +32,7 @@ let main0 args =
         | NumberToken n -> n.ToString()
         | StringToken s -> "\"" + s + "\""
         | SymbolToken s -> s
-    let env = Builtins.baseEnv ()
+    let env = Startup.baseEnv()
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
