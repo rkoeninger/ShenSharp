@@ -174,29 +174,25 @@ type FsExpr =
     static member List(exprs: SynExpr list) =
         SynExpr.ArrayOrList(false, exprs, FsAst.defaultRange)
 
-    static member Lambda(isInnerLambda: bool, arg: (string * SynType) option, body: SynExpr) =
-        let pats =
-            match arg with
-            | Some(nm, typ) ->
-                SynSimplePats.SimplePats(
-                    [SynSimplePat.Typed(
-                        SynSimplePat.Id(
-                            new Ident(nm, FsAst.defaultRange),
-                            None,
-                            false,
-                            false,
-                            false,
-                            FsAst.defaultRange),
-                        typ,
-                        FsAst.defaultRange)],
-                    FsAst.defaultRange)
-            | None ->
-                SynSimplePats.SimplePats([], FsAst.defaultRange)
+    static member Lambda(isInnerLambda: bool, args: (string * SynType) list, body: SynExpr) =
+        let buildArg (nm, typ) =
+            SynSimplePat.Typed(
+                SynSimplePat.Id(
+                    new Ident(nm, FsAst.defaultRange),
+                    None,
+                    false,
+                    false,
+                    false,
+                    FsAst.defaultRange),
+                typ,
+                FsAst.defaultRange)
         SynExpr.Paren(
             SynExpr.Lambda(
                 false,
                 isInnerLambda,
-                pats,
+                SynSimplePats.SimplePats(
+                    List.map buildArg args,
+                    FsAst.defaultRange),
                 body,
                 FsAst.defaultRange),
             FsAst.defaultRange,

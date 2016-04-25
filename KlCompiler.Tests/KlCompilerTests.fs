@@ -32,14 +32,15 @@ type CompilerTests() =
         
 open Kl
 
-let iff cond ifTrue ifFalse =
-    match cond with
-    | Ok(BoolValue true) -> ifTrue()
-    | Ok(BoolValue false) -> ifFalse()
-    | Ok _ -> Err "Bool expected"
-    | Err message -> Err message
+let fff = match (match 0 with
+                 | 0 -> 0
+                 | x -> x) with
+          | 0 -> 0
+          | x -> x
 """
         let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
+        let reformatted = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
+        let stopHere = ()
         let ast = FsFile.Of(
                       "ShenNs",
                       [FsModule.Of(
@@ -70,7 +71,6 @@ let iff cond ifTrue ifFalse =
         ()
 
     [<Test>]
-    [<Ignore("and/or exprs need to be fixed like if exprs")>]
     member this.KlExprToSynExpr() =
         let kl = Expr.AndExpr(Expr.BoolExpr true, Expr.BoolExpr false)
         let syn = Compiler.build kl
@@ -86,7 +86,7 @@ let iff cond ifTrue ifFalse =
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
             let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
-            Assert.AreEqual(false, v)
+            Assert.AreEqual(Values.falser, v)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()
@@ -94,7 +94,7 @@ let iff cond ifTrue ifFalse =
         ()
     
     [<Test>]
-    [<Ignore("functions aren't getting built properly")>]
+    //[<Ignore("functions aren't getting built properly")>]
     member this.BuildFreezeExpr() =
         let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymbolExpr "number?", [Expr.StringExpr "hi"]))
         let syn = Compiler.build kl
@@ -120,7 +120,6 @@ let iff cond ifTrue ifFalse =
         ()
 
     [<Test>]
-    [<Ignore("cond expres need to be fixed like if exprs")>]
     member this.BuildCondExpr() =
         let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> tokenize |> parse Position.Head
         let syn = Compiler.build kl

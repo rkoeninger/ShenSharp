@@ -27,28 +27,82 @@ module Compiler =
         let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
         let lambda param body =
             FsExpr.App(
-                FsExpr.LongId ["Value"; "FunctionValue"],
+                FsExpr.Id "Ok",
                 [FsExpr.App(
-                    FsExpr.Id "Primitive",
-                    [FsExpr.Tuple(
-                        [FsExpr.String "anonymous"
-                         FsExpr.Int32 1
-                         FsExpr.Lambda(
-                            false,
-                            Some("envGlobals", FsType.Of("Globals")),
-                            body)])])])
+                    FsExpr.LongId ["Value"; "FunctionValue"],
+                    [FsExpr.App(
+                        FsExpr.Id "Primitive",
+                        [FsExpr.Tuple(
+                            [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                             FsExpr.Int32 1
+                             FsExpr.Lambda(
+                                false,
+                                ["envGlobals", FsType.Of("Globals")
+                                 "args", FsType.ListOf(FsType.Of("Value"))],
+                                body)])])])])
         let freeze body =
             FsExpr.App(
-                FsExpr.LongId ["Value"; "FunctionValue"],
+                FsExpr.Id "Ok",
                 [FsExpr.App(
-                    FsExpr.Id "Primitive",
-                    [FsExpr.Tuple(
-                        [FsExpr.String "anonymous"
-                         FsExpr.Int32 0
-                         FsExpr.Lambda(
-                            false,
-                            Some("envGlobals", FsType.Of("Globals")),
-                            body)])])])
+                    FsExpr.LongId ["Value"; "FunctionValue"],
+                    [FsExpr.App(
+                        FsExpr.Id "Primitive",
+                        [FsExpr.Tuple(
+                            [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                             FsExpr.Int32 0
+                             FsExpr.Lambda(
+                                false,
+                                ["envGlobals", FsType.Of("Globals")],
+                                FsExpr.Lambda(
+                                    false,
+                                    ["args", FsType.ListOf(FsType.Of("Value"))],
+                                    body))])])])])
+        let buildIf condition ifTrue ifFalse =
+            // match ~condition with
+            // | Ok(BoolValue true) -> ~ifTrue
+            // | Ok(BoolValue false) -> ifFalse
+            // | Ok _ -> Err "if expects boolean conditional"
+            // | Err message -> Err message
+            FsExpr.Match(
+                condition,
+                [FsMatchClause.Of(
+                    FsPat.Name("Ok", FsPat.Name("BoolValue", FsPat.Const(FsConst.Bool true))),
+                    ifTrue)
+                 FsMatchClause.Of(
+                    FsPat.Name("Ok", FsPat.Name("BoolValue", FsPat.Const(FsConst.Bool false))),
+                    ifFalse)
+                 FsMatchClause.Of(
+                    FsPat.Name("Ok", FsPat.Wild),
+                    FsExpr.App(FsExpr.Id "Err", [FsExpr.String "if expects boolean conditional"]))
+                 FsMatchClause.Of(
+                    FsPat.Name("Err", FsPat.Name("message")),
+                    FsExpr.App(FsExpr.Id "Err", [FsExpr.Id "message"]))])
+        
+        let rec buildOps operator operands operandIndex =
+            match operands with
+            | [] ->
+                let opArgs = List.map (fun i -> FsExpr.Id("temp" + (string i))) (Seq.toList(seq { 0 .. operandIndex }))
+                FsExpr.App(operator, [FsExpr.Id "envGlobals"; FsExpr.List opArgs])
+            | operand :: rest ->
+                FsExpr.Match(
+                    operand,
+                    [FsMatchClause.Of(
+                        FsPat.Name("Ok", [FsPat.Name("temp" + (string operandIndex))]),
+                        buildOps operator rest (operandIndex + 1))
+                     FsMatchClause.Of(
+                        FsPat.Name("Err", [FsPat.Name("message")]),
+                        FsExpr.App(FsExpr.Id "Err", [FsExpr.Id "message"]))])
+
+        let buildApp operator operands operandIndex =
+            FsExpr.Match(
+                operator,
+                [FsMatchClause.Of(
+                    FsPat.Name("Ok", [FsPat.Name("tempOp")]),
+                    buildOps (FsExpr.Id "tempOp") operands (operandIndex + 1))
+                 FsMatchClause.Of(
+                    FsPat.Name("Err", [FsPat.Name("message")]),
+                    FsExpr.App(FsExpr.Id "Err", [FsExpr.Id "message"]))])
+
         match expr with
         | EmptyExpr -> FsExpr.App(FsExpr.Id "Ok", [FsExpr.Id "EmptyValue"])
         | BoolExpr b -> FsExpr.App(FsExpr.Id "Ok", [FsExpr.App(FsExpr.Id "BoolValue", [FsExpr.Bool b])])
@@ -60,34 +114,15 @@ module Compiler =
             if isVar s
                 then FsExpr.Id (klToFsId s)
                 else FsExpr.App(FsExpr.LongId ["Value"; "SymbolValue"], [FsExpr.String s])
-        | AndExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanAnd"), build right |> seBool)
-        | OrExpr(left, right) -> FsExpr.Infix(build left |> seBool, FsExpr.Id("op_BooleanOr"), build right |> seBool)
-        
-        // match ~condition with
-        // | Ok(BoolValue true) -> ~ifTrue
-        // | Ok(BoolValue false) -> ifFalse
-        // | Ok _ -> Err "if expects boolean conditional"
-        // | Err message -> Err message
-        | IfExpr(condition, ifTrue, ifFalse) ->
-            FsExpr.Match(
-                build condition,
-                [FsMatchClause.Of(
-                    FsPat.Name("Ok", FsPat.Name("BoolValue", FsPat.Const(FsConst.Bool true))),
-                    build ifTrue)
-                 FsMatchClause.Of(
-                    FsPat.Name("Ok", FsPat.Name("BoolValue", FsPat.Const(FsConst.Bool false))),
-                    build ifFalse)
-                 FsMatchClause.Of(
-                    FsPat.Name("Ok", FsPat.Wild),
-                    FsExpr.App(FsExpr.Id "Err", [FsExpr.String "if expects boolean conditional"]))
-                 FsMatchClause.Of(
-                    FsPat.Name("Err", FsPat.Name("message")),
-                    FsExpr.App(FsExpr.Id "Err", [FsExpr.Id "message"]))])
+        | AndExpr(left, right) -> buildIf (build left) (build right) (build (BoolExpr false))
+        | OrExpr(left, right) -> buildIf (build left) (build (BoolExpr true)) (build right)
+        | IfExpr(condition, ifTrue, ifFalse) -> buildIf (build condition) (build ifTrue) (build ifFalse)
         | CondExpr(clauses) ->
-            let rec buildClauses = function
+            let rec buildClauses clauses =
+                match clauses with
                 | (BoolExpr false, _) :: rest -> buildClauses rest
                 | (BoolExpr true, ifTrue) :: _ -> build ifTrue
-                | (condition, ifTrue) :: rest -> FsExpr.If(build condition |> seBool, build ifTrue, buildClauses rest)
+                | (condition, ifTrue) :: rest -> buildIf (build condition) (build ifTrue) (buildClauses rest)
                 | [] -> FsFail.With("No condition was true")
             buildClauses clauses
         | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
@@ -140,11 +175,13 @@ module Compiler =
                 | _                 -> None
             match f with
             | SymbolExpr op ->
-                let builtArgs = [FsExpr.Id "envGlobals"; FsExpr.List(List.map build args)]
-                match primitiveOp op with
-                | Some(pop) -> FsExpr.App(pop, builtArgs)
-                | _ when isVar op -> FsExpr.App(FsExpr.Id op, builtArgs)
-                | _ -> FsExpr.App(FsExpr.LongId ["KlImpl"; op], builtArgs)
+                let builtArgs = List.map build args
+                let builtOp =
+                    match primitiveOp op with
+                    | Some(pop) -> pop
+                    | _ when isVar op -> FsExpr.Id op
+                    | _ -> FsExpr.LongId ["KlImpl"; op]
+                buildApp builtOp builtArgs 0
             | _ -> failwith "application expression or special form must start with symbol"
     let topLevelBuild expr =
         match expr with
