@@ -82,6 +82,10 @@ module Values =
     let truew = Done truer
     let falsew = Done falser
     let thunkw f = new Thunk(f) |> Pending
+    let func n a l f = new Function(n, a, l, f)
+    let funcv n a l f = func n a l f |> FunctionValue
+    let funcr n a l f = funcv n a l f |> Ok
+    let funcw n a l f = funcr n a l f |> Done
     let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv() = {Globals = newGlobals(); Locals = []}

@@ -8,12 +8,6 @@ open System.IO
 
 module Builtins =
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
-    let vBool x =
-        match x with
-        | BoolValue b -> b
-        | _ -> failwith "Boolean value expected"
-    let trueV = BoolValue true
-    let falseV = BoolValue false
     let klIntern _ args =
         match args with
         | [StringValue s] -> SymbolValue s
@@ -52,8 +46,8 @@ module Builtins =
         | _ -> invalidArgs ()
     let klIsString _ args =
         match args with
-        | [StringValue _] -> trueV
-        | [_] -> falseV
+        | [StringValue _] -> Values.truev
+        | [_] -> Values.falsev
         | _ -> invalidArgs ()
     let klIntToString _ args =
         match args with
@@ -97,8 +91,8 @@ module Builtins =
         | _ -> invalidArgs ()
     let klIsCons _ args =
         match args with
-        | [ConsValue _] -> trueV
-        | [_] -> falseV
+        | [ConsValue _] -> Values.truev
+        | [_] -> Values.falsev
         | _ -> invalidArgs ()
     let rec private klEq a b =
         match a, b with
@@ -163,8 +157,8 @@ module Builtins =
         | _ -> invalidArgs ()
     let klIsVector _ args =
         match args with
-        | [VectorValue _] -> trueV
-        | [_] -> falseV
+        | [VectorValue _] -> Values.truev
+        | [_] -> Values.falsev
         | _ -> invalidArgs ()
     let klWriteByte _ args =
         match args with
@@ -263,9 +257,9 @@ module Builtins =
         | _ -> invalidArgs ()
     let klIsNumber _ args =
         match args with
-        | [IntValue _] -> trueV
-        | [DecimalValue _] -> trueV
-        | [_] -> falseV
+        | [IntValue _] -> Values.truev
+        | [DecimalValue _] -> Values.truev
+        | [_] -> Values.falsev
         | _ -> invalidArgs ()
     let trapError r c =
         match r with
@@ -352,7 +346,7 @@ module Builtins =
             vector
         | _ -> invalidArgs()
     let rec klElement = function
-        | [_; EmptyValue] -> falseV
-        | [key; ConsValue(head, _)] when klEq key head -> trueV
+        | [_; EmptyValue] -> Values.falsev
+        | [key; ConsValue(head, _)] when klEq key head -> Values.truev
         | [key; ConsValue(_, tail)] -> klElement [key; tail]
         | _ -> invalidArgs()
