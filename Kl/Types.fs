@@ -117,4 +117,4 @@ and Thunk(cont: unit -> Work) =
 /// A KL environment state, with a reference to global definitions
 /// and local variable bindings.
 /// </summary>
-type Env = {Globals: Globals; Locals: Locals}
+type Env = {Globals: Globals; Locals: Locals; Trace: string list}

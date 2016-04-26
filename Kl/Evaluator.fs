@@ -4,7 +4,9 @@ open Extensions
 
 module Evaluator =
 
-    let private append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
+    let private appendLocals env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
+
+    let private appendTrace env frame = {env with Trace = List.Cons(frame, env.Trace)}
 
     let rec private resolveLocalSymbol locals id =
         match locals with
@@ -47,8 +49,8 @@ module Evaluator =
     /// environment, considering whether to full evaluate
     /// passed on the Head/Tail position of the application
     /// </summary>
-    let rec apply pos globals f args =
-        let env = {Globals = globals; Locals = []}
+    let rec apply pos globals trace f args =
+        let env = {Globals = globals; Locals = []; Trace = trace}
 
         // Applying functions to zero args just returns the same function,
         // except for freezes, which fail if applied to any arguments
@@ -60,7 +62,7 @@ module Evaluator =
         | Lambda(param, locals, body) as lambda ->
             match args with
             | [] -> Done(Func(lambda))
-            | [x] -> evalw (append env [(param, x)]) body
+            | [x] -> evalw (appendLocals env [(param, x)]) body
             | _ -> Done(Values.err "Lambdas take exactly 1 argument")
 
         // Defuns and Primitives can have any number of arguments and
@@ -73,7 +75,7 @@ module Evaluator =
                 | Greater -> Values.arityErr name paramz.Length args
                 | Lesser -> Done(Func(Partial(defun, args)))
                 | Equal ->
-                    let env = append env (List.zip paramz args)
+                    let env = appendLocals env (List.zip paramz args)
                     match pos with
                     | Head -> evalw env body
                     | Tail -> Values.thunkw(fun () -> evalw env body)
@@ -88,7 +90,7 @@ module Evaluator =
         | Partial(f, args0) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> apply pos globals f (List.append args0 args)
+            | _ -> apply pos globals trace f (List.append args0 args)
 
     and private evalw env expr =
         match expr with
@@ -110,38 +112,39 @@ module Evaluator =
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
-            if Values.vbool(eval env left)
-                then evalw env right
+            if Values.vbool(eval (appendTrace env "and/left") left)
+                then evalw (appendTrace env "and/right") right
                 else Values.falsew
             
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
-            if Values.vbool(eval env left)
+            if Values.vbool(eval (appendTrace env "or/left") left)
                 then Values.truew
-                else evalw env right
+                else evalw (appendTrace env "or/right") right
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
         | IfExpr (condition, consequent, alternative) ->
-            if Values.vbool(eval env condition)
-                then evalw env consequent
-                else evalw env alternative
+            if Values.vbool(eval (appendTrace env "if/condition") condition)
+                then evalw (appendTrace env "if/consequent") consequent
+                else evalw (appendTrace env "if/alternative") alternative
         
         // Condition expressions must evaluate to boolean values
         | CondExpr clauses ->
             let rec evalClauses = function
                 | [] -> Values.err "No condition was true"
                 | (condition, consequent) :: rest ->
-                    if Values.vbool(eval env condition)
-                        then evalw env consequent
+                    if Values.vbool(eval (appendTrace env "cond/condition") condition)
+                        then evalw (appendTrace env "cond/consequent") consequent
                         else evalClauses rest
             evalClauses clauses
 
         | LetExpr (symbol, binding, body) ->
-            evalw (append env [symbol, eval env binding]) body
+            let value = eval (appendTrace env (sprintf "let/%s/binding" symbol)) binding
+            evalw (appendLocals (appendTrace env (sprintf "let/%s/body" symbol)) [symbol, value]) body
 
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr (param, body) ->
@@ -155,11 +158,11 @@ module Evaluator =
         // Handler expression must evaluate to a function
         | TrapExpr (pos, body, handler) ->
             try
-                Done(eval env body)
+                Done(eval (appendTrace env "trap-error/body") body)
             with
             | SimpleError message ->
-                match eval env handler with
-                | Func f -> apply pos env.Globals f [Err message]
+                match eval (appendTrace env "trap-error/handler") handler with
+                | Func f -> apply pos env.Globals env.Trace f [Err message]
                 | _ -> Values.err "Trap handler did not evaluate to a function"
             | e -> raise e
 
@@ -173,7 +176,8 @@ module Evaluator =
             | SymExpr s ->
                 let operator = resolveFunction env s
                 let operands = List.map (eval env) args
-                apply pos env.Globals operator operands
+                let env = appendTrace env (sprintf "app/%s" s)
+                apply pos env.Globals env.Trace operator operands
             | _ -> Values.err "Application must begin with a symbol"
     
     /// <summary>
@@ -187,7 +191,7 @@ module Evaluator =
     /// effects in the process.
     /// </summary>
     let rootEval globals expr =
-        let env = {Globals = globals; Locals = []}
+        let env = {Globals = globals; Locals = []; Trace = []}
 
         match expr with
         | DefunExpr(name, paramz, body) ->
