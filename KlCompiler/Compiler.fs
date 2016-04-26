@@ -93,11 +93,11 @@ module Compiler =
         | EmptyExpr -> FsExpr.Id "Empty"
         | BoolExpr b -> FsExpr.App(FsExpr.Id "Bool", [FsExpr.Bool b])
         | IntExpr i -> FsExpr.App(FsExpr.Id "Int", [FsExpr.Int32 i])
-        | DecimalExpr d -> FsExpr.App(FsExpr.Id "Dec", [FsExpr.Decimal d])
-        | StringExpr s -> FsExpr.App(FsExpr.Id "Str", [FsExpr.String (escape s)])
+        | DecExpr d -> FsExpr.App(FsExpr.Id "Dec", [FsExpr.Decimal d])
+        | StrExpr s -> FsExpr.App(FsExpr.Id "Str", [FsExpr.String (escape s)])
 
         // This should only be symbols that are not at the head of an application
-        | SymbolExpr s ->
+        | SymExpr s ->
             if Set.contains s defs
                 then FsExpr.Id s
                 else FsExpr.App(FsExpr.Id "Sym", [FsExpr.String s])
@@ -127,7 +127,7 @@ module Compiler =
                 [FsMatchClause.Of(FsPat.Name("SimpleError", FsPat.Name("e")), FsExpr.Id "Empty")])
         | AppExpr(_, f, args) ->
             match f with
-            | SymbolExpr op ->
+            | SymExpr op ->
                 let builtArgs = List.map (build defs) args
                 let builtOp =
                     match Map.tryFind op primitiveNames with

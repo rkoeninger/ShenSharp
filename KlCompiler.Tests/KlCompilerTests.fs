@@ -56,8 +56,8 @@ let fff = match (match 0 with
                               Compiler.build (Set.ofList ["X"; "Y"]) (
                                 Expr.AppExpr(
                                   Position.Head,
-                                  Expr.SymbolExpr "+",
-                                  [SymbolExpr "X"; SymbolExpr "Y"])))])])
+                                  Expr.SymExpr "+",
+                                  [SymExpr "X"; SymExpr "Y"])))])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
@@ -90,7 +90,7 @@ let fff = match (match 0 with
     
     [<Test>]
     member this.BuildFreezeExpr() =
-        let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymbolExpr "number?", [Expr.StringExpr "hi"]))
+        let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymExpr "number?", [Expr.StrExpr "hi"]))
         let syn = Compiler.build Set.empty kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)

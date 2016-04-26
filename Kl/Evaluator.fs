@@ -100,15 +100,15 @@ module Evaluator =
         match expr with
 
         // Atomic values besides symbols are self-evaluating
-        | EmptyExpr     -> Done(Empty)
-        | BoolExpr b    -> Done(Bool b)
-        | IntExpr n     -> Done(Int n)
-        | DecimalExpr n -> Done(Dec n)
-        | StringExpr s  -> Done(Str s)
+        | EmptyExpr  -> Done(Empty)
+        | BoolExpr b -> Done(Bool b)
+        | IntExpr n  -> Done(Int n)
+        | DecExpr n  -> Done(Dec n)
+        | StrExpr s  -> Done(Str s)
 
         // Should only get here in the case of symbols not in operator position
         // In this case, symbols always evaluate without error
-        | SymbolExpr s -> Done(resolveSymbol env s)
+        | SymExpr s -> Done(resolveSymbol env s)
 
         // And/Or expressions are lazily evaluated
 
@@ -176,7 +176,7 @@ module Evaluator =
         // the function being applied
         | AppExpr (pos, f, args) ->
             match f with
-            | SymbolExpr s ->
+            | SymExpr s ->
                 let operator = resolveFunction env s
                 let operands = List.map evale args
                 apply pos env.Globals operator operands

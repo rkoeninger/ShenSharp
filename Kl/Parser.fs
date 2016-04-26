@@ -17,29 +17,29 @@ module Parser =
         match token with
 
         // Literals just get passed through
-        | BoolToken b    -> BoolExpr b
-        | IntToken i     -> IntExpr i
-        | DecimalToken d -> DecimalExpr d
-        | StringToken s  -> StringExpr s
-        | SymbolToken s  -> SymbolExpr s
+        | BoolToken b -> BoolExpr b
+        | IntToken i  -> IntExpr i
+        | DecToken d  -> DecExpr d
+        | StrToken s  -> StrExpr s
+        | SymToken s  -> SymExpr s
 
         // ()
         | ComboToken [] -> EmptyExpr
 
         // (and ~left ~right)
-        | ComboToken [(SymbolToken "and"); left; right] ->
+        | ComboToken [(SymToken "and"); left; right] ->
             AndExpr (parse Head left, parse pos right)
 
         // (or ~left ~right)
-        | ComboToken [(SymbolToken "or");  left; right] ->
+        | ComboToken [(SymToken "or");  left; right] ->
             OrExpr (parse Head left, parse pos right)
 
         // (if ~condition ~consequent ~alternative)
-        | ComboToken [(SymbolToken "if"); condition; consequent; alternative] ->
+        | ComboToken [(SymToken "if"); condition; consequent; alternative] ->
             IfExpr (parse Head condition, parse pos consequent, parse pos alternative)
 
         // (cond ~@clauses)
-        | ComboToken (SymbolToken "cond" :: clauses) ->
+        | ComboToken (SymToken "cond" :: clauses) ->
             let buildClause token =
                 match token with
                 // (~condition ~consequent)
@@ -48,23 +48,23 @@ module Parser =
             List.map buildClause clauses |> CondExpr
 
         // (let ~name ~binding ~body)
-        | ComboToken [(SymbolToken "let"); (SymbolToken name); binding; body] ->
+        | ComboToken [(SymToken "let"); (SymToken name); binding; body] ->
             LetExpr (name, parse Head binding, parse pos body)
 
         // (lambda ~arg ~body)
-        | ComboToken [(SymbolToken "lambda"); (SymbolToken arg); body] ->
+        | ComboToken [(SymToken "lambda"); (SymToken arg); body] ->
             LambdaExpr (arg, parse Tail body)
 
         // (freeze ~expr)
-        | ComboToken [(SymbolToken "freeze"); expr] ->
+        | ComboToken [(SymToken "freeze"); expr] ->
             FreezeExpr (parse Tail expr)
 
         // (trap-error ~body ~handler)
-        | ComboToken [(SymbolToken "trap-error"); body; handler] ->
+        | ComboToken [(SymToken "trap-error"); body; handler] ->
             TrapExpr (pos, parse Head body, parse pos handler)
 
         // (defun ...)
-        | ComboToken(SymbolToken "defun" :: _) ->
+        | ComboToken(SymToken "defun" :: _) ->
             failwith "defun expressions cannot appear below the root level"
 
         // (~f ~@args)
@@ -81,10 +81,10 @@ module Parser =
         match token with
 
         // (defun ~name ~paramz ~body)
-        | ComboToken [SymbolToken "defun"; SymbolToken name; ComboToken paramz; body] ->
+        | ComboToken [SymToken "defun"; SymToken name; ComboToken paramz; body] ->
             let paramName t =
                 match t with
-                | (SymbolToken s) -> s
+                | SymToken s -> s
                 | _ -> failwith "Defun parameters must be symbols"
             DefunExpr (name, List.map paramName paramz, parse Tail body)
 

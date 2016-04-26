@@ -30,9 +30,9 @@ let main0 args =
         | ComboToken tokens -> sprintf "(%s)" <| String.concat " " (Seq.map astToStr tokens)
         | BoolToken b -> if b then "true" else "false"
         | IntToken i -> i.ToString()
-        | DecimalToken d -> d.ToString()
-        | StringToken s -> "\"" + s + "\""
-        | SymbolToken s -> s
+        | DecToken d -> d.ToString()
+        | StrToken s -> "\"" + s + "\""
+        | SymToken s -> s
     let env = Startup.baseEnv()
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
@@ -51,7 +51,7 @@ let main0 args =
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
-    let load path = eval env (AppExpr (Head, (SymbolExpr "load"), [StringExpr path])) |> ignore
+    let load path = eval env (AppExpr (Head, (SymExpr "load"), [StrExpr path])) |> ignore
 //    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
 //    printfn "Starting shen repl..."
 //    printfn ""

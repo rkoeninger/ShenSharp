@@ -46,7 +46,7 @@ module Values =
 
     let err s = raise(SimpleError s)
 
-    let thunkw f = new Thunk<Value>(f) |> Pending
+    let thunkw f = new Thunk(f) |> Pending
 
     let rec go work =
         match work with
@@ -100,12 +100,12 @@ module Values =
 
     let rec toToken value =
         match value with
-        | Empty -> ComboToken []
+        | Empty  -> ComboToken []
         | Bool b -> BoolToken b
-        | Int i -> IntToken i
-        | Dec d -> DecimalToken d
-        | Str s -> StringToken s
-        | Sym s -> SymbolToken s
+        | Int i  -> IntToken i
+        | Dec d  -> DecToken d
+        | Str s  -> StrToken s
+        | Sym s  -> SymToken s
         | Cons _ as cons ->
             let generator value =
                 match value with

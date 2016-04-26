@@ -12,11 +12,11 @@ module Tokenizer =
 
     let private pToken, pTokenRef = createParserForwardedToRef<Token, unit>()
     let private pBool = (stringReturn "true" (BoolToken true)) <|> (stringReturn "false" (BoolToken false))
-    let private numberToken d = if d % 1m = 0m then IntToken(int d) else DecimalToken d
+    let private numberToken d = if d % 1m = 0m then IntToken(int d) else DecToken d
     let private pNumber = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> (decimal >> numberToken)
     let private stringLiteral = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"'))
-    let private pString = stringLiteral |>> StringToken
-    let private pSymbol = regex "[^\\s\\x28\\x29]+" |>> SymbolToken
+    let private pString = stringLiteral |>> StrToken
+    let private pSymbol = regex "[^\\s\\x28\\x29]+" |>> SymToken
     let private pCombo = between (pchar '(') (pchar ')') (sepBy pToken spaces1) |>> ComboToken
     let private pTokens = spaces >>. (many (pToken .>> spaces))
     do pTokenRef := choice [pBool; pNumber; pString; pSymbol; pCombo]

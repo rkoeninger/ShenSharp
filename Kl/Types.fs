@@ -7,12 +7,12 @@ open System.Collections.Generic
 /// A node in a KL syntax tree.
 /// </summary>
 type Token =
-    | BoolToken    of bool
-    | IntToken     of int
-    | DecimalToken of decimal
-    | StringToken  of string
-    | SymbolToken  of string
-    | ComboToken   of Token list
+    | BoolToken  of bool
+    | IntToken   of int
+    | DecToken   of decimal
+    | StrToken   of string
+    | SymToken   of string
+    | ComboToken of Token list
 
 /// <summary>
 /// Head/Tail position of an expression.
@@ -25,25 +25,20 @@ type Position = Head | Tail
 /// </summary>
 type Expr =
     | EmptyExpr
-    | BoolExpr    of bool
-    | IntExpr     of int
-    | DecimalExpr of decimal
-    | StringExpr  of string
-    | SymbolExpr  of string
-    | AndExpr     of Expr * Expr
-    | OrExpr      of Expr * Expr
-    | IfExpr      of Expr * Expr * Expr
-    | CondExpr    of (Expr * Expr) list
-    | LetExpr     of string * Expr * Expr
-    | LambdaExpr  of string * Expr
-    | FreezeExpr  of Expr
-    | TrapExpr    of Position * Expr * Expr
-    | AppExpr     of Position * Expr * Expr list
-
-/// <summary>
-/// Exception type that embodies KL errors.
-/// </summary>
-exception SimpleError of string
+    | BoolExpr   of bool
+    | IntExpr    of int
+    | DecExpr    of decimal
+    | StrExpr    of string
+    | SymExpr    of string
+    | AndExpr    of Expr * Expr
+    | OrExpr     of Expr * Expr
+    | IfExpr     of Expr * Expr * Expr
+    | CondExpr   of (Expr * Expr) list
+    | LetExpr    of string * Expr * Expr
+    | LambdaExpr of string * Expr
+    | FreezeExpr of Expr
+    | TrapExpr   of Position * Expr * Expr
+    | AppExpr    of Position * Expr * Expr list
 
 /// <summary>
 /// A separate type used to enforce the fact that <c>DefunExpr</c>s
@@ -52,6 +47,11 @@ exception SimpleError of string
 type RootExpr =
     | DefunExpr of string * string list * Expr
     | OtherExpr of Expr
+
+/// <summary>
+/// Exception type that embodies KL errors.
+/// </summary>
+exception SimpleError of string
 
 type [<ReferenceEquality>] Input = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] Output = {Write: byte -> unit; Close: unit -> unit}
@@ -65,7 +65,7 @@ type Defines<'a> = Dictionary<string, 'a>
 /// A global, mutable set of symbol definitions that contains separate
 /// symbol and function namespaces.
 /// </summary>
-and Globals = {Symbols: Defines<Value>; Functions: Defines<Function>}
+type Globals = {Symbols: Defines<Value>; Functions: Defines<Function>}
 
 /// <summary>
 /// A stack of local variable definitions.
@@ -102,15 +102,15 @@ and Value =
 /// <summary>
 /// A potentially deferred computation yielding a value of type <c>'a</c>.
 /// </summary>
-and Work<'a> =
-    | Done    of 'a
-    | Pending of Thunk<'a>
+type Work =
+    | Done    of Value
+    | Pending of Thunk
 
 /// <summary>
 /// A deferred computation. Thunks are used to defer the evaluation
 /// of tail calls.
 /// </summary>
-and Thunk<'a>(cont: unit -> Work<'a>) =
+and Thunk(cont: unit -> Work) =
     member this.Run = cont
 
 /// <summary>

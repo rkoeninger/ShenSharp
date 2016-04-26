@@ -43,9 +43,9 @@ type KlTests() =
         | Bool b -> b
         | _ -> failwith "not a Bool"
     let eApp1 f arg1 = AppExpr(Head, f, [arg1])
-    let symApp1 sym arg1 = AppExpr (Head, SymbolExpr sym, [arg1])
-    let symApp2 sym arg1 arg2 = AppExpr (Head, SymbolExpr sym, [arg1; arg2])
-    let symApp3 sym arg1 arg2 arg3 = AppExpr (Head, SymbolExpr sym, [arg1; arg2; arg3])
+    let symApp1 sym arg1 = AppExpr (Head, SymExpr sym, [arg1])
+    let symApp2 sym arg1 arg2 = AppExpr (Head, SymExpr sym, [arg1; arg2])
+    let symApp3 sym arg1 arg2 arg3 = AppExpr (Head, SymExpr sym, [arg1; arg2; arg3])
     let intE = IntExpr
     let intV = Int
     let strV = Str
@@ -235,13 +235,13 @@ type KlTests() =
         let e0 = DefunExpr ("!",
                             ["acc"; "n"],
                             IfExpr (AppExpr (Head,
-                                             SymbolExpr "=",
-                                             [intE 0; SymbolExpr "n"]),
-                                    SymbolExpr "acc",
+                                             SymExpr "=",
+                                             [intE 0; SymExpr "n"]),
+                                    SymExpr "acc",
                                     AppExpr (Tail,
-                                             SymbolExpr "!",
-                                             [symApp2 "*" (SymbolExpr "n") (SymbolExpr "acc")
-                                              symApp2 "-" (SymbolExpr "n") (intE 1)])))
+                                             SymExpr "!",
+                                             [symApp2 "*" (SymExpr "n") (SymExpr "acc")
+                                              symApp2 "-" (SymExpr "n") (intE 1)])))
         Assert.AreEqual(e0, e)
 
     [<Test>]
