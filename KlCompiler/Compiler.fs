@@ -45,60 +45,49 @@ module Compiler =
             "number?",         "klIsNumber"
         ]
 
+    let private escape s =
+        let escapeChar ch =
+            match ch with
+            | '\n' -> "\\n"
+            | '\r' -> "\\r"
+            | '\t' -> "\\t"
+            | _ -> ch.ToString()
+        String.collect escapeChar s
+
+    let private buildLambda param body =
+        FsExpr.App(
+            FsExpr.Id "Func",
+            [FsExpr.App(
+                FsExpr.Id "Primitive",
+                [FsExpr.Tuple(
+                    [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                     FsExpr.Int32 1
+                     FsExpr.Lambda(
+                        false,
+                        ["envGlobals", FsType.Of("Globals")],
+                         FsExpr.Lambda(
+                            false,
+                            ["args", FsType.ListOf(FsType.Of("Value"))],
+                            body))])])])
+                            
+    let private buildFreeze body =
+        FsExpr.App(
+            FsExpr.Id "Func",
+            [FsExpr.App(
+                FsExpr.Id "Primitive",
+                [FsExpr.Tuple(
+                    [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                     FsExpr.Int32 0
+                     FsExpr.Lambda(
+                        false,
+                        ["envGlobals", FsType.Of("Globals")],
+                         FsExpr.Lambda(
+                            false,
+                            ["args", FsType.ListOf(FsType.Of("Value"))],
+                            body))])])])
+
     let rec build expr =
-        let klToFsId (klId:string) =
-            klId.Replace("?", "_P_")
-                .Replace("<", "_LT_")
-                .Replace(">", "_GT_")
-                .Replace("-", "_")
-                .Replace(".", "_DOT_")
-                .Replace("+", "_PLUS_")
-                .Replace("*", "_STAR_")
-                .TrimEnd('_')
-        let builtin id = FsExpr.LongId ["Builtins"; id]
         let seBool synExpr = FsExpr.App(FsExpr.LongId ["Values"; "vbool"], [synExpr])
-        let seResult synExpr = FsExpr.App(FsExpr.Id "Done", [FsExpr.App(FsExpr.Id "Ok", [synExpr])])
-        let escape s =
-            let escapeChar ch =
-                match ch with
-                | '\n' -> "\\n"
-                | '\r' -> "\\r"
-                | '\t' -> "\\t"
-                | _ -> ch.ToString()
-            String.collect escapeChar s
-        let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
-
-        let lambda param body =
-            FsExpr.App(
-                FsExpr.Id "Func",
-                [FsExpr.App(
-                    FsExpr.Id "Primitive",
-                    [FsExpr.Tuple(
-                        [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
-                         FsExpr.Int32 1
-                         FsExpr.Lambda(
-                            false,
-                            ["envGlobals", FsType.Of("Globals")],
-                             FsExpr.Lambda(
-                                false,
-                                ["args", FsType.ListOf(FsType.Of("Value"))],
-                                body))])])])
-
-        let freeze body =
-            FsExpr.App(
-                FsExpr.Id "Func",
-                [FsExpr.App(
-                    FsExpr.Id "Primitive",
-                    [FsExpr.Tuple(
-                        [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
-                         FsExpr.Int32 0
-                         FsExpr.Lambda(
-                            false,
-                            ["envGlobals", FsType.Of("Globals")],
-                             FsExpr.Lambda(
-                                false,
-                                ["args", FsType.ListOf(FsType.Of("Value"))],
-                                body))])])])
 
         match expr with
         | EmptyExpr -> FsExpr.Id "Empty"
@@ -108,8 +97,8 @@ module Compiler =
         | StringExpr s -> FsExpr.App(FsExpr.Id "Str", [FsExpr.String (escape s)])
         | SymbolExpr s ->
             // TODO: need to maintain a set of local variables so we know what's an idle symbol
-            if isVar s
-                then FsExpr.Id(klToFsId s)
+            if Values.isVar s
+                then FsExpr.Id s
                 else FsExpr.App(FsExpr.Id "Sym", [FsExpr.String s])
         | AndExpr(left, right) ->
             FsExpr.If(seBool(build left), build right, build(BoolExpr false))
@@ -128,9 +117,9 @@ module Compiler =
         | LetExpr(symbol, binding, body) ->
             FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) ->
-            lambda symbol (build body)
+            buildLambda symbol (build body)
         | FreezeExpr(expr) ->
-            freeze (build expr)
+            buildFreeze(build expr)
         | TrapExpr(_, body, handler) ->
             FsExpr.Try(
                 build body,
@@ -140,9 +129,9 @@ module Compiler =
             | SymbolExpr op ->
                 let builtArgs = List.map build args
                 let builtOp =
-                    match Map.tryFind op primitiveNames |> Option.map builtin with
-                    | Some(pop) -> pop
-                    | _ when isVar op -> FsExpr.Id op
+                    match Map.tryFind op primitiveNames with
+                    | Some(pop) -> FsExpr.LongId ["Builtins"; pop]
+                    | _ when Values.isVar op -> FsExpr.Id op
                     | _ -> FsExpr.LongId ["KlImpl"; op]
                 FsExpr.App(builtOp, [FsExpr.Id "envGlobals"; FsExpr.List(builtArgs)])
             | _ -> failwith "application expression or special form must start with symbol"

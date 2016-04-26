@@ -62,6 +62,8 @@ let fff = match (match 0 with
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
+        for e in errors do
+            printfn "%s" e.Message
         Assert.AreEqual(0, i)
         let types = asm.Value.GetTypes()
         let res1 = types.[0].GetMethods().[0].Invoke(null, [|Values.newGlobals(); Int 1; Int 2|])
@@ -76,6 +78,8 @@ let fff = match (match 0 with
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        for e in errors do
+            printfn "%s" e.Message
         Assert.AreEqual(0, i)
         let types = asm.Value.GetTypes()
         let methods = types.[0].GetMethods()
@@ -93,6 +97,8 @@ let fff = match (match 0 with
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        for e in errors do
+            printfn "%s" e.Message
         Assert.AreEqual(0, i)
         let types = asm.Value.GetTypes()
         let methods = types.[0].GetMethods()
@@ -112,6 +118,8 @@ let fff = match (match 0 with
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        for e in errors do
+            printfn "%s" e.Message
         Assert.AreEqual(0, i)
         let types = asm.Value.GetTypes()
         let methods = types.[0].GetMethods()
@@ -133,6 +141,8 @@ let fff = match (match 0 with
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        for e in errors do
+            printfn "%s" e.Message
         Assert.AreEqual(0, i)
         let types = asm.Value.GetTypes()
         let methods = types.[0].GetMethods()
