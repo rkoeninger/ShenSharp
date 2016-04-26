@@ -42,11 +42,6 @@ module Evaluator =
             | Some f -> f
             | None -> Values.err("Symbol not defined: " + id)
 
-    let private tailCall pos f =
-        match pos with
-        | Head -> f()
-        | Tail -> Values.thunkw f
-
     /// <summary>
     /// Applies a function to a set of arguments and a global
     /// environment, considering whether to full evaluate
@@ -78,8 +73,10 @@ module Evaluator =
                 | Greater -> Values.arityErr name paramz.Length args
                 | Lesser -> Done(Func(Partial(defun, args)))
                 | Equal ->
-                    let env = (append env (List.zip paramz args))
-                    tailCall pos (fun () -> evalw env body)
+                    let env = append env (List.zip paramz args)
+                    match pos with
+                    | Head -> evalw env body
+                    | Tail -> Values.thunkw(fun () -> evalw env body)
         | Primitive(name, arity, f) as primitive ->
             match args with
             | [] -> Done(Func primitive)
@@ -87,7 +84,7 @@ module Evaluator =
                 match args.Length, arity with
                 | Greater -> Values.arityErr name arity args
                 | Lesser -> Done(Func(Partial(primitive, args)))
-                | Equal -> tailCall pos (fun () -> Done(f globals args))
+                | Equal -> Done(f globals args)
         | Partial(f, args0) as partial ->
             match args with
             | [] -> Done(Func(partial))
