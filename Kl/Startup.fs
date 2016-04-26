@@ -12,7 +12,7 @@ module Startup =
             functions.[name] <- value
             install functions rest
 
-    let private fn name arity f = name, Values.primitiver name arity f
+    let private fn name arity f = name, Values.primitivev name arity f
 
     let installBase env =
         install env.Globals.Functions [

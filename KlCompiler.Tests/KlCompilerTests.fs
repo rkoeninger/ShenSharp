@@ -65,7 +65,7 @@ let fff = match (match 0 with
             Assert.AreEqual(0, i)
             let types = asm.Value.GetTypes()
             let res1 = types.[0].GetMethods().[0].Invoke(null, [|Values.newGlobals(); IntValue 1; IntValue 2|])
-            assert (res1 = (Result.Ok(IntValue 3) :> obj))
+            assert (res1 = ((IntValue 3) :> obj))
         with
             ex -> printfn "%s" <| ex.ToString()
                   assert false
@@ -88,7 +88,7 @@ let fff = match (match 0 with
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
             let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
-            Assert.AreEqual(Values.falser, v)
+            Assert.AreEqual(Values.falsev, v)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()
@@ -138,11 +138,11 @@ let fff = match (match 0 with
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
             let v = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(5)|])
-            Assert.AreEqual(Result.Ok(Value.StringValue "positive"), v)
+            Assert.AreEqual(Value.StringValue "positive", v)
             let v2 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(-5)|])
-            Assert.AreEqual(Result.Ok(Value.StringValue "negative"), v2)
+            Assert.AreEqual(Value.StringValue "negative", v2)
             let v3 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(0)|])
-            Assert.AreEqual(Result.Ok(Value.StringValue "zero"), v3)
+            Assert.AreEqual(Value.StringValue "zero", v3)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()
@@ -166,7 +166,7 @@ let fff = match (match 0 with
             let props = types.[0].GetProperties()
             let fields = types.[0].GetFields()
             let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
-            Assert.AreEqual(Result.Ok(StringValue "positive"), v)
+            Assert.AreEqual(StringValue "positive", v)
             ()
         with
             ex -> printfn "%s" <| ex.ToString()

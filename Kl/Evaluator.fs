@@ -4,8 +4,6 @@ open Extensions
 
 module Evaluator =
 
-    let private (>>=) = Values.(>>=)
-
     let private append env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
 
     let rec private resolveLocalSymbol locals id =
@@ -36,13 +34,13 @@ module Evaluator =
             match resolveLocalSymbol env.Locals id with
             | Some value ->
                 match value with
-                | FunctionValue f -> Ok f
-                | _ -> Err "Symbol does not represent a function"
-            | None -> Err("Symbol not defined: " + id)
+                | FunctionValue f -> f
+                | _ -> Values.err "Symbol does not represent a function"
+            | None -> Values.err("Symbol not defined: " + id)
         else
             match env.Globals.Functions.GetMaybe id with
-            | Some f -> Ok f
-            | None -> Err("Symbol not defined: " + id)
+            | Some f -> f
+            | None -> Values.err("Symbol not defined: " + id)
 
     let private vbranch ifTrue ifFalse value =
         if Values.vbool value
@@ -68,36 +66,36 @@ module Evaluator =
         | Freeze(locals, body) ->
             match args with
             | [] -> evalw {env with Locals = locals} body
-            | _ -> Done(Err "Freezes do not take arguments")
+            | _ -> Done(Values.err "Freezes do not take arguments")
         | Lambda(param, locals, body) as lambda ->
             match args with
-            | [] -> Done(Ok(FunctionValue(lambda)))
+            | [] -> Done(FunctionValue(lambda))
             | [x] -> evalw (append env [(param, x)]) body
-            | _ -> Done(Err "Lambdas take exactly 1 argument")
+            | _ -> Done(Values.err "Lambdas take exactly 1 argument")
 
         // Defuns and Primitives can have any number of arguments and
         // can be partially applied
         | Defun(_, paramz, body) as defun ->
             match args with
-            | [] -> Done(Ok(FunctionValue(defun)))
+            | [] -> Done(FunctionValue(defun))
             | _ ->
                 match args.Length, paramz.Length with
-                | Greater -> Done(Err "Too many arguments")
-                | Lesser -> Done(Ok(FunctionValue(Partial(defun, args))))
+                | Greater -> Done(Values.err "Too many arguments")
+                | Lesser -> Done(FunctionValue(Partial(defun, args)))
                 | Equal ->
                     let env = (append env (List.zip paramz args))
                     tailCall pos (fun () -> evalw env body)
         | Primitive(_, arity, f) as primitive ->
             match args with
-            | [] -> Done(Ok(FunctionValue primitive))
+            | [] -> Done(FunctionValue primitive)
             | _ ->
                 match args.Length, arity with
-                | Greater -> Done(Err "Too many arguments")
-                | Lesser -> Done(Ok(FunctionValue(Partial(primitive, args))))
+                | Greater -> Done(Values.err "Too many arguments")
+                | Lesser -> Done(FunctionValue(Partial(primitive, args)))
                 | Equal -> tailCall pos (fun () -> Done(f globals args))
         | Partial(f, args0) as partial ->
             match args with
-            | [] -> Done(Ok(FunctionValue(partial)))
+            | [] -> Done(FunctionValue(partial))
             | _ -> apply pos globals f (List.append args0 args)
 
     and private evalw env expr =
@@ -107,15 +105,15 @@ module Evaluator =
         match expr with
 
         // Atomic values besides symbols are self-evaluating
-        | EmptyExpr     -> Done(Ok(EmptyValue))
-        | BoolExpr b    -> Done(Ok(BoolValue b))
-        | IntExpr n     -> Done(Ok(IntValue n))
-        | DecimalExpr n -> Done(Ok(DecimalValue n))
-        | StringExpr s  -> Done(Ok(StringValue s))
+        | EmptyExpr     -> Done(EmptyValue)
+        | BoolExpr b    -> Done(BoolValue b)
+        | IntExpr n     -> Done(IntValue n)
+        | DecimalExpr n -> Done(DecimalValue n)
+        | StringExpr s  -> Done(StringValue s)
 
         // Should only get here in the case of symbols not in operator position
         // In this case, symbols always evaluate without error
-        | SymbolExpr s -> Done(Ok(resolveSymbol env s))
+        | SymbolExpr s -> Done(resolveSymbol env s)
 
         // And/Or expressions are lazily evaluated
 
@@ -123,50 +121,58 @@ module Evaluator =
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
-            evale left >>= vbranch (fun () -> evalwe right) (fun () -> Values.falsew)
+            if Values.vbool(evale left)
+                then evalwe right
+                else Values.falsew
             
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
-            evale left >>= vbranch (fun () -> Values.truew) (fun () -> evalwe right)
+            if Values.vbool(evale left)
+                then Values.truew
+                else evalwe right
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
         | IfExpr (condition, consequent, alternative) ->
-            evale condition >>= vbranch (fun () -> evalwe consequent) (fun () -> evalwe alternative)
+            if Values.vbool(evale condition)
+                then evalwe consequent
+                else evalwe alternative
         
         // Condition expressions must evaluate to boolean values
         | CondExpr clauses ->
             let rec evalClauses = function
-                | [] -> Done(Err "No condition was true")
+                | [] -> Values.err "No condition was true"
                 | (condition, consequent) :: rest ->
-                    evale condition >>= vbranch (fun () -> evalwe consequent) (fun () -> evalClauses rest)
+                    if Values.vbool(evale condition)
+                        then evalwe consequent
+                        else evalClauses rest
             evalClauses clauses
 
         | LetExpr (symbol, binding, body) ->
-            let evalBody v = evalw (append env [symbol, v]) body
-            eval env binding >>= evalBody
+            evalw (append env [symbol, evale binding]) body
 
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr (param, body) ->
-            Done(Ok(FunctionValue(Lambda(param, env.Locals, body))))
+            Done(FunctionValue(Lambda(param, env.Locals, body)))
 
         // Evaluating a freeze just captures the local state and the body expression
         | FreezeExpr expr ->
-            Done(Ok(FunctionValue(Freeze(env.Locals, expr))))
+            Done(FunctionValue(Freeze(env.Locals, expr)))
 
         // Handler expression is not evaluated unless body results in an error
         // Handler expression must evaluate to a function
         | TrapExpr (pos, body, handler) ->
-            match evale body with
-            | Err e ->
+            try
+                Done(evale body)
+            with
+            | SimpleError message ->
                 match evale handler with
-                | Ok(FunctionValue f) -> apply pos env.Globals f [ErrorValue e]
-                | Ok(_) -> Done(Err "Trap handler did not evaluate to a function")
-                | Err message -> Done(Err message)
-            | r -> Done r
+                | FunctionValue f -> apply pos env.Globals f [ErrorValue message]
+                | _ -> Values.err "Trap handler did not evaluate to a function"
+            | e -> raise e
 
         // Applications expect a symbol to be in operator position
         // That symbol must evaluate to a function
@@ -176,24 +182,10 @@ module Evaluator =
         | AppExpr (pos, f, args) ->
             match f with
             | SymbolExpr s ->
-                match resolveFunction env s with
-                | Ok f ->
-                    let rec evalArgs args =
-                        match args with
-                        | [] -> Ok []
-                        | arg :: rest ->
-                            match evale arg with
-                            | Ok value ->
-                                match evalArgs rest with
-                                | Ok values -> Ok(value :: values)
-                                | Err _ as error -> error
-                            | Err message -> Err message
-
-                    match evalArgs args with
-                    | Ok argsv -> apply pos env.Globals f argsv
-                    | Err message -> Done(Err message)
-                | Err message -> Done(Err message)
-            | _ -> Done(Err "Application must begin with a symbol")
+                let operator = resolveFunction env s
+                let operands = List.map evale args
+                apply pos env.Globals operator operands
+            | _ -> Values.err "Application must begin with a symbol"
     
     /// <summary>
     /// Evaluates an sub-expression into a value, running all side effects
@@ -212,6 +204,6 @@ module Evaluator =
         | DefunExpr(name, paramz, body) ->
             let f = Defun(name, paramz, body)
             globals.Functions.[name] <- f
-            Ok(FunctionValue f)
+            FunctionValue f
 
         | OtherExpr expr -> eval env expr

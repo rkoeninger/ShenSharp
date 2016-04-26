@@ -41,10 +41,10 @@ module Extensions =
 module Values =
     let truev = BoolValue true
     let falsev = BoolValue false
-    let truer = Ok truev
-    let falser = Ok falsev
-    let truew = Done truer
-    let falsew = Done falser
+    let truew = Done truev
+    let falsew = Done falsev
+
+    let err s = raise(SimpleError s)
 
     let thunkw f = new Thunk<Value>(f) |> Pending
 
@@ -63,8 +63,7 @@ module Values =
         | BoolValue b -> b
         | _ -> failwith "Boolean expected"
 
-    let primitiver name arity f = Primitive(name, arity, f)
-    let primitivev name arity f = primitiver name arity (fun globals args -> Ok(f globals args))
+    let primitivev name arity f = Primitive(name, arity, f)
 
     let rec eq a b =
         match a, b with
@@ -115,8 +114,3 @@ module Values =
                 | _ -> failwith "Cons chains must form linked lists to be converted to syntax"
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
         | x -> invalidArg "_" <| x.ToString()
-
-    let (>>=) result f =
-        match result with
-        | Ok value -> f value
-        | Err _ as error -> Done error

@@ -41,6 +41,11 @@ type Expr =
     | AppExpr     of Position * Expr * Expr list
 
 /// <summary>
+/// Exception type that embodies KL errors.
+/// </summary>
+exception SimpleError of string
+
+/// <summary>
 /// A separate type used to enforce the fact that <c>DefunExpr</c>s
 /// can only appear at the root level.
 /// </summary>
@@ -71,10 +76,7 @@ and Locals = Map<string, Value> list
 /// The different types of functions in KL.
 /// </summary>
 and [<ReferenceEquality>] Function =
-    // TODO: ??? add Native of int * (Globals -> Value list -> Result<Value>)
-    //               Primitive of string * Native
-    // or just remove names from Primitive and Defun?
-    | Primitive of string * int * (Globals -> Value list -> Result<Value>)
+    | Primitive of string * int * (Globals -> Value list -> Value) // TODO: remove arity?
     | Defun of string * string list * Expr
     | Lambda of string * Locals * Expr
     | Freeze of Locals * Expr
@@ -98,18 +100,10 @@ and Value =
     | OutStreamValue of OutStream
 
 /// <summary>
-/// The result of some computation yielding a value of type <c>'a</c>
-/// or an error message.
-/// </summary>
-and Result<'a> =
-    | Ok  of 'a
-    | Err of string
-
-/// <summary>
 /// A potentially deferred computation yielding a value of type <c>'a</c>.
 /// </summary>
 and Work<'a> =
-    | Done    of Result<'a>
+    | Done    of 'a
     | Pending of Thunk<'a>
 
 /// <summary>
