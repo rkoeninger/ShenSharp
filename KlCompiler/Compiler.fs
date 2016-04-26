@@ -69,36 +69,35 @@ module Compiler =
 
         let lambda param body =
             FsExpr.App(
-                FsExpr.Id "Ok",
+                FsExpr.Id "FunctionValue",
                 [FsExpr.App(
-                    FsExpr.LongId ["Value"; "FunctionValue"],
-                    [FsExpr.App(
-                        FsExpr.Id "Primitive",
-                        [FsExpr.Tuple(
-                            [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
-                             FsExpr.Int32 1
+                    FsExpr.Id "Primitive",
+                    [FsExpr.Tuple(
+                        [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                         FsExpr.Int32 1
+                         FsExpr.Lambda(
+                            false,
+                            ["envGlobals", FsType.Of("Globals")],
                              FsExpr.Lambda(
                                 false,
-                                ["envGlobals", FsType.Of("Globals")
-                                 "args", FsType.ListOf(FsType.Of("Value"))],
-                                body)])])])])
+                                ["args", FsType.ListOf(FsType.Of("Value"))],
+                                body))])])])
+
         let freeze body =
             FsExpr.App(
-                FsExpr.Id "Ok",
+                FsExpr.Id "FunctionValue",
                 [FsExpr.App(
-                    FsExpr.LongId ["Value"; "FunctionValue"],
-                    [FsExpr.App(
-                        FsExpr.Id "Primitive",
-                        [FsExpr.Tuple(
-                            [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
-                             FsExpr.Int32 0
+                    FsExpr.Id "Primitive",
+                    [FsExpr.Tuple(
+                        [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                         FsExpr.Int32 0
+                         FsExpr.Lambda(
+                            false,
+                            ["envGlobals", FsType.Of("Globals")],
                              FsExpr.Lambda(
                                 false,
-                                ["envGlobals", FsType.Of("Globals")],
-                                FsExpr.Lambda(
-                                    false,
-                                    ["args", FsType.ListOf(FsType.Of("Value"))],
-                                    body))])])])])
+                                ["args", FsType.ListOf(FsType.Of("Value"))],
+                                body))])])])
 
         match expr with
         | EmptyExpr -> FsExpr.Id "EmptyValue"
@@ -125,7 +124,8 @@ module Compiler =
                 | (condition, ifTrue) :: rest -> FsExpr.If(seBool(build condition), build ifTrue, buildClauses rest)
                 | [] -> FsFail.With("No condition was true")
             buildClauses clauses
-        | LetExpr(symbol, binding, body) -> FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
+        | LetExpr(symbol, binding, body) ->
+            FsExpr.Let([FsBinding.Of(symbol, build binding)], build body)
         | LambdaExpr(symbol, body) ->
             lambda symbol (build body)
         | FreezeExpr(expr) ->

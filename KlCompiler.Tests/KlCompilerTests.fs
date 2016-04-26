@@ -83,7 +83,6 @@ let fff = match (match 0 with
         Assert.AreEqual(Values.falsev, v)
     
     [<Test>]
-    [<Ignore("functions aren't getting built properly")>]
     member this.BuildFreezeExpr() =
         let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymbolExpr "number?", [Expr.StringExpr "hi"]))
         let syn = Compiler.build kl
