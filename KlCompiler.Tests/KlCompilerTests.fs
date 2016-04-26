@@ -64,8 +64,8 @@ let fff = match (match 0 with
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
         Assert.AreEqual(0, i)
         let types = asm.Value.GetTypes()
-        let res1 = types.[0].GetMethods().[0].Invoke(null, [|Values.newGlobals(); IntValue 1; IntValue 2|])
-        Assert.AreEqual(res1, ((IntValue 3) :> obj))
+        let res1 = types.[0].GetMethods().[0].Invoke(null, [|Values.newGlobals(); Int 1; Int 2|])
+        Assert.AreEqual(res1, ((Int 3) :> obj))
 
     [<Test>]
     member this.KlExprToSynExpr() =
@@ -100,7 +100,7 @@ let fff = match (match 0 with
         let fields = types.[0].GetFields()
         let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
         match v :?> Value with
-        | FunctionValue _ -> ()
+        | Func _ -> ()
         | _ -> Assert.Fail("function expected")
 
     [<Test>]
@@ -117,12 +117,12 @@ let fff = match (match 0 with
         let methods = types.[0].GetMethods()
         let props = types.[0].GetProperties()
         let fields = types.[0].GetFields()
-        let v = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(5)|])
-        Assert.AreEqual(Value.StringValue "positive", v)
-        let v2 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(-5)|])
-        Assert.AreEqual(Value.StringValue "negative", v2)
-        let v3 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(0)|])
-        Assert.AreEqual(Value.StringValue "zero", v3)
+        let v = methods.[0].Invoke(null, [|Values.newGlobals(); Value.Int(5)|])
+        Assert.AreEqual(Value.Str "positive", v)
+        let v2 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.Int(-5)|])
+        Assert.AreEqual(Value.Str "negative", v2)
+        let v3 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.Int(0)|])
+        Assert.AreEqual(Value.Str "zero", v3)
 
     [<Test>]
     member this.BuildLetExpr() =
@@ -139,7 +139,7 @@ let fff = match (match 0 with
         let props = types.[0].GetProperties()
         let fields = types.[0].GetFields()
         let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
-        Assert.AreEqual(StringValue "positive", v)
+        Assert.AreEqual(Str "positive", v)
 
     [<Test>]
     member this.BuildModule() =

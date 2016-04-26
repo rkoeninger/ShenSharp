@@ -70,7 +70,7 @@ module Compiler =
 
         let lambda param body =
             FsExpr.App(
-                FsExpr.Id "FunctionValue",
+                FsExpr.Id "Func",
                 [FsExpr.App(
                     FsExpr.Id "Primitive",
                     [FsExpr.Tuple(
@@ -86,7 +86,7 @@ module Compiler =
 
         let freeze body =
             FsExpr.App(
-                FsExpr.Id "FunctionValue",
+                FsExpr.Id "Func",
                 [FsExpr.App(
                     FsExpr.Id "Primitive",
                     [FsExpr.Tuple(
@@ -101,16 +101,16 @@ module Compiler =
                                 body))])])])
 
         match expr with
-        | EmptyExpr -> FsExpr.Id "EmptyValue"
-        | BoolExpr b -> FsExpr.App(FsExpr.Id "BoolValue", [FsExpr.Bool b])
-        | IntExpr i -> FsExpr.App(FsExpr.Id "IntValue", [FsExpr.Int32 i])
-        | DecimalExpr d -> FsExpr.App(FsExpr.Id "DecimalValue", [FsExpr.Decimal d])
-        | StringExpr s -> FsExpr.App(FsExpr.Id "StringValue", [FsExpr.String (escape s)])
+        | EmptyExpr -> FsExpr.Id "Empty"
+        | BoolExpr b -> FsExpr.App(FsExpr.Id "Bool", [FsExpr.Bool b])
+        | IntExpr i -> FsExpr.App(FsExpr.Id "Int", [FsExpr.Int32 i])
+        | DecimalExpr d -> FsExpr.App(FsExpr.Id "Dec", [FsExpr.Decimal d])
+        | StringExpr s -> FsExpr.App(FsExpr.Id "Str", [FsExpr.String (escape s)])
         | SymbolExpr s ->
             // TODO: need to maintain a set of local variables so we know what's an idle symbol
             if isVar s
-                then FsExpr.Id (klToFsId s)
-                else FsExpr.App(FsExpr.LongId ["Value"; "SymbolValue"], [FsExpr.String s])
+                then FsExpr.Id(klToFsId s)
+                else FsExpr.App(FsExpr.Id "Sym", [FsExpr.String s])
         | AndExpr(left, right) ->
             FsExpr.If(seBool(build left), build right, build(BoolExpr false))
         | OrExpr(left, right) ->
@@ -134,7 +134,7 @@ module Compiler =
         | TrapExpr(_, body, handler) ->
             FsExpr.Try(
                 build body,
-                [FsMatchClause.Of(FsPat.Name("SimpleError", FsPat.Name("e")), FsExpr.Id "EmptyValue")])
+                [FsMatchClause.Of(FsPat.Name("SimpleError", FsPat.Name("e")), FsExpr.Id "Empty")])
         | AppExpr(_, f, args) ->
             match f with
             | SymbolExpr op ->

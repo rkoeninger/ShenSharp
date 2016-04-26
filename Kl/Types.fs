@@ -53,8 +53,8 @@ type RootExpr =
     | DefunExpr of string * string list * Expr
     | OtherExpr of Expr
 
-type [<ReferenceEquality>] InStream = {Read: unit -> int; Close: unit -> unit}
-type [<ReferenceEquality>] OutStream = {Write: byte -> unit; Close: unit -> unit}
+type [<ReferenceEquality>] Input = {Read: unit -> int; Close: unit -> unit}
+type [<ReferenceEquality>] Output = {Write: byte -> unit; Close: unit -> unit}
 
 /// <summary>
 /// A mutable dictionary that maps symbols to values of some type <c>'a</c>.
@@ -76,28 +76,28 @@ and Locals = Map<string, Value> list
 /// The different types of functions in KL.
 /// </summary>
 and [<ReferenceEquality>] Function =
-    | Primitive of string * int * (Globals -> Value list -> Value) // TODO: remove arity?
+    | Primitive of string * int * (Globals -> Value list -> Value)
     | Defun of string * string list * Expr
     | Lambda of string * Locals * Expr
     | Freeze of Locals * Expr
     | Partial of Function * Value list
-
+    
 /// <summary>
 /// A value in KL.
 /// </summary>
 and Value =
-    | EmptyValue
-    | BoolValue      of bool
-    | IntValue       of int
-    | DecimalValue   of decimal
-    | StringValue    of string
-    | SymbolValue    of string
-    | FunctionValue  of Function
-    | VectorValue    of Value array
-    | ConsValue      of Value * Value
-    | ErrorValue     of string
-    | InStreamValue  of InStream
-    | OutStreamValue of OutStream
+    | Empty
+    | Bool      of bool
+    | Int       of int
+    | Dec       of decimal
+    | Str       of string
+    | Sym       of string
+    | Func      of Function
+    | Vec       of Value array
+    | Cons      of Value * Value
+    | Err       of string
+    | InStream  of Input
+    | OutStream of Output
 
 /// <summary>
 /// A potentially deferred computation yielding a value of type <c>'a</c>.

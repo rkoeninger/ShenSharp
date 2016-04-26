@@ -65,7 +65,7 @@ let main0 args =
     Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
     load <| "README.shen"
     load <| "tests.shen"
-//    env.SymbolDefinitions.["logging"] <- IntValue 1
+//    env.SymbolDefinitions.["logging"] <- Int 1
 //    load <| Path.Combine(testDir, "debug.shen")
     printfn ""
     printfn "Press any key to exit..."

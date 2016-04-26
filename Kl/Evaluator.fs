@@ -21,9 +21,9 @@ module Evaluator =
         if Values.isVar id then
             match resolveLocalSymbol env.Locals id with
             | Some value -> value
-            | None -> SymbolValue id
+            | None -> Sym id
         else
-            SymbolValue id
+            Sym id
 
     // For symbols in operator position:
     // Those starting with upper-case letter are resolved using the local stack.
@@ -34,7 +34,7 @@ module Evaluator =
             match resolveLocalSymbol env.Locals id with
             | Some value ->
                 match value with
-                | FunctionValue f -> f
+                | Func f -> f
                 | _ -> Values.err "Symbol does not represent a function"
             | None -> Values.err("Symbol not defined: " + id)
         else
@@ -64,7 +64,7 @@ module Evaluator =
             | _ -> Done(Values.err "Freezes do not take arguments")
         | Lambda(param, locals, body) as lambda ->
             match args with
-            | [] -> Done(FunctionValue(lambda))
+            | [] -> Done(Func(lambda))
             | [x] -> evalw (append env [(param, x)]) body
             | _ -> Done(Values.err "Lambdas take exactly 1 argument")
 
@@ -72,25 +72,25 @@ module Evaluator =
         // can be partially applied
         | Defun(name, paramz, body) as defun ->
             match args with
-            | [] -> Done(FunctionValue(defun))
+            | [] -> Done(Func(defun))
             | _ ->
                 match args.Length, paramz.Length with
                 | Greater -> Values.arityErr name paramz.Length args
-                | Lesser -> Done(FunctionValue(Partial(defun, args)))
+                | Lesser -> Done(Func(Partial(defun, args)))
                 | Equal ->
                     let env = (append env (List.zip paramz args))
                     tailCall pos (fun () -> evalw env body)
         | Primitive(name, arity, f) as primitive ->
             match args with
-            | [] -> Done(FunctionValue primitive)
+            | [] -> Done(Func primitive)
             | _ ->
                 match args.Length, arity with
                 | Greater -> Values.arityErr name arity args
-                | Lesser -> Done(FunctionValue(Partial(primitive, args)))
+                | Lesser -> Done(Func(Partial(primitive, args)))
                 | Equal -> tailCall pos (fun () -> Done(f globals args))
         | Partial(f, args0) as partial ->
             match args with
-            | [] -> Done(FunctionValue(partial))
+            | [] -> Done(Func(partial))
             | _ -> apply pos globals f (List.append args0 args)
 
     and private evalw env expr =
@@ -100,11 +100,11 @@ module Evaluator =
         match expr with
 
         // Atomic values besides symbols are self-evaluating
-        | EmptyExpr     -> Done(EmptyValue)
-        | BoolExpr b    -> Done(BoolValue b)
-        | IntExpr n     -> Done(IntValue n)
-        | DecimalExpr n -> Done(DecimalValue n)
-        | StringExpr s  -> Done(StringValue s)
+        | EmptyExpr     -> Done(Empty)
+        | BoolExpr b    -> Done(Bool b)
+        | IntExpr n     -> Done(Int n)
+        | DecimalExpr n -> Done(Dec n)
+        | StringExpr s  -> Done(Str s)
 
         // Should only get here in the case of symbols not in operator position
         // In this case, symbols always evaluate without error
@@ -151,11 +151,11 @@ module Evaluator =
 
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr (param, body) ->
-            Done(FunctionValue(Lambda(param, env.Locals, body)))
+            Done(Func(Lambda(param, env.Locals, body)))
 
         // Evaluating a freeze just captures the local state and the body expression
         | FreezeExpr expr ->
-            Done(FunctionValue(Freeze(env.Locals, expr)))
+            Done(Func(Freeze(env.Locals, expr)))
 
         // Handler expression is not evaluated unless body results in an error
         // Handler expression must evaluate to a function
@@ -165,7 +165,7 @@ module Evaluator =
             with
             | SimpleError message ->
                 match evale handler with
-                | FunctionValue f -> apply pos env.Globals f [ErrorValue message]
+                | Func f -> apply pos env.Globals f [Err message]
                 | _ -> Values.err "Trap handler did not evaluate to a function"
             | e -> raise e
 
@@ -199,6 +199,6 @@ module Evaluator =
         | DefunExpr(name, paramz, body) ->
             let f = Defun(name, paramz, body)
             globals.Functions.[name] <- f
-            FunctionValue f
+            Func f
 
         | OtherExpr expr -> eval env expr

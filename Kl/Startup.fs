@@ -58,12 +58,12 @@ module Startup =
         let clrImpl = if onMono then "Mono" else ".NET"
         let ver = Environment.Version
         install env.Globals.Symbols [
-            "*language*",       StringValue "F# 3.1"
-            "*implementation*", StringValue(sprintf "CLR (%s)" clrImpl)
-            "*release*",        StringValue(sprintf "%i.%i" ver.Major ver.Minor)
-            "*version*",        StringValue "19.2"
-            "*port*",           StringValue "0.1"
-            "*porters*",        StringValue "Robert Koeninger"
+            "*language*",       Str "F# 3.1"
+            "*implementation*", Str(sprintf "CLR (%s)" clrImpl)
+            "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
+            "*version*",        Str "19.2"
+            "*port*",           Str "0.1"
+            "*porters*",        Str "Robert Koeninger"
             "*stinput*",        stinput
             "*stoutput*",       stoutput
             // TODO: *home-directory* is bound to a string which denotes the directory

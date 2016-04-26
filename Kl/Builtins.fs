@@ -25,60 +25,60 @@ module Builtins =
 
     let klIntern _ args =
         match args with
-        | [StringValue s] -> SymbolValue s
+        | [Str s] -> Sym s
         | [_] -> typeErr1 "intern" "string"
         | _ -> arityErr "intern" 1 args
 
     let klStringPos _ args =
         match args with
-        | [StringValue s; IntValue index] ->
+        | [Str s; Int index] ->
             if index >= 0 && index < s.Length
-                then StringValue(string s.[index])
+                then Str(string s.[index])
                 else Values.err(sprintf "Index %i out of bounds for string of length %i" index s.Length)
         | [_; _] -> typeErr2 "pos" "string" "int"
         | _ -> arityErr "pos" 2 args
 
     let klStringTail _ args =
         match args with
-        | [StringValue s] ->
+        | [Str s] ->
             if (s.Length > 0)
-                then StringValue(s.Substring 1)
+                then Str(s.Substring 1)
                 else Values.err "strtl expects a non-empty string"
         | [_] -> typeErr1 "strtl" "string"
         | _ -> arityErr "strtl" 1 args
 
     let klStringConcat _ args =
         match args with
-        | [StringValue x; StringValue y] -> StringValue(x + y)
+        | [Str x; Str y] -> Str(x + y)
         | [_; _] -> typeErr2 "cn" "string" "string"
         | _ -> arityErr "cn" 2 args
 
     let klToString _ args =
         match args with
-        | [x] -> StringValue(Values.toStr x)
+        | [x] -> Str(Values.toStr x)
         | _ -> arityErr "str" 1 args
 
     let klIsString _ args =
         match args with
-        | [StringValue _] -> Values.truev
+        | [Str _] -> Values.truev
         | [_] -> Values.falsev
         | _ -> arityErr "string?" 1 args
 
     let klIntToString _ args =
         match args with
-        | [IntValue n] -> StringValue(string(char(int n)))
+        | [Int n] -> Str(string(char(int n)))
         | [_] -> typeErr1 "n->string" "int"
         | _ -> arityErr "n->string" 1 args
 
     let klStringToInt _ args =
         match args with
-        | [StringValue s] -> IntValue(int s.[0])
+        | [Str s] -> Int(int s.[0])
         | [_] -> typeErr1 "string->n" "string"
         | _ -> arityErr "string->n" 1 args
 
     let klSet globals args =
         match args with
-        | [SymbolValue s; x] ->
+        | [Sym s; x] ->
             globals.Symbols.[s] <- x
             x
         | [_; _] -> typeErr2 "set" "symbol" "value"
@@ -86,7 +86,7 @@ module Builtins =
 
     let klValue globals args =
         match args with
-        | [SymbolValue s] ->
+        | [Sym s] ->
             match globals.Symbols.GetMaybe(s) with
             | Some v -> v
             | None -> Values.err(sprintf "Symbol \"%s\" is undefined" s)
@@ -95,42 +95,42 @@ module Builtins =
 
     let klSimpleError _ args =
         match args with
-        | [StringValue s] -> Values.err s
+        | [Str s] -> Values.err s
         | [_] -> typeErr1 "simple-error" "string"
         | _ -> arityErr "simple-error" 1 args
 
     let klErrorToString _ args =
         match args with
-        | [ErrorValue s] -> StringValue s
+        | [Err s] -> Str s
         | [_] -> typeErr1 "error-to-string" "error"
         | _ -> arityErr "error-to-string" 1 args
 
     let klNewCons _ args =
         match args with
-        | [x; y] -> ConsValue(x, y)
+        | [x; y] -> Cons(x, y)
         | _ -> arityErr "cons" 2 args
 
     let klHead _ args =
         match args with
-        | [ConsValue (x, _)] -> x
+        | [Cons (x, _)] -> x
         | [_] -> typeErr1 "hd" "cons"
         | _ -> arityErr "hd" 1 args
 
     let klTail _ args =
         match args with
-        | [ConsValue (_, y)] -> y
+        | [Cons (_, y)] -> y
         | [_] -> typeErr1 "tl" "cons"
         | _ -> arityErr "tl" 1 args
 
     let klIsCons _ args =
         match args with
-        | [ConsValue _] -> Values.truev
+        | [Cons _] -> Values.truev
         | [_] -> Values.falsev
         | _ -> arityErr "cons?" 1 args
 
     let klEquals _ args =
         match args with
-        | [x; y] -> BoolValue(Values.eq x y)
+        | [x; y] -> Bool(Values.eq x y)
         | _ -> arityErr "=" 2 args
 
     let klEval globals args =
@@ -148,15 +148,15 @@ module Builtins =
 
     let klNewVector _ args =
         match args with
-        | [IntValue length] ->
-            let failSymbol = SymbolValue "fail!"
-            VectorValue(Array.create length failSymbol)
+        | [Int length] ->
+            let failSymbol = Sym "fail!"
+            Vec(Array.create length failSymbol)
         | [_] -> typeErr1 "absvector" "int"
         | _ -> arityErr "absvector" 1 args
 
     let klReadVector _ args =
         match args with
-        | [VectorValue vector; IntValue index] ->
+        | [Vec vector; Int index] ->
             if index >= 0 && index < vector.Length
                 then vector.[index]
                 else Values.err(sprintf "Index %i out of bounds for vector of length %i" index vector.Length)
@@ -165,7 +165,7 @@ module Builtins =
 
     let klWriteVector _ args =
         match args with
-        | [VectorValue vector as vv; IntValue index; value] ->
+        | [Vec vector as vv; Int index; value] ->
             if index >= 0 && index < vector.Length
                 then vector.[index] <- value
                      vv
@@ -175,50 +175,50 @@ module Builtins =
 
     let klIsVector _ args =
         match args with
-        | [VectorValue _] -> Values.truev
+        | [Vec _] -> Values.truev
         | [_] -> Values.falsev
         | _ -> arityErr "absvector?" 1 args
 
     let klWriteByte _ args =
         match args with
-        | [IntValue i; OutStreamValue stream] ->
+        | [Int i; OutStream stream] ->
             if 0 <= i && i <= 255
                 then let b = byte i
                      stream.Write(b)
-                     IntValue(int b)
+                     Int(int b)
                 else Values.err(sprintf "int value %i is exceeds the range of a byte" i)
         | [_; _] -> typeErr2 "write-byte" "int" "out-stream"
         | _ -> arityErr "write-byte" 2 args
 
     let klReadByte _ args =
         match args with
-        | [InStreamValue stream] -> IntValue(stream.Read())
+        | [InStream stream] -> Int(stream.Read())
         | [_] -> typeErr1 "read-byte" "in-stream"
         | _ -> arityErr "read-byte" 1 args
 
     let klOpen _ args =
         match args with
-        | [StringValue path; SymbolValue "in"] ->
+        | [Str path; Sym "in"] ->
             try let stream = File.OpenRead(path)
-                InStreamValue{Read = stream.ReadByte; Close = stream.Close}
+                InStream{Read = stream.ReadByte; Close = stream.Close}
             with e -> Values.err e.Message
-        | [StringValue path; SymbolValue "out"] ->
+        | [Str path; Sym "out"] ->
             try let stream = File.OpenWrite(path)
-                OutStreamValue{Write = stream.WriteByte; Close = stream.Close}
+                OutStream{Write = stream.WriteByte; Close = stream.Close}
             with e -> Values.err e.Message
-        | [StringValue _; SymbolValue s] ->
+        | [Str _; Sym s] ->
             Values.err(sprintf "open expects symbol 'in or 'out as 2nd argument, not '%s" s)
         | [_; _] -> typeErr2 "open" "string" "symbol"
         | _ -> arityErr "open" 2 args
 
     let klClose _ args =
         match args with
-        | [InStreamValue stream] ->
+        | [InStream stream] ->
             stream.Close()
-            EmptyValue
-        | [OutStreamValue stream] ->
+            Empty
+        | [OutStream stream] ->
             stream.Close()
-            EmptyValue
+            Empty
         | [_] -> typeErr1 "close" "stream"
         | _ -> arityErr "close" 1 args
 
@@ -231,109 +231,109 @@ module Builtins =
     /// </remarks>
     let klGetTime _ args =
         match args with
-        | [SymbolValue "run"] -> IntValue(int (stopwatch.ElapsedTicks / 10000L))
-        | [SymbolValue "unix"] -> IntValue(int (DateTime.UtcNow - epoch).TotalSeconds)
-        | [SymbolValue s] -> Values.err(sprintf "get-time expects symbols 'run or 'unix' as argument, not %s" s)
+        | [Sym "run"] -> Int(int (stopwatch.ElapsedTicks / 10000L))
+        | [Sym "unix"] -> Int(int (DateTime.UtcNow - epoch).TotalSeconds)
+        | [Sym s] -> Values.err(sprintf "get-time expects symbols 'run or 'unix' as argument, not %s" s)
         | [_] -> typeErr1 "get-time" "symbol"
         | _ -> arityErr "get-time" 1 args
 
     let klAdd _ args =
         match args with
-        | [IntValue x;     IntValue y]     -> IntValue(x + y)
-        | [IntValue x;     DecimalValue y] -> DecimalValue(decimal x + y)
-        | [DecimalValue x; IntValue y]     -> DecimalValue(x + decimal y)
-        | [DecimalValue x; DecimalValue y] -> DecimalValue(x + y)
+        | [Int x; Int y] -> Int(x + y)
+        | [Int x; Dec y] -> Dec(decimal x + y)
+        | [Dec x; Int y] -> Dec(x + decimal y)
+        | [Dec x; Dec y] -> Dec(x + y)
         | [_; _] -> typeErr2 "+" "int/decimal" "int/decimal"
         | _ -> arityErr "+" 2 args
 
     let klSubtract _ args =
         match args with
-        | [IntValue x;     IntValue y]     -> IntValue(x - y)
-        | [IntValue x;     DecimalValue y] -> DecimalValue(decimal x - y)
-        | [DecimalValue x; IntValue y]     -> DecimalValue(x - decimal y)
-        | [DecimalValue x; DecimalValue y] -> DecimalValue(x - y)
+        | [Int x; Int y] -> Int(x - y)
+        | [Int x; Dec y] -> Dec(decimal x - y)
+        | [Dec x; Int y] -> Dec(x - decimal y)
+        | [Dec x; Dec y] -> Dec(x - y)
         | [_; _] -> typeErr2 "-" "int/decimal" "int/decimal"
         | _ -> arityErr "-" 2 args
 
     let klMultiply _ args =
         match args with
-        | [IntValue x;     IntValue y]     -> IntValue(x * y)
-        | [IntValue x;     DecimalValue y] -> DecimalValue(decimal x * y)
-        | [DecimalValue x; IntValue y]     -> DecimalValue(x * decimal y)
-        | [DecimalValue x; DecimalValue y] -> DecimalValue(x * y)
+        | [Int x; Int y] -> Int(x * y)
+        | [Int x; Dec y] -> Dec(decimal x * y)
+        | [Dec x; Int y] -> Dec(x * decimal y)
+        | [Dec x; Dec y] -> Dec(x * y)
         | [_; _] -> typeErr2 "*" "int/decimal" "int/decimal"
         | _ -> arityErr "*" 2 args
 
     let klDivide _ args =
         match args with
-        | [_; IntValue 0] -> Values.err "Division by zero"
-        | [_; DecimalValue 0m] -> Values.err "Division by zero"
-        | [IntValue x;     IntValue y]     -> DecimalValue(decimal x / decimal y)
-        | [IntValue x;     DecimalValue y] -> DecimalValue(decimal x / y)
-        | [DecimalValue x; IntValue y]     -> DecimalValue(x / decimal y)
-        | [DecimalValue x; DecimalValue y] -> DecimalValue(x / y)
+        | [_; Int 0] -> Values.err "Division by zero"
+        | [_; Dec 0m] -> Values.err "Division by zero"
+        | [Int x; Int y] -> Dec(decimal x / decimal y)
+        | [Int x; Dec y] -> Dec(decimal x / y)
+        | [Dec x; Int y] -> Dec(x / decimal y)
+        | [Dec x; Dec y] -> Dec(x / y)
         | [_; _] -> typeErr2 "/" "int/decimal" "int/decimal"
         | _ -> arityErr "/" 2 args
 
     let klGreaterThan _ args =
         match args with
-        | [IntValue x;     IntValue y]     -> BoolValue(x > y)
-        | [IntValue x;     DecimalValue y] -> BoolValue(decimal x > y)
-        | [DecimalValue x; IntValue y]     -> BoolValue(x > decimal y)
-        | [DecimalValue x; DecimalValue y] -> BoolValue(x > y)
+        | [Int x; Int y] -> Bool(x > y)
+        | [Int x; Dec y] -> Bool(decimal x > y)
+        | [Dec x; Int y] -> Bool(x > decimal y)
+        | [Dec x; Dec y] -> Bool(x > y)
         | [_; _] -> typeErr2 ">" "int/decimal" "int/decimal"
         | _ -> arityErr ">" 2 args
 
     let klLessThan _ args =
         match args with
-        | [IntValue x;     IntValue y]     -> BoolValue(x < y)
-        | [IntValue x;     DecimalValue y] -> BoolValue(decimal x < y)
-        | [DecimalValue x; IntValue y]     -> BoolValue(x < decimal y)
-        | [DecimalValue x; DecimalValue y] -> BoolValue(x < y)
+        | [Int x; Int y] -> Bool(x < y)
+        | [Int x; Dec y] -> Bool(decimal x < y)
+        | [Dec x; Int y] -> Bool(x < decimal y)
+        | [Dec x; Dec y] -> Bool(x < y)
         | [_; _] -> typeErr2 "<" "int/decimal" "int/decimal"
         | _ -> arityErr "<" 2 args
 
     let klGreaterThanEqual _ args =
         match args with
-        | [IntValue x;     IntValue y]     -> BoolValue(x >= y)
-        | [IntValue x;     DecimalValue y] -> BoolValue(decimal x >= y)
-        | [DecimalValue x; IntValue y]     -> BoolValue(x >= decimal y)
-        | [DecimalValue x; DecimalValue y] -> BoolValue(x >= y)
+        | [Int x; Int y] -> Bool(x >= y)
+        | [Int x; Dec y] -> Bool(decimal x >= y)
+        | [Dec x; Int y] -> Bool(x >= decimal y)
+        | [Dec x; Dec y] -> Bool(x >= y)
         | [_; _] -> typeErr2 ">=" "int/decimal" "int/decimal"
         | _ -> arityErr ">=" 2 args
 
     let klLessThanEqual _ args =
         match args with
-        | [IntValue x;     IntValue y]     -> BoolValue(x <= y)
-        | [IntValue x;     DecimalValue y] -> BoolValue(decimal x <= y)
-        | [DecimalValue x; IntValue y]     -> BoolValue(x <= decimal y)
-        | [DecimalValue x; DecimalValue y] -> BoolValue(x <= y)
+        | [Int x; Int y] -> Bool(x <= y)
+        | [Int x; Dec y] -> Bool(decimal x <= y)
+        | [Dec x; Int y] -> Bool(x <= decimal y)
+        | [Dec x; Dec y] -> Bool(x <= y)
         | [_; _] -> typeErr2 "<=" "int/decimal" "int/decimal"
         | _ -> arityErr "<=" 2 args
 
     let klIsNumber _ args =
         match args with
-        | [IntValue _] | [DecimalValue _] -> Values.truev
+        | [Int _] | [Dec _] -> Values.truev
         | [_] -> Values.falsev
         | _ -> arityErr "number?" 1 args
 
     let stinput =
         let consoleIn = new ConsoleIn(Console.OpenStandardInput())
-        InStreamValue {Read = consoleIn.Read; Close = consoleIn.Close}
+        InStream {Read = consoleIn.Read; Close = consoleIn.Close}
 
     let stoutput =
         let consoleOutStream = Console.OpenStandardOutput()
-        OutStreamValue {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
+        OutStream {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
 
     let klPrint _ args =
         match args with
         | [x] -> Console.Write(Values.toStr x)
-                 EmptyValue
+                 Empty
         | _ -> arityErr "print" 1 args
 
     let klFillVector _ args =
         match args with
-        | [VectorValue array as vector; IntValue stop; IntValue start; fillValue] ->
+        | [Vec array as vector; Int stop; Int start; fillValue] ->
             Array.fill array start (stop - start) fillValue
             vector
         | [_; _; _; _] -> typeErr4 "shen.fillvector" "vector" "int" "int" "value"
@@ -341,8 +341,8 @@ module Builtins =
 
     let rec klElement globals args =
         match args with
-        | [_; EmptyValue] -> Values.falsev
-        | [key; ConsValue(head, _)] when Values.eq key head -> Values.truev
-        | [key; ConsValue(_, tail)] -> klElement globals [key; tail]
+        | [_; Empty] -> Values.falsev
+        | [key; Cons(head, _)] when Values.eq key head -> Values.truev
+        | [key; Cons(_, tail)] -> klElement globals [key; tail]
         | [_; _] -> typeErr2 "element?" "value" "cons"
         | _ -> arityErr "element?" 2 args

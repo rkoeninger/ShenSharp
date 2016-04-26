@@ -17,38 +17,38 @@ type KlTests() =
 
     let runInEnv env = tokenize >> rootParse >> rootEval env.Globals
     let runIt = runInEnv (baseEnv ())
-    let isIntR = function | IntValue _ -> true | _ -> false
-    let isDecimalR = function | DecimalValue _ -> true | _ -> false
+    let isIntR = function | Int _ -> true | _ -> false
+    let isDecimalR = function | Dec _ -> true | _ -> false
     let rError = function
-        | ErrorValue e -> e
+        | Err e -> e
         | _ -> failwith "not an error"
     let rInt = function
-        | IntValue n -> n
+        | Int n -> n
         | _ -> failwith "not an int"
     let rString = function
-        | StringValue s -> s
+        | Str s -> s
         | _ -> failwith "not a String"
     let rVector = function
-        | VectorValue s -> s
+        | Vec s -> s
         | _ -> failwith "not a Vector"
     let arrayEqual (xs : 'a[]) (ys : 'a[]) =
         xs.Length = ys.Length && Array.forall2 (=) xs ys
     let rFunc = function
-        | FunctionValue f -> f
+        | Func f -> f
         | _ -> failwith "not a Function"
     let isThunk = function
         | Done _ -> true
         | _ -> false
     let rBool = function
-        | BoolValue b -> b
+        | Bool b -> b
         | _ -> failwith "not a Bool"
     let eApp1 f arg1 = AppExpr(Head, f, [arg1])
     let symApp1 sym arg1 = AppExpr (Head, SymbolExpr sym, [arg1])
     let symApp2 sym arg1 arg2 = AppExpr (Head, SymbolExpr sym, [arg1; arg2])
     let symApp3 sym arg1 arg2 arg3 = AppExpr (Head, SymbolExpr sym, [arg1; arg2; arg3])
     let intE = IntExpr
-    let intV = IntValue
-    let strV = StringValue
+    let intV = Int
+    let strV = Str
     let str x = x.ToString()
 
     [<Test>]
@@ -69,18 +69,18 @@ type KlTests() =
     [<Test>]
     member this.LazyBooleanOperations() =
         let consToArray = function
-            | ConsValue _ as cons ->
-                let generator = function | ConsValue (head, tail) -> Some(head, tail)
-                                         | EmptyValue -> None
+            | Cons _ as cons ->
+                let generator = function | Cons (head, tail) -> Some(head, tail)
+                                         | Empty -> None
                                          | _ -> invalidArgs ()
                 cons |> Seq.unfold generator |> Seq.toArray
             | _ -> [||]
         let lazinessTest syntax expectedBool expectedResults =
             let env = baseEnv ()
             runInEnv env "(defun do (X Y) Y)" |> ignore
-            env.Globals.Symbols.["results"] <- EmptyValue
+            env.Globals.Symbols.["results"] <- Empty
             match runInEnv env syntax with
-            | BoolValue b ->
+            | Bool b ->
                 Assert.IsTrue((b && expectedBool) || not(b || expectedBool))
                 let results = env.Globals.Symbols.["results"] |> consToArray
                 Assert.IsTrue(arrayEqual expectedResults results)
@@ -99,7 +99,7 @@ type KlTests() =
         let env = Values.newEnv()
         let klNot _ args =
             match args with
-            | [BoolValue b] -> BoolValue(not b)
+            | [Bool b] -> Bool(not b)
             | _ -> Values.err "Must be bool"
         env.Globals.Functions.["not"] <- Values.primitivev "not" 1 klNot
         runInEnv env "(defun xor (L R) (or (and L (not R)) (and (not L) R)))" |> ignore
@@ -110,7 +110,7 @@ type KlTests() =
         let env = Values.newEnv()
         let klIsSymbol _ args =
             match args with
-            | [SymbolValue _] -> Values.truev
+            | [Sym _] -> Values.truev
             | _ -> Values.falsev
         env.Globals.Functions.["symbol?"] <- Values.primitivev "symbol?" 1 klIsSymbol
         Assert.AreEqual(Values.truev, runInEnv env "(symbol? run)")
@@ -123,7 +123,7 @@ type KlTests() =
 
     [<Test>]
     member this.``result of interning a string is equal to symbol with name that is equal to that string``() =
-        Assert.AreEqual(SymbolValue "hi", runIt "(intern \"hi\")")
+        Assert.AreEqual(Sym "hi", runIt "(intern \"hi\")")
 
     [<Test>]
     member this.PartialApplicationForBuiltins() =
@@ -196,7 +196,7 @@ type KlTests() =
     [<Test>]
     member this.Vectors() =
         Assert.IsTrue(arrayEqual Array.empty<Value> (runIt "(absvector 0)" |> rVector))
-        Assert.IsTrue(arrayEqual [|SymbolValue "fail!"|] (runIt "(absvector 1)" |> rVector))
+        Assert.IsTrue(arrayEqual [|Sym "fail!"|] (runIt "(absvector 1)" |> rVector))
         Assert.IsTrue(arrayEqual [|Values.truev|] (runIt "(address-> (absvector 1) 0 true)" |> rVector))
 
     [<Test>]
@@ -276,11 +276,11 @@ type KlTests() =
 
     [<Test>]
     member this.``simple-error should be caught by trap-error``() =
-        Assert.AreEqual(EmptyValue, runIt "(trap-error (simple-error \"whoops\") (lambda E ()))")
+        Assert.AreEqual(Empty, runIt "(trap-error (simple-error \"whoops\") (lambda E ()))")
 
     [<Test>]
     member this.``trap-error should prevent uncaught error from propogating``() =
-        Assert.AreEqual(EmptyValue, runIt "(trap-error (pos \"\" 0) (lambda E ()))")
+        Assert.AreEqual(Empty, runIt "(trap-error (pos \"\" 0) (lambda E ()))")
 
     [<Test>]
     member this.``trap-error should eval and apply second expression if eval of first results in uncaught error``() =

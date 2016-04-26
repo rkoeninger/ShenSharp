@@ -39,8 +39,8 @@ module Extensions =
             | false, _ -> None
             
 module Values =
-    let truev = BoolValue true
-    let falsev = BoolValue false
+    let truev = Bool true
+    let falsev = Bool false
     let truew = Done truev
     let falsew = Done falsev
 
@@ -60,57 +60,57 @@ module Values =
 
     let vbool v =
         match v with
-        | BoolValue b -> b
+        | Bool b -> b
         | _ -> failwith "Boolean expected"
 
     let primitivev name arity f = Primitive(name, arity, f)
 
     let rec eq a b =
         match a, b with
-        | EmptyValue,         EmptyValue         -> true
-        | BoolValue x,        BoolValue y        -> x = y
-        | IntValue x,         IntValue y         -> x = y
-        | DecimalValue x,     DecimalValue y     -> x = y
-        | IntValue x,         DecimalValue y     -> decimal x = y
-        | DecimalValue x,     IntValue y         -> x = decimal y
-        | StringValue x,      StringValue y      -> x = y
-        | SymbolValue x,      SymbolValue y      -> x = y
-        | InStreamValue x,    InStreamValue y    -> x = y
-        | OutStreamValue x,   OutStreamValue y   -> x = y
-        | FunctionValue x,    FunctionValue y    -> x = y
-        | ErrorValue x,       ErrorValue y       -> x = y
-        | ConsValue (x1, x2), ConsValue (y1, y2) -> eq x1 y1 && eq x2 y2
-        | VectorValue xs,     VectorValue ys     -> xs.Length = ys.Length && Array.forall2 eq xs ys
+        | Empty,         Empty         -> true
+        | Bool x,        Bool y        -> x = y
+        | Int x,         Int y         -> x = y
+        | Dec x,     Dec y     -> x = y
+        | Int x,         Dec y     -> decimal x = y
+        | Dec x,     Int y         -> x = decimal y
+        | Str x,      Str y      -> x = y
+        | Sym x,      Sym y      -> x = y
+        | InStream x,    InStream y    -> x = y
+        | OutStream x,   OutStream y   -> x = y
+        | Func x,    Func y    -> x = y
+        | Err x,       Err y       -> x = y
+        | Cons (x1, x2), Cons (y1, y2) -> eq x1 y1 && eq x2 y2
+        | Vec xs,     Vec ys     -> xs.Length = ys.Length && Array.forall2 eq xs ys
         | (_, _) -> false
 
     let rec toStr value =
         match value with
-        | EmptyValue -> "()"
-        | BoolValue b -> if b then "true" else "false"
-        | IntValue n -> n.ToString()
-        | DecimalValue n -> n.ToString()
-        | StringValue s -> "\"" + s + "\""
-        | SymbolValue s -> s
-        | ConsValue (head, tail) -> sprintf "(cons %s %s)" (toStr head) (toStr tail)
-        | VectorValue value -> sprintf "(@v%s)" (String.Join("", (Array.map (fun s -> " " + toStr s) value)))
-        | ErrorValue message -> sprintf "(simple-error \"%s\")" message
-        | FunctionValue f -> sprintf "<Function %s>" (f.ToString())
-        | InStreamValue s -> sprintf "<InStream %s>" (s.ToString())
-        | OutStreamValue s -> sprintf "<OutStream %s>" (s.ToString())
+        | Empty -> "()"
+        | Bool b -> if b then "true" else "false"
+        | Int n -> n.ToString()
+        | Dec n -> n.ToString()
+        | Str s -> "\"" + s + "\""
+        | Sym s -> s
+        | Cons (head, tail) -> sprintf "(cons %s %s)" (toStr head) (toStr tail)
+        | Vec value -> sprintf "(@v%s)" (String.Join("", (Array.map (fun s -> " " + toStr s) value)))
+        | Err message -> sprintf "(simple-error \"%s\")" message
+        | Func f -> sprintf "<Function %s>" (f.ToString())
+        | InStream s -> sprintf "<InStream %s>" (s.ToString())
+        | OutStream s -> sprintf "<OutStream %s>" (s.ToString())
 
     let rec toToken value =
         match value with
-        | EmptyValue -> ComboToken []
-        | BoolValue b -> BoolToken b
-        | IntValue i -> IntToken i
-        | DecimalValue d -> DecimalToken d
-        | StringValue s -> StringToken s
-        | SymbolValue s -> SymbolToken s
-        | ConsValue _ as cons ->
+        | Empty -> ComboToken []
+        | Bool b -> BoolToken b
+        | Int i -> IntToken i
+        | Dec d -> DecimalToken d
+        | Str s -> StringToken s
+        | Sym s -> SymbolToken s
+        | Cons _ as cons ->
             let generator value =
                 match value with
-                | ConsValue (head, tail) -> Some(toToken head, tail)
-                | EmptyValue -> None
+                | Cons (head, tail) -> Some(toToken head, tail)
+                | Empty -> None
                 | _ -> failwith "Cons chains must form linked lists to be converted to syntax"
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
         | x -> invalidArg "_" <| x.ToString()
