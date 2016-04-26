@@ -25,7 +25,6 @@ type CompilerTests() =
                      FsModule.SingleLet("z", args, syn)])])
 
     [<Test>]
-    [<Ignore("compilation broken")>]
     member this.CompilerServicesBuildAst() =
         let p = tokenize >> parse Head >> Compiler.build
         let r = AndExpr(BoolExpr true, BoolExpr false) |> Compiler.build
@@ -59,41 +58,29 @@ let fff = match (match 0 with
                                   [SymbolExpr "X"; SymbolExpr "Y"])))])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
-        try
-            let s = new SimpleSourceCodeServices()
-            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
-            Assert.AreEqual(0, i)
-            let types = asm.Value.GetTypes()
-            let res1 = types.[0].GetMethods().[0].Invoke(null, [|Values.newGlobals(); IntValue 1; IntValue 2|])
-            assert (res1 = ((IntValue 3) :> obj))
-        with
-            ex -> printfn "%s" <| ex.ToString()
-                  assert false
-        ()
+        let s = new SimpleSourceCodeServices()
+        let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
+        Assert.AreEqual(0, i)
+        let types = asm.Value.GetTypes()
+        let res1 = types.[0].GetMethods().[0].Invoke(null, [|Values.newGlobals(); IntValue 1; IntValue 2|])
+        Assert.AreEqual(res1, ((IntValue 3) :> obj))
 
     [<Test>]
-    [<Ignore("compilation broken")>]
     member this.KlExprToSynExpr() =
         let kl = Expr.AndExpr(Expr.BoolExpr true, Expr.BoolExpr false)
         let syn = Compiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
-        try
-            let s = new SimpleSourceCodeServices()
-            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.AreEqual(0, i)
-            let types = asm.Value.GetTypes()
-            let methods = types.[0].GetMethods()
-            let props = types.[0].GetProperties()
-            let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
-            Assert.AreEqual(Values.falsev, v)
-            ()
-        with
-            ex -> printfn "%s" <| ex.ToString()
-                  assert false
-        ()
+        let s = new SimpleSourceCodeServices()
+        let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        Assert.AreEqual(0, i)
+        let types = asm.Value.GetTypes()
+        let methods = types.[0].GetMethods()
+        let props = types.[0].GetProperties()
+        let fields = types.[0].GetFields()
+        let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
+        Assert.AreEqual(Values.falsev, v)
     
     [<Test>]
     [<Ignore("functions aren't getting built properly")>]
@@ -103,75 +90,55 @@ let fff = match (match 0 with
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
-        try
-            let s = new SimpleSourceCodeServices()
-            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.AreEqual(0, i)
-            let types = asm.Value.GetTypes()
-            let methods = types.[0].GetMethods()
-            let props = types.[0].GetProperties()
-            let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
-            match v :?> Value with
-            | FunctionValue _ -> ()
-            | _ -> assert false
-            ()
-        with
-            ex -> printfn "%s" <| ex.ToString()
-                  assert false
-        ()
+        let s = new SimpleSourceCodeServices()
+        let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        Assert.AreEqual(0, i)
+        let types = asm.Value.GetTypes()
+        let methods = types.[0].GetMethods()
+        let props = types.[0].GetProperties()
+        let fields = types.[0].GetFields()
+        let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
+        match v :?> Value with
+        | FunctionValue _ -> ()
+        | _ -> Assert.Fail("function expected")
 
     [<Test>]
-    [<Ignore("compilation broken")>]
     member this.BuildCondExpr() =
         let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> tokenize |> parse Position.Head
         let syn = Compiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals"); "X", FsType.Of("Value")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
-        try
-            let s = new SimpleSourceCodeServices()
-            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.AreEqual(0, i)
-            let types = asm.Value.GetTypes()
-            let methods = types.[0].GetMethods()
-            let props = types.[0].GetProperties()
-            let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(5)|])
-            Assert.AreEqual(Value.StringValue "positive", v)
-            let v2 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(-5)|])
-            Assert.AreEqual(Value.StringValue "negative", v2)
-            let v3 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(0)|])
-            Assert.AreEqual(Value.StringValue "zero", v3)
-            ()
-        with
-            ex -> printfn "%s" <| ex.ToString()
-                  assert false
-        ()
+        let s = new SimpleSourceCodeServices()
+        let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        Assert.AreEqual(0, i)
+        let types = asm.Value.GetTypes()
+        let methods = types.[0].GetMethods()
+        let props = types.[0].GetProperties()
+        let fields = types.[0].GetFields()
+        let v = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(5)|])
+        Assert.AreEqual(Value.StringValue "positive", v)
+        let v2 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(-5)|])
+        Assert.AreEqual(Value.StringValue "negative", v2)
+        let v3 = methods.[0].Invoke(null, [|Values.newGlobals(); Value.IntValue(0)|])
+        Assert.AreEqual(Value.StringValue "zero", v3)
 
     [<Test>]
-    [<Ignore("compilation broken")>]
     member this.BuildLetExpr() =
         let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> tokenize |> parse Position.Head
         let syn = Compiler.build kl
         let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
-        try
-            let s = new SimpleSourceCodeServices()
-            let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
-            Assert.AreEqual(0, i)
-            let types = asm.Value.GetTypes()
-            let methods = types.[0].GetMethods()
-            let props = types.[0].GetProperties()
-            let fields = types.[0].GetFields()
-            let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
-            Assert.AreEqual(StringValue "positive", v)
-            ()
-        with
-            ex -> printfn "%s" <| ex.ToString()
-                  assert false
-        ()
+        let s = new SimpleSourceCodeServices()
+        let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        Assert.AreEqual(0, i)
+        let types = asm.Value.GetTypes()
+        let methods = types.[0].GetMethods()
+        let props = types.[0].GetProperties()
+        let fields = types.[0].GetFields()
+        let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
+        Assert.AreEqual(StringValue "positive", v)
 
     [<Ignore("relative paths don't work on travis-ci")>]
     [<Test>]
@@ -181,4 +148,3 @@ let fff = match (match 0 with
         let parsedInput = Compiler.buildModule exprs
         let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
         System.Console.WriteLine(str)
-        ()

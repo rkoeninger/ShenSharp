@@ -238,6 +238,16 @@ type FsExpr =
             false,
             FsAst.defaultRange)
 
+    static member Try(body: SynExpr, handlers: SynMatchClause list) =
+        SynExpr.TryWith(
+            body,
+            FsAst.defaultRange,
+            handlers,
+            FsAst.defaultRange,
+            FsAst.defaultRange,
+            SequencePointInfoForTry.SequencePointAtTry FsAst.defaultRange,
+            SequencePointInfoForWith.SequencePointAtWith FsAst.defaultRange)
+
 type FsPat =
 
     static member Const(c: SynConst) =
