@@ -144,7 +144,7 @@ let fff = match (match 0 with
     [<Test>]
     member this.BuildModule() =
         let workingDirectory = Path.GetDirectoryName((new Uri(Assembly.GetExecutingAssembly().CodeBase)).LocalPath)
-        let src = File.ReadAllText(Path.Combine(workingDirectory, @"..\..\..\KLambda\toplevel.kl"))
+        let src = File.ReadAllText(Path.Combine(workingDirectory, "../../../KLambda/toplevel.kl"))
         let exprs = src |> tokenizeAll |> List.map rootParse |> Seq.take 6 |> Seq.toList
         let parsedInput = Compiler.buildModule exprs
         let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)

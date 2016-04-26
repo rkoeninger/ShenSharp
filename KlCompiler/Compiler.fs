@@ -3,6 +3,48 @@
 open Kl
 
 module Compiler =
+
+    let private primitiveNames =
+        Map.ofList [
+            "intern",          "klIntern"
+            "pos",             "klStringPos"
+            "tlstr",           "klStringTail"
+            "cn",              "klStringConcat"
+            "str",             "klToString"
+            "string?",         "klIsString"
+            "n->string",       "klIntToString"
+            "string->n",       "klStringToInt"
+            "set",             "klSet"
+            "value",           "klValue"
+            "simple-error",    "klSimpleError"
+            "error-to-string", "klErrorToString"
+            "cons",            "klNewCons"
+            "hd",              "klHead"
+            "tl",              "klTail"
+            "cons?",           "klIsCons"
+            "=",               "klEquals"
+            "type",            "klType"
+            "eval-kl",         "klEval"
+            "absvector",       "klNewVector"
+            "<-address",       "klReadVector"
+            "address->",       "klWriteVector"
+            "absvector?",      "klIsVector"
+            "write-byte",      "klWriteByte"
+            "read-byte",       "klReadByte"
+            "open",            "klOpen"
+            "close",           "klClose"
+            "get-time",        "klGetTime"
+            "+",               "klAdd"
+            "-",               "klSubtract"
+            "*",               "klMultiply"
+            "/",               "klDivide"
+            ">",               "klGreaterThan"
+            "<",               "klLessThan"
+            ">=",              "klGreaterThanEqual"
+            "<=",              "klLessThanEqual"
+            "number?",         "klIsNumber"
+        ]
+
     let rec build expr =
         let klToFsId (klId:string) =
             klId.Replace("?", "_P_")
@@ -25,47 +67,6 @@ module Compiler =
                 | _ -> ch.ToString()
             String.collect escapeChar s
         let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
-
-        let primitiveOp op =
-            match op with
-            | "intern"          -> Some(builtin "klIntern")
-            | "pos"             -> Some(builtin "klStringPos")
-            | "tlstr"           -> Some(builtin "klStringTail")
-            | "cn"              -> Some(builtin "klStringConcat")
-            | "str"             -> Some(builtin "klToString")
-            | "string?"         -> Some(builtin "klIsString")
-            | "n->string"       -> Some(builtin "klIntToString")
-            | "string->n"       -> Some(builtin "klStringToInt")
-            | "set"             -> Some(builtin "klSet")
-            | "value"           -> Some(builtin "klValue")
-            | "simple-error"    -> Some(builtin "klSimpleError")
-            | "error-to-string" -> Some(builtin "klErrorToString")
-            | "cons"            -> Some(builtin "klNewCons")
-            | "hd"              -> Some(builtin "klHead")
-            | "tl"              -> Some(builtin "klTail")
-            | "cons?"           -> Some(builtin "klIsCons")
-            | "="               -> Some(builtin "klEquals")
-            | "type"            -> Some(builtin "klType")
-            | "eval-kl"         -> Some(builtin "klEval")
-            | "absvector"       -> Some(builtin "klNewVector")
-            | "<-address"       -> Some(builtin "klReadVector")
-            | "address->"       -> Some(builtin "klWriteVector")
-            | "absvector?"      -> Some(builtin "klIsVector")
-            | "write-byte"      -> Some(builtin "klWriteByte")
-            | "read-byte"       -> Some(builtin "klReadByte")
-            | "open"            -> Some(builtin "klOpen")
-            | "close"           -> Some(builtin "klClose")
-            | "get-time"        -> Some(builtin "klGetTime")
-            | "+"               -> Some(builtin "klAdd")
-            | "-"               -> Some(builtin "klSubtract")
-            | "*"               -> Some(builtin "klMultiply")
-            | "/"               -> Some(builtin "klDivide")
-            | ">"               -> Some(builtin "klGreaterThan")
-            | "<"               -> Some(builtin "klLessThan")
-            | ">="              -> Some(builtin "klGreaterThanEqual")
-            | "<="              -> Some(builtin "klLessThanEqual")
-            | "number?"         -> Some(builtin "klIsNumber")
-            | _                 -> None
 
         let lambda param body =
             FsExpr.App(
@@ -139,7 +140,7 @@ module Compiler =
             | SymbolExpr op ->
                 let builtArgs = List.map build args
                 let builtOp =
-                    match primitiveOp op with
+                    match Map.tryFind op primitiveNames |> Option.map builtin with
                     | Some(pop) -> pop
                     | _ when isVar op -> FsExpr.Id op
                     | _ -> FsExpr.LongId ["KlImpl"; op]
