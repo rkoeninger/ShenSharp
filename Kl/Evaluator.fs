@@ -94,9 +94,6 @@ module Evaluator =
             | _ -> apply pos globals f (List.append args0 args)
 
     and private evalw env expr =
-        let evale = eval env
-        let evalwe = evalw env
-
         match expr with
 
         // Atomic values besides symbols are self-evaluating
@@ -116,38 +113,38 @@ module Evaluator =
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
-            if Values.vbool(evale left)
-                then evalwe right
+            if Values.vbool(eval env left)
+                then evalw env right
                 else Values.falsew
             
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
-            if Values.vbool(evale left)
+            if Values.vbool(eval env left)
                 then Values.truew
-                else evalwe right
+                else evalw env right
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
         | IfExpr (condition, consequent, alternative) ->
-            if Values.vbool(evale condition)
-                then evalwe consequent
-                else evalwe alternative
+            if Values.vbool(eval env condition)
+                then evalw env consequent
+                else evalw env alternative
         
         // Condition expressions must evaluate to boolean values
         | CondExpr clauses ->
             let rec evalClauses = function
                 | [] -> Values.err "No condition was true"
                 | (condition, consequent) :: rest ->
-                    if Values.vbool(evale condition)
-                        then evalwe consequent
+                    if Values.vbool(eval env condition)
+                        then evalw env consequent
                         else evalClauses rest
             evalClauses clauses
 
         | LetExpr (symbol, binding, body) ->
-            evalw (append env [symbol, evale binding]) body
+            evalw (append env [symbol, eval env binding]) body
 
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr (param, body) ->
@@ -161,10 +158,10 @@ module Evaluator =
         // Handler expression must evaluate to a function
         | TrapExpr (pos, body, handler) ->
             try
-                Done(evale body)
+                Done(eval env body)
             with
             | SimpleError message ->
-                match evale handler with
+                match eval env handler with
                 | Func f -> apply pos env.Globals f [Err message]
                 | _ -> Values.err "Trap handler did not evaluate to a function"
             | e -> raise e
@@ -178,7 +175,7 @@ module Evaluator =
             match f with
             | SymExpr s ->
                 let operator = resolveFunction env s
-                let operands = List.map evale args
+                let operands = List.map (eval env) args
                 apply pos env.Globals operator operands
             | _ -> Values.err "Application must begin with a symbol"
     
@@ -186,7 +183,7 @@ module Evaluator =
     /// Evaluates an sub-expression into a value, running all side effects
     /// in the process.
     /// </summary>
-    and eval env expr = evalw env expr |> Values.go
+    and eval env expr = Values.go(evalw env expr)
 
     /// <summary>
     /// Evaluates a root-level expression into a value, running all side

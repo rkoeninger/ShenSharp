@@ -61,7 +61,7 @@ module Values =
     let vbool v =
         match v with
         | Bool b -> b
-        | _ -> failwith "Boolean expected"
+        | _ -> err "Boolean expected"
 
     let primitivev name arity f = Primitive(name, arity, f)
 
