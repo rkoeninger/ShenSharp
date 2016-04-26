@@ -42,16 +42,11 @@ module Evaluator =
             | Some f -> f
             | None -> Values.err("Symbol not defined: " + id)
 
-    let private vbranch ifTrue ifFalse value =
-        if Values.vbool value
-            then ifTrue()
-            else ifFalse()
-
     let private tailCall pos f =
         match pos with
         | Head -> f()
         | Tail -> Values.thunkw f
-    
+
     /// <summary>
     /// Applies a function to a set of arguments and a global
     /// environment, considering whether to full evaluate
@@ -75,22 +70,22 @@ module Evaluator =
 
         // Defuns and Primitives can have any number of arguments and
         // can be partially applied
-        | Defun(_, paramz, body) as defun ->
+        | Defun(name, paramz, body) as defun ->
             match args with
             | [] -> Done(FunctionValue(defun))
             | _ ->
                 match args.Length, paramz.Length with
-                | Greater -> Done(Values.err "Too many arguments")
+                | Greater -> Values.arityErr name paramz.Length args
                 | Lesser -> Done(FunctionValue(Partial(defun, args)))
                 | Equal ->
                     let env = (append env (List.zip paramz args))
                     tailCall pos (fun () -> evalw env body)
-        | Primitive(_, arity, f) as primitive ->
+        | Primitive(name, arity, f) as primitive ->
             match args with
             | [] -> Done(FunctionValue primitive)
             | _ ->
                 match args.Length, arity with
-                | Greater -> Done(Values.err "Too many arguments")
+                | Greater -> Values.arityErr name arity args
                 | Lesser -> Done(FunctionValue(Partial(primitive, args)))
                 | Equal -> tailCall pos (fun () -> Done(f globals args))
         | Partial(f, args0) as partial ->

@@ -159,21 +159,27 @@ module Compiler =
     let buildInit exprs =
         let rec buildSeq exprs =
             match exprs with
-            | expr :: rest -> FsExpr.ConsSequential(expr, buildSeq rest)
+            | expr :: rest ->
+                FsExpr.ConsSequential(
+                    FsExpr.App(FsExpr.Id "ignore", [expr]),
+                    buildSeq rest)
             | [] -> FsExpr.Unit
-        FsModule.SingleLet("init", ["envGlobals", FsType.Of("Globals")], buildSeq exprs)
+        FsModule.SingleLet(
+            "init",
+            ["envGlobals", FsType.Of("Globals")],
+            buildSeq exprs)
     let buildModule exprs =
         let isDefun = function
             | DefunExpr _ -> true
             | _ -> false
-        let isOther = function
-            | OtherExpr _ -> true
+        let isOtherApp = function
+            | OtherExpr(AppExpr _) -> true
             | _ -> false
         let other = function
             | OtherExpr e -> e
             | _ -> failwith "not other"
         let decls = exprs |> List.filter isDefun |> List.map topLevelBuild
-        let init = exprs |> List.filter isOther |> List.map other |> List.map build |> buildInit
+        let init = exprs |> List.filter isOtherApp |> List.map other |> List.map build |> buildInit
         let members = List.append decls [init]
         let openKl = FsModule.Open ["Kl"]
         FsFile.Of("KlImpl", [FsModule.Of("KlImpl", List.Cons(openKl, members))])

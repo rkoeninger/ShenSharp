@@ -9,8 +9,7 @@ module Builtins =
 
     let inline invalidArgs () = failwith "Wrong number or type of arguments"
 
-    let private arityErr name expected (args: 'a list) =
-        Values.err(sprintf "%s expects %i argument(s), but given %i" name expected args.Length)
+    let private arityErr = Values.arityErr
 
     let private typeErr1 name type1 =
         Values.err(sprintf "%s expects a(n) %s" name type1)

@@ -114,3 +114,7 @@ module Values =
                 | _ -> failwith "Cons chains must form linked lists to be converted to syntax"
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
         | x -> invalidArg "_" <| x.ToString()
+    
+    let arityErr name expected (args: Value list) =
+        err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
+    

@@ -11,6 +11,8 @@ open Microsoft.FSharp.Compiler.SourceCodeServices
 open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.Range
 open System.IO
+open System
+open System.Reflection
 
 type CompilerTests() =
 
@@ -139,10 +141,10 @@ let fff = match (match 0 with
         let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
         Assert.AreEqual(StringValue "positive", v)
 
-    [<Ignore("relative paths don't work on travis-ci")>]
     [<Test>]
     member this.BuildModule() =
-        let src = System.IO.File.ReadAllText(@"..\..\..\KLambda\toplevel.kl")
+        let workingDirectory = Path.GetDirectoryName((new Uri(Assembly.GetExecutingAssembly().CodeBase)).LocalPath)
+        let src = File.ReadAllText(Path.Combine(workingDirectory, @"..\..\..\KLambda\toplevel.kl"))
         let exprs = src |> tokenizeAll |> List.map rootParse |> Seq.take 6 |> Seq.toList
         let parsedInput = Compiler.buildModule exprs
         let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
