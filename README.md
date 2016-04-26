@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/rkoeninger/shensharp.svg?branch=master)](https://travis-ci.org/rkoeninger/shensharp)
+[![Build Status](https://api.travis-ci.org/rkoeninger/ShenSharp.svg?branch=master)](https://travis-ci.org/rkoeninger/ShenSharp)
 
 # Shen&#35;
 
