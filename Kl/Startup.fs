@@ -55,11 +55,12 @@ module Startup =
             fn "number?"         1 klIsNumber
         ]
         let onMono = Type.GetType("Mono.Runtime") <> null
-        let clrImpl = if onMono then "Mono" else ".NET"
+        let clrImpl = if onMono then "Mono" else "Microsoft.NET"
+        // TODO: identify CoreCLR?
         let ver = Environment.Version
         install env.Globals.Symbols [
             "*language*",       Str "F# 3.1"
-            "*implementation*", Str(sprintf "CLR (%s)" clrImpl)
+            "*implementation*", Str(sprintf "CLR/%s" clrImpl)
             "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
             "*version*",        Str "19.2"
             "*port*",           Str "0.1"
