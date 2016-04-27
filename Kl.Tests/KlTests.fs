@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open FParsec
+open Kl.Extensions
 open Kl
 open Kl.Tokenizer
 open Kl.Parser
@@ -15,42 +16,33 @@ open System.IO
 [<TestFixture>]
 type KlTests() =
 
+    let runInEnv env syntax = rootEval env.Globals (rootParse(tokenize syntax))
+    let runIt = runInEnv (baseEnv())
     let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
-    let runInEnv env = tokenize >> rootParse >> rootEval env.Globals
-    let runIt = runInEnv (baseEnv ())
-    let isIntR = function | Int _ -> true | _ -> false
-    let isDecimalR = function | Dec _ -> true | _ -> false
-    let rError = function
-        | Err e -> e
-        | _ -> failwith "not an error"
-    let rInt = function
-        | Int n -> n
-        | _ -> failwith "not an int"
-    let rString = function
-        | Str s -> s
-        | _ -> failwith "not a String"
-    let rVector = function
-        | Vec s -> s
-        | _ -> failwith "not a Vector"
-    let arrayEqual (xs : 'a[]) (ys : 'a[]) =
-        xs.Length = ys.Length && Array.forall2 (=) xs ys
-    let rFunc = function
-        | Func f -> f
-        | _ -> failwith "not a Function"
-    let isThunk = function
-        | Done _ -> true
-        | _ -> false
-    let rBool = function
-        | Bool b -> b
-        | _ -> failwith "not a Bool"
-    let eApp1 f arg1 = AppExpr(Head, f, [arg1])
-    let symApp1 sym arg1 = AppExpr (Head, SymExpr sym, [arg1])
-    let symApp2 sym arg1 arg2 = AppExpr (Head, SymExpr sym, [arg1; arg2])
-    let symApp3 sym arg1 arg2 arg3 = AppExpr (Head, SymExpr sym, [arg1; arg2; arg3])
-    let intE = IntExpr
-    let intV = Int
-    let strV = Str
-    let str x = x.ToString()
+    let assertTrue = assertEq Values.truev
+    let assertFalse = assertEq Values.falsev
+    let assertDec value =
+        match value with
+        | Dec _ -> ()
+        | _ -> Assert.Fail "Decimal expected"
+    let assertInt value =
+        match value with
+        | Int _ -> ()
+        | _ -> Assert.Fail "Int expected"
+    let assertError syntax =
+        try
+            runIt syntax |> ignore
+            Assert.Fail "Error expected"
+        with
+            _ -> ()
+    let assertEffect eff syntax =
+        let env = baseEnv()
+        runInEnv env "(defun do (X Y) Y)" |> ignore
+        runInEnv env "(defun effect () (set *effect* true))" |> ignore
+        runInEnv env syntax |> ignore
+        match env.Globals.Symbols.GetMaybe "*effect*" with
+        | None -> if eff then Assert.Fail "Effect did not occurr" else ()
+        | _ -> if not eff then Assert.Fail "Effect should not have occurred" else ()
 
     [<Test>]
     member this.TokenizerTest() =
@@ -68,153 +60,162 @@ type KlTests() =
         Assert.AreEqual(3, all.Length)
 
     [<Test>]
-    member this.LazyBooleanOperations() =
-        let consToArray = function
-            | Cons _ as cons ->
-                let generator = function | Cons (head, tail) -> Some(head, tail)
-                                         | Empty -> None
-                                         | _ -> invalidArgs ()
-                cons |> Seq.unfold generator |> Seq.toArray
-            | _ -> [||]
-        let lazinessTest syntax expectedBool expectedResults =
-            let env = baseEnv ()
-            runInEnv env "(defun do (X Y) Y)" |> ignore
-            env.Globals.Symbols.["results"] <- Empty
-            match runInEnv env syntax with
-            | Bool b ->
-                Assert.IsTrue((b && expectedBool) || not(b || expectedBool))
-                let results = env.Globals.Symbols.["results"] |> consToArray
-                Assert.IsTrue(arrayEqual expectedResults results)
-            | _ -> Assert.Fail()
+    member this.``and expression should not eval second argument expression if first eval'd to false``() =
+        assertEffect false "(and false (effect))"
 
-        lazinessTest "(and true true)" true [||]
-        lazinessTest "(and false (do (set results (cons 1 (value results))) false))" false [||]
-        lazinessTest "(and true (do (set results (cons 1 (value results))) false))" false [|intV 1|]
-        lazinessTest "(and true (do (set results (cons 1 (value results))) true))" true [|intV 1|]
-        lazinessTest "(or false true)" true [||]
-        lazinessTest "(or false (do (set results (cons 1 (value results))) false))" false [|intV 1|]
-        lazinessTest "(or true (do (set results (cons 1 (value results))) false))" true [||]
+    [<Test>]
+    member this.``and expression should always eval second argument expression if first eval'd to true``() =
+        assertEffect true "(and true (effect))"
+
+    [<Test>]
+    member this.``or expression should not eval second argument expression if first eval'd to true``() =
+        assertEffect false "(or true (effect))"
+
+    [<Test>]
+    member this.``or expression should always eval second argument expression if first eval'd to false``() =
+        assertEffect true "(or false (effect))"
+
+    [<Test>]
+    member this.``if expression should always eval its condition``() =
+        assertEffect true "(if (do (effect) true) 1 2)"
+
+    [<Test>]
+    member this.``if expression should always eval consequent when condition eval's to true``() =
+        assertEffect true "(if true (effect) 0)"
+
+    [<Test>]
+    member this.``if expressions should not eval consequent when condition eval's to false``() =
+        assertEffect false "(if false (effect) 0)"
+        
+    [<Test>]
+    member this.``if expression should not eval alternative when condition eval's to true``() =
+        assertEffect false "(if true 0 (effect))"
+
+    [<Test>]
+    member this.``if expressions should always eval alternative when condition eval's to false``() =
+        assertEffect true "(if false 0 (effect))"
 
     [<Test>]
     member this.DefunAndResolutionOfDefinedFunctions() =
         let env = Values.newEnv()
-        let klNot _ args =
-            match args with
-            | [Bool b] -> Bool(not b)
-            | _ -> Values.err "Must be bool"
-        env.Globals.Functions.["not"] <- Values.primitivev "not" 1 klNot
+        runInEnv env "(defun not (X) (if X false true))" |> ignore
         runInEnv env "(defun xor (L R) (or (and L (not R)) (and (not L) R)))" |> ignore
-        Assert.AreEqual(Values.truev, runInEnv env "(xor true false)")
+        assertTrue(runInEnv env "(xor true false)")
 
     [<Test>]
     member this.SymbolResolution() =
-        let env = Values.newEnv()
         let klIsSymbol _ args =
             match args with
             | [Sym _] -> Values.truev
-            | _ -> Values.falsev
-        env.Globals.Functions.["symbol?"] <- Values.primitivev "symbol?" 1 klIsSymbol
-        Assert.AreEqual(Values.truev, runInEnv env "(symbol? run)")
+            | [_] -> Values.falsev
+            | _ -> Values.err "symbol? only takes 1 argument"
+
         let klId _ args =
             match args with
             | [x] -> x
             | _ -> Values.err "id only takes 1 argument"
+
+        let env = baseEnv()
+        env.Globals.Functions.["symbol?"] <- Values.primitivev "symbol?" 1 klIsSymbol
         env.Globals.Functions.["id"] <- Values.primitivev "id" 1 klId
-        Assert.AreEqual(Values.truev, runInEnv env "(symbol? (id run))")
+        assertTrue(runInEnv env "(symbol? run)")
+        assertTrue(runInEnv env "(= run (id run))")
 
     [<Test>]
     member this.``result of interning a string is equal to symbol with name that is equal to that string``() =
-        Assert.AreEqual(Sym "hi", runIt "(intern \"hi\")")
+        assertEq (Sym "hi") (runIt "(intern \"hi\")")
 
     [<Test>]
-    member this.PartialApplicationForBuiltins() =
+    member this.``primitive functions should be partially applicable``() =
         let env = baseEnv()
-        Assert.AreEqual(intV 3, eval env (symApp2 "+" (intE 1) (intE 2)))
         runInEnv env "(defun add4 (A B C D) (+ A (+ B (+ C D))))" |> ignore
-        Assert.AreEqual(intV 10, runInEnv env "(let X (add4 1) (let Y (X 2 3) (Y 4)))")
+        assertEq
+            (Int 10)
+            (runInEnv env "(let X (add4 1) (let Y (X 2 3) (Y 4)))")
 
-    [<Test>]
-    member this.Builtins() =
-        Assert.AreEqual(intV 3, runIt "(let X (+ 1) (X 2))")
-        Assert.AreEqual(intV 2, runIt "(let X (- 4) (X 2))")
-    
     [<Test>]
     member this.``adding two integers gives integer``() =
-        Assert.IsTrue(isIntR <| runIt "(+ 5 3)")
+        assertInt(runIt "(+ 5 3)")
 
     [<Test>]
     member this.``adding decimal and integer gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(+ 1.1 2)")
-        Assert.IsTrue(isDecimalR <| runIt "(+ 11 -2.4)")
+        assertDec(runIt "(+ 1.1 2)")
+        assertDec(runIt "(+ 11 -2.4)")
     
     [<Test>]
     member this.``adding two decimals gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(+ 1.1 2.4)")
+        assertDec(runIt "(+ 1.1 2.4)")
 
     [<Test>]
     member this.``subtracting two integers gives integer``() =
-        Assert.IsTrue(isIntR <| runIt "(- 1 2)")
+        assertInt(runIt "(- 1 2)")
 
     [<Test>]
     member this.``subtracting integer from decimal gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(- 1.1 2)")
+        assertDec(runIt "(- 1.1 2)")
 
     [<Test>]
     member this.``subtracting decimal from integer gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(- 11 -2.4)")
+        assertDec(runIt "(- 11 -2.4)")
 
     [<Test>]
     member this.``subtracting two decimals gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(- 1.1 2.4)")
+        assertDec(runIt "(- 1.1 2.4)")
 
     [<Test>]
     member this.``multiplying two integers gives integer``() =
-        Assert.IsTrue(isIntR <| runIt "(* 1 2)")
+        assertInt(runIt "(* 1 2)")
 
     [<Test>]
     member this.``multiplying integer and decimal gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(* 1.1 2)")
-        Assert.IsTrue(isDecimalR <| runIt "(* 11 -2.4)")
+        assertDec(runIt "(* 1.1 2)")
+        assertDec(runIt "(* 11 -2.4)")
 
     [<Test>]
     member this.``multiplying two decimals gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(* 1.1 2.4)")
+        assertDec(runIt "(* 1.1 2.4)")
 
     [<Test>]
     member this.``dividing any combination of two decimals/integers gives decimal``() =
-        Assert.IsTrue(isDecimalR <| runIt "(/ 1 2)")
-        Assert.IsTrue(isDecimalR <| runIt "(/ 2 1)")
-        Assert.IsTrue(isDecimalR <| runIt "(/ 1.1 2)")
-        Assert.IsTrue(isDecimalR <| runIt "(/ 11 -2.4)")
-        Assert.IsTrue(isDecimalR <| runIt "(/ 1.1 2.4)")
+        assertDec(runIt "(/ 1 2)")
+        assertDec(runIt "(/ 2 1)")
+        assertDec(runIt "(/ 1.1 2)")
+        assertDec(runIt "(/ 11 -2.4)")
+        assertDec(runIt "(/ 1.1 2.4)")
 
     [<Test>]
     member this.StringFunctions() =
-        Assert.AreEqual(strV "Hello, World!", runIt "(cn \"Hello, \" \"World!\")")
-        Assert.AreEqual(strV "Hello", runIt "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))")
-        Assert.AreEqual(strV "1", runIt "(str 1)")
+        assertEq (Str "Hello, World!") (runIt "(cn \"Hello, \" \"World!\")")
+        assertEq (Str "Hello") (runIt "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))")
+        assertEq (Str "1") (runIt "(str 1)")
         
     [<Test>]
-    member this.Vectors() =
-        Assert.IsTrue(arrayEqual Array.empty<Value> (runIt "(absvector 0)" |> rVector))
-        Assert.IsTrue(arrayEqual [|Sym "fail!"|] (runIt "(absvector 1)" |> rVector))
-        Assert.IsTrue(arrayEqual [|Values.truev|] (runIt "(address-> (absvector 1) 0 true)" |> rVector))
+    member this.``vectors should be pre-filled with the symbol 'fail!``() =
+        assertEq (Vec [|Sym "fail!"|]) (runIt "(absvector 1)")
 
     [<Test>]
-    member this.Conses() =
-        Assert.AreEqual(Values.truev, runIt "(= () (tl (cons 1 ())))")
-        Assert.AreEqual(Values.falsev, runIt "(cons? ())")
-        Assert.AreEqual(Values.falsev, runIt "(cons? 0)")
-        Assert.AreEqual(Values.truev, runIt "(cons? (cons 0 0))")
+    member this.``empty values don't count as conses``() =
+        assertFalse(runIt "(cons? ())")
+
+    [<Test>]
+    member this.``calling hd or tl on anything but a cons should fail``() =
+        assertError "(hd 0)"
+        assertError "(tl 0)"
+        assertError "(hd ())"
+        assertError "(tl ())"
 
     [<Test>]
     member this.EvalFunction() =
-        let evalResult = runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))"
-        Assert.AreEqual(intV 3, evalResult) // (+ 1 2)
-        let incR = runIt "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" // (lambda X (+ 1 X))
-        let inc = rFunc incR
-        let applyResult = Evaluator.apply Head (Startup.baseEnv()).Globals [] inc [intV 4] |> Values.go
-        Assert.AreEqual(intV 5, applyResult)
+        assertEq
+            (Int 3)
+            (runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
+
+        match runIt "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" with // (lambda X (+ 1 X))
+        | Func f ->
+            assertEq
+                (Int 5)
+                (Values.go(apply Head (baseEnv()).Globals [] f [Int 4]))
+        | _ -> Assert.Fail "Function expected"
 
     [<Test>]
     member this.``idle symbols``() =
@@ -223,99 +224,80 @@ type KlTests() =
             (runIt "(cons A (cons --> (cons boolean ())))")
 
     [<Test>]
-    member this.``lambda capture``() =
+    member this.``lambda expressions should capture local variables``() =
         assertEq (Int 1) (runIt "(let X 1 (let F (lambda Y X) (F 0)))")
 
     [<Test>]
-    member this.``freeze capture``() =
+    member this.``freeze expressions should capture local variables``() =
         assertEq (Int 1) (runIt "(let X 1 (let F (freeze X) (F)))")
 
     [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =
-        let env = baseEnv ()
+        let env = baseEnv()
         runInEnv env "(defun fill (Vec Start Stop Val) (if (= Stop Start) (address-> Vec Start Val) (fill (address-> Vec Start Val) (+ 1 Start) Stop Val)))" |> ignore
-        let x = runInEnv env "(fill (absvector 20000) 0 19999 0)"
+        runInEnv env "(fill (absvector 20000) 0 19999 0)" |> ignore
         ()
     
     [<Test>]
     member this.``deep-running mutually-recursive functions do not stack overflow``() =
-        let env = baseEnv ()
+        let env = baseEnv()
         runInEnv env "(defun odd? (X) (if (= 1 X) true (even? (- X 1))))" |> ignore
         runInEnv env "(defun even? (X) (if (= 1 X) false (odd? (- X 1))))" |> ignore
-        Assert.AreEqual(Values.falsev, runInEnv env "(odd? 20000)")
+        assertEq Values.falsev (runInEnv env "(odd? 20000)")
 
     [<Test>]
     member this.``when if expr is in head position, conditional and branches should be in head``() =
         match parse Head (tokenize "(if (< 0 n) (* n 2) (- n 1))") with
         | IfExpr(AppExpr(Head, _, _), AppExpr(Head, _, _), AppExpr(Head, _, _)) -> ()
-        | _ -> Assert.Fail("Head/Tail positions parsed incorrectly")
+        | _ -> Assert.Fail "Head/Tail positions parsed incorrectly"
 
     [<Test>]
     member this.``when if expr is in tail position, conditional should be in head position, branches in tail``() =
         match parse Tail (tokenize "(if (< 0 n) (* n 2) (- n 1))") with
         | IfExpr(AppExpr(Head, _, _), AppExpr(Tail, _, _), AppExpr(Tail, _, _)) -> ()
-        | _ -> Assert.Fail("Head/Tail positions parsed incorrectly")
+        | _ -> Assert.Fail "Head/Tail positions parsed incorrectly"
 
     [<Test>]
     member this.``string index out of bounds should cause uncaught error``() =
-        try
-            runIt "(pos \"\" 0)" |> ignore
-            Assert.Fail("Exception expected")
-        with
-        | SimpleError _ -> ()
-
-        try
-            runIt "(pos \"hello\" 5)" |> ignore
-            Assert.Fail("Exception expected")
-        with
-        | SimpleError _ -> ()
+        assertError "(pos \"\" 0)"
+        assertError "(pos \"hello\" 5)"
 
     [<Test>]
     member this.``vector index out of bounds should cause uncaught error``() =
-        try
-            runIt "(<-address (absvector 0) 0)" |> ignore
-            Assert.Fail("Exception expected")
-        with
-        | SimpleError _ -> ()
+        assertError "(<-address (absvector 0) 0)"
 
     [<Test>]
     member this.``simple-error should cause uncaught error``() =
         try
             runIt "(simple-error \"whoops\")" |> ignore
-            Assert.Fail("Exception expected")
+            Assert.Fail "Exception expected"
         with
-        | SimpleError message -> Assert.AreEqual("whoops", message)
+            SimpleError message -> Assert.AreEqual("whoops", message)
 
     [<Test>]
     member this.``simple-error should be caught by trap-error``() =
-        Assert.AreEqual(Empty, runIt "(trap-error (simple-error \"whoops\") (lambda E ()))")
+        assertEq Empty (runIt "(trap-error (simple-error \"whoops\") (lambda E ()))")
 
     [<Test>]
     member this.``trap-error should prevent uncaught error from propogating``() =
-        Assert.AreEqual(Empty, runIt "(trap-error (pos \"\" 0) (lambda E ()))")
+        assertEq Empty (runIt "(trap-error (pos \"\" 0) (lambda E ()))")
 
     [<Test>]
     member this.``trap-error should eval and apply second expression if eval of first results in uncaught error``() =
-        let env = baseEnv ()
+        let env = baseEnv()
         runInEnv env "(defun do (X Y) Y)" |> ignore
-        Assert.IsTrue(runInEnv env "(trap-error (do (pos \"\" 0) false) (lambda E true))" |> rBool)
+        assertEq
+            Values.truev
+            (runInEnv env "(trap-error (do (pos \"\" 0) false) (lambda E true))")
 
     [<Test>]
     member this.``error message should be preserved when error is caught and handled``() =
-        Assert.AreEqual(strV "hi", runIt "(trap-error (simple-error \"hi\") (lambda E (error-to-string E)))")
-
-    [<Test>]
-    member this.PrintStuff() =
-        "(get-time unix)" |> runIt |> rInt |> printfn "Unix time: %i"
-        "(get-time run)" |> runIt |> rInt |> printfn "Run time: %i"
-        "(str (cons 1 (cons 2 (cons 3 ()))))" |> runIt |> rString |> printfn "Cons: %s"
-        "(str (address-> (address-> (address-> (absvector 3) 0 1) 1 2) 2 3))" |> runIt |> rString |> printfn "Vector: %s"
-        "(trap-error (simple-error \"whoops\") (lambda E E))" |> runIt |> rError |> printfn "Error: %s"
-        "(str (trap-error (simple-error \"whoops\") (lambda Ex Ex)))" |> runIt |> rString |> printfn "Error-string: %s"
+        assertEq
+            (Str "hi")
+            (runIt "(trap-error (simple-error \"hi\") (lambda E (error-to-string E)))")
 
     [<Test>]
     member this.``print platform information``() =
-        let env = Startup.baseEnv()
+        let env = baseEnv()
         for pair in env.Globals.Symbols do
             printfn "%s = %s" pair.Key (Values.toStr pair.Value)
-        ()
