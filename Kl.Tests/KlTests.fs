@@ -245,19 +245,16 @@ type KlTests() =
         Assert.AreEqual(Values.falsev, runInEnv env "(odd? 20000)")
 
     [<Test>]
-    member this.HeadTailPositionsParsed() =
-        let e = "(defun ! (acc n) (if (= 0 n) acc (! (* n acc) (- n 1))))" |> tokenize |> rootParse
-        let e0 = DefunExpr ("!",
-                            ["acc"; "n"],
-                            IfExpr (AppExpr (Head,
-                                             SymExpr "=",
-                                             [intE 0; SymExpr "n"]),
-                                    SymExpr "acc",
-                                    AppExpr (Tail,
-                                             SymExpr "!",
-                                             [symApp2 "*" (SymExpr "n") (SymExpr "acc")
-                                              symApp2 "-" (SymExpr "n") (intE 1)])))
-        Assert.AreEqual(e0, e)
+    member this.``when if expr is in head position, conditional and branches should be in head``() =
+        match parse Head (tokenize "(if (< 0 n) (* n 2) (- n 1))") with
+        | IfExpr(AppExpr(Head, _, _), AppExpr(Head, _, _), AppExpr(Head, _, _)) -> ()
+        | _ -> Assert.Fail("Head/Tail positions parsed incorrectly")
+
+    [<Test>]
+    member this.``when if expr is in tail position, conditional should be in head position, branches in tail``() =
+        match parse Tail (tokenize "(if (< 0 n) (* n 2) (- n 1))") with
+        | IfExpr(AppExpr(Head, _, _), AppExpr(Tail, _, _), AppExpr(Tail, _, _)) -> ()
+        | _ -> Assert.Fail("Head/Tail positions parsed incorrectly")
 
     [<Test>]
     member this.``string index out of bounds should cause uncaught error``() =

@@ -43,7 +43,7 @@ let main0 args =
         for ast in tokenizeAll text do
             match ast with
             | ComboToken (command :: symbol :: _) ->
-                printfn "%s %s" (astToStr command) (astToStr symbol)
+                //printfn "%s %s" (astToStr command) (astToStr symbol)
                 let expr = rootParse ast
                 rootEval env.Globals expr |> ignore
             | _ -> () // ignore copyright block at top
@@ -62,11 +62,12 @@ let main0 args =
 //        | ValueResult v -> printfn "%s" (KlBuiltins.klStr v)
 //        | ErrorResult e -> printfn "ERROR %s" e
 //    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
-    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
-    load <| "README.shen"
-    load <| "tests.shen"
+    //Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
+    //load <| "README.shen"
+    //load <| "tests.shen"
 //    env.SymbolDefinitions.["logging"] <- Int 1
 //    load <| Path.Combine(testDir, "debug.shen")
+    rootEval env.Globals (OtherExpr(AppExpr(Head, SymExpr "shen.shen", []))) |> ignore
     printfn ""
     printfn "Press any key to exit..."
     System.Console.ReadKey() |> ignore
