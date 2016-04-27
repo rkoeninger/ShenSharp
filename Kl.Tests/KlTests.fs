@@ -216,6 +216,14 @@ type KlTests() =
         Assert.AreEqual(intV 5, applyResult)
 
     [<Test>]
+    member this.``idle symbols``() =
+        match runIt "(cons A (cons --> (cons boolean ())))" with
+        | Cons(Sym "A", Cons(Sym "-->", Cons(Sym "boolean", Empty))) -> ()
+        | x ->
+            Console.WriteLine(Values.toStr x)
+            Assert.Fail("Not the expected value")
+
+    [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =
         let env = baseEnv ()
         runInEnv env "(defun fill (Vec Start Stop Val) (if (= Stop Start) (address-> Vec Start Val) (fill (address-> Vec Start Val) (+ 1 Start) Stop Val)))" |> ignore

@@ -68,9 +68,9 @@ type Defines<'a> = Dictionary<string, 'a>
 type Globals = {Symbols: Defines<Value>; Functions: Defines<Function>}
 
 /// <summary>
-/// A stack of local variable definitions.
+/// A map of local variable definitions.
 /// </summary>
-and Locals = Map<string, Value> list
+and Locals = Map<string, Value>
 
 /// <summary>
 /// The different types of functions in KL.

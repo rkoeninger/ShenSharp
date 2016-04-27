@@ -4,24 +4,16 @@ open Extensions
 
 module Evaluator =
 
-    let private appendLocals env defs = {env with Locals = List.Cons(Map.ofList defs, env.Locals)}
+    let private appendLocals env defs = {env with Locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs}
 
     let private appendTrace env frame = {env with Trace = List.Cons(frame, env.Trace)}
-
-    let rec private resolveLocalSymbol locals id =
-        match locals with
-        | [] -> None
-        | frame :: rest ->
-            match Map.tryFind id frame with
-            | Some(value) -> Some(value)
-            | None -> resolveLocalSymbol rest id
 
     // For symbols not in operator position:
     // Those starting with upper-case letter are idle if not defined.
     // Those not starting with upper-case letter are always idle.
     let private resolveSymbol env id =
         if Values.isVar id then
-            match resolveLocalSymbol env.Locals id with
+            match Map.tryFind id env.Locals with
             | Some value -> value
             | None -> Sym id
         else
@@ -33,7 +25,7 @@ module Evaluator =
     // Symbols in operator position are never idle.
     let private resolveFunction env id =
         if Values.isVar id then
-            match resolveLocalSymbol env.Locals id with
+            match Map.tryFind id env.Locals with
             | Some value ->
                 match value with
                 | Func f -> f
@@ -50,7 +42,7 @@ module Evaluator =
     /// passed on the Head/Tail position of the application
     /// </summary>
     let rec apply pos globals trace f args =
-        let env = {Globals = globals; Locals = []; Trace = trace}
+        let env = {Globals = globals; Locals = Map.empty; Trace = trace}
 
         // Applying functions to zero args just returns the same function,
         // except for freezes, which fail if applied to any arguments
@@ -191,7 +183,7 @@ module Evaluator =
     /// effects in the process.
     /// </summary>
     let rootEval globals expr =
-        let env = {Globals = globals; Locals = []; Trace = []}
+        let env = {Globals = globals; Locals = Map.empty; Trace = []}
 
         match expr with
         | DefunExpr(name, paramz, body) ->
