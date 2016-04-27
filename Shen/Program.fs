@@ -62,12 +62,12 @@ let main0 args =
 //        | ValueResult v -> printfn "%s" (KlBuiltins.klStr v)
 //        | ErrorResult e -> printfn "ERROR %s" e
 //    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
-    //Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
-    //load <| "README.shen"
-    //load <| "tests.shen"
+    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
+    load <| "README.shen"
+    load <| "tests.shen"
 //    env.SymbolDefinitions.["logging"] <- Int 1
 //    load <| Path.Combine(testDir, "debug.shen")
-    rootEval env.Globals (OtherExpr(AppExpr(Head, SymExpr "shen.shen", []))) |> ignore
+//    rootEval env.Globals (OtherExpr(AppExpr(Head, SymExpr "shen.shen", []))) |> ignore
     printfn ""
     printfn "Press any key to exit..."
     System.Console.ReadKey() |> ignore

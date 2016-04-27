@@ -39,21 +39,23 @@ module Evaluator =
     /// <summary>
     /// Applies a function to a set of arguments and a global
     /// environment, considering whether to full evaluate
-    /// passed on the Head/Tail position of the application
+    /// passed on the Head/Tail position of the application.
     /// </summary>
     let rec apply pos globals trace f args =
         let env = {Globals = globals; Locals = Map.empty; Trace = trace}
 
-        // Applying functions to zero args just returns the same function,
-        // except for freezes, which fail if applied to any arguments
         match f with
+
+        // Freezes do not get partially applied as they always take 0 arguments
         | Freeze(locals, body) ->
             match args with
             | [] -> evalw {env with Locals = locals} body
             | _ -> Done(Values.err "Freezes do not take arguments")
+
+        // Lambdas do not get partially applied as they always take
+        // exactly 1 argument
         | Lambda(param, locals, body) as lambda ->
             match args with
-            | [] -> Done(Func(lambda))
             | [x] -> evalw (appendLocals {env with Locals = locals} [(param, x)]) body
             | _ -> Done(Values.err "Lambdas take exactly 1 argument")
 
@@ -68,6 +70,8 @@ module Evaluator =
                 match pos with
                 | Head -> evalw env body
                 | Tail -> Values.thunkw(fun () -> evalw env body)
+
+        // Tail calls do not apply to primitives as they are implemented natively
         | Primitive(name, arity, f) as primitive ->
             match args with
             | [] -> Done(Func primitive)
@@ -76,6 +80,10 @@ module Evaluator =
                 | Greater -> Values.arityErr name arity args
                 | Lesser -> Done(Func(Partial(primitive, args)))
                 | Equal -> Done(f globals args)
+
+        // Applying a partially applied function is just applying
+        // the original function with the previous and current
+        // argument lists appended.
         | Partial(f, args0) as partial ->
             match args with
             | [] -> Done(Func(partial))
@@ -92,10 +100,8 @@ module Evaluator =
         | StrExpr s  -> Done(Str s)
 
         // Should only get here in the case of symbols not in operator position
-        // In this case, symbols always evaluate without error
+        // In this case, symbols always evaluate without error.
         | SymExpr s -> Done(resolveSymbol env s)
-
-        // And/Or expressions are lazily evaluated
 
         // When the first expression evaluates to false,
         // false is the result without evaluating the second expression
@@ -122,6 +128,8 @@ module Evaluator =
                 else evalw (appendTrace env "if/alternative") alternative
         
         // Condition expressions must evaluate to boolean values
+        // Evaluation of clauses stops when one of their conditions
+        // evaluates to true.
         | CondExpr clauses ->
             let rec evalClauses = function
                 | [] -> Values.err "No condition was true"
@@ -131,6 +139,8 @@ module Evaluator =
                         else evalClauses rest
             evalClauses clauses
 
+        // Let expressions evaluate the symbol binding first and then evaluate the body
+        // with the result of evaluating the binding bound to the symbol
         | LetExpr (symbol, binding, body) ->
             let value = eval (appendTrace env (sprintf "let/%s/binding" symbol)) binding
             evalw (appendLocals (appendTrace env (sprintf "let/%s/body" symbol)) [symbol, value]) body
@@ -155,11 +165,9 @@ module Evaluator =
                 | _ -> Values.err "Trap handler did not evaluate to a function"
             | e -> raise e
 
-        // Applications expect a symbol to be in operator position
-        // That symbol must evaluate to a function
-        // If evaluating any of the argument expressions results in an error,
-        // then the application expression results in that error without
-        // the function being applied
+        // The operator expression in an application must evaluate
+        // to a function. An error will be raised if it does not.
+        // See `resolveFunction`.
         | AppExpr (pos, f, args) ->
             match f with
             | SymExpr s ->
