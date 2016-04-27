@@ -51,7 +51,17 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <Compile Include="KlTests.fs" />
+    <Compile Include="TestCommon.fs" />
+    <Compile Include="PrintInfo.fs" />
+    <Compile Include="TokenizerTests.fs" />
+    <Compile Include="MathTests.fs" />
+    <Compile Include="ConditionalEvalutationTests.fs" />
+    <Compile Include="SymbolEvaluationTests.fs" />
+    <Compile Include="ErrorHandlingTests.fs" />
+    <Compile Include="BuiltinsTests.fs" />
+    <Compile Include="PartialApplicationTests.fs" />
+    <Compile Include="ScopeCaptureTests.fs" />
+    <Compile Include="TailRecursionTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
