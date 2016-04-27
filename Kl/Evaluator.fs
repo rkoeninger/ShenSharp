@@ -54,7 +54,7 @@ module Evaluator =
         | Lambda(param, locals, body) as lambda ->
             match args with
             | [] -> Done(Func(lambda))
-            | [x] -> evalw (appendLocals env [(param, x)]) body
+            | [x] -> evalw (appendLocals {env with Locals = locals} [(param, x)]) body
             | _ -> Done(Values.err "Lambdas take exactly 1 argument")
 
         // Defuns and Primitives can have any number of arguments and
@@ -170,7 +170,14 @@ module Evaluator =
                 let operands = List.map (eval env) args
                 let env = appendTrace env (sprintf "app/%s" s)
                 apply pos env.Globals env.Trace operator operands
-            | _ -> Values.err "Application must begin with a symbol"
+            | expr ->
+                match eval env expr with
+                | Func operator ->
+                    let operands = List.map (eval env) args
+                    let env = appendTrace env "app"
+                    apply pos env.Globals env.Trace operator operands
+                | _ -> Values.err "Expression at head of application did not resolve to function"
+
     
     /// <summary>
     /// Evaluates an sub-expression into a value, running all side effects

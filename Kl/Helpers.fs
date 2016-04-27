@@ -53,7 +53,7 @@ module Values =
         | Pending thunk -> thunk.Run() |> go
         | Done result -> result
 
-    let isVar (s: string) = System.Char.IsUpper(s.Chars 0)
+    let isVar (s: string) = Char.IsUpper(s.Chars 0)
 
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv() = {Globals = newGlobals(); Locals = Map.empty; Trace = []}

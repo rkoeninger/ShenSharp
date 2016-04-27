@@ -31,12 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 	(let Parameters (shen.parameters 1)
 	(let Clause (cons (cons F* (cons X ())) (cons :- (cons (cons (cons unify! (cons X (cons Type ()))) ()) ())))
 	(let AUM_instruction (shen.aum Clause Parameters)
-	(let Whatever (print (str AUM_instruction))
 	(let Code (shen.aum_to_shen AUM_instruction)
-	(let Whatever2 (print (str Code))
 	(let ShenDef (cons define (cons F* (append Parameters (append (cons ProcessN (cons Continuation ())) (cons -> (cons Code ()))))))
 	(let Eval (shen.eval-without-macros ShenDef)
-	V15776)))))))))))))
+	V15776)))))))))))
 
 (defun shen.demodulate (V15779) (trap-error (let Demod (shen.walk (lambda Y (shen.demod Y)) V15779) (if (= Demod V15779) V15779 (shen.demodulate Demod))) (lambda E V15779)))
 

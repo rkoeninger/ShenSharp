@@ -15,6 +15,7 @@ open System.IO
 [<TestFixture>]
 type KlTests() =
 
+    let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
     let runInEnv env = tokenize >> rootParse >> rootEval env.Globals
     let runIt = runInEnv (baseEnv ())
     let isIntR = function | Int _ -> true | _ -> false
@@ -217,11 +218,17 @@ type KlTests() =
 
     [<Test>]
     member this.``idle symbols``() =
-        match runIt "(cons A (cons --> (cons boolean ())))" with
-        | Cons(Sym "A", Cons(Sym "-->", Cons(Sym "boolean", Empty))) -> ()
-        | x ->
-            Console.WriteLine(Values.toStr x)
-            Assert.Fail("Not the expected value")
+        assertEq
+            (Cons(Sym "A", Cons(Sym "-->", Cons(Sym "boolean", Empty))))
+            (runIt "(cons A (cons --> (cons boolean ())))")
+
+    [<Test>]
+    member this.``lambda capture``() =
+        assertEq (Int 1) (runIt "(let X 1 (let F (lambda Y X) (F 0)))")
+
+    [<Test>]
+    member this.``freeze capture``() =
+        assertEq (Int 1) (runIt "(let X 1 (let F (freeze X) (F)))")
 
     [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =
