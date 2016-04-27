@@ -60,17 +60,14 @@ module Evaluator =
         // Defuns and Primitives can have any number of arguments and
         // can be partially applied
         | Defun(name, paramz, body) as defun ->
-            match args with
-            | [] -> Done(Func(defun))
-            | _ ->
-                match args.Length, paramz.Length with
-                | Greater -> Values.arityErr name paramz.Length args
-                | Lesser -> Done(Func(Partial(defun, args)))
-                | Equal ->
-                    let env = appendLocals env (List.zip paramz args)
-                    match pos with
-                    | Head -> evalw env body
-                    | Tail -> Values.thunkw(fun () -> evalw env body)
+            match args.Length, paramz.Length with
+            | Greater -> Values.arityErr name paramz.Length args
+            | Lesser -> Done(Func(Partial(defun, args)))
+            | Equal ->
+                let env = appendLocals env (List.zip paramz args)
+                match pos with
+                | Head -> evalw env body
+                | Tail -> Values.thunkw(fun () -> evalw env body)
         | Primitive(name, arity, f) as primitive ->
             match args with
             | [] -> Done(Func primitive)
