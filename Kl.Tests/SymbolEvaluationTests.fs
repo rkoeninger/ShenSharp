@@ -33,3 +33,19 @@ type SymbolEvaluationTests() =
         assertEq
             (Cons(Sym "A", Cons(Sym "-->", Cons(Sym "boolean", Empty))))
             (runIt "(cons A (cons --> (cons boolean ())))")
+
+    [<Test>]
+    member this.``a function defun'd with an upper-case name will not get resolved when applied``() =
+        // because the symbol will be resolved using
+        // only the local namespace
+        let env = baseEnv()
+        runInEnv env "(defun Inc (X) (+ X 1))" |> ignore
+        assertErrorInEnv env "(Inc 5)"
+
+    [<Test>]
+    member this.``setting a global symbol to a lambda will not allow it to be used as a defun``() =
+        // because lower-case named functions only get resolved
+        // using the function namespace, not the symbol namespace
+        let env = baseEnv()
+        runInEnv env "(set inc (lambda X (+ X 1)))" |> ignore
+        assertErrorInEnv env "(inc 5)"

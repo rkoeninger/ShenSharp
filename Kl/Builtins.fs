@@ -325,6 +325,12 @@ module Builtins =
         let consoleOutStream = Console.OpenStandardOutput()
         OutStream {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
 
+    let klIsSymbol _ args =
+        match args with
+        | [Sym _] -> Values.truev
+        | [_] -> Values.falsev
+        | _ -> arityErr "symbol?" 1 args
+
     let klPrint _ args =
         match args with
         | [x] -> Console.Write(Values.toStr x)
