@@ -54,39 +54,41 @@ module Compiler =
             | _ -> ch.ToString()
         String.collect escapeChar s
 
-    let private buildLambda param body =
+    let globalsParam = "(globals)", FsType.Of("Globals")
+
+    let private buildLambda context param body =
         FsExpr.App(
             FsExpr.Id "Func",
             [FsExpr.App(
                 FsExpr.Id "Primitive",
                 [FsExpr.Tuple(
-                    [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                    [FsExpr.String (sprintf "%s/%s" context "lambda")
                      FsExpr.Int32 1
                      FsExpr.Lambda(
                         false,
-                        ["envGlobals", FsType.Of("Globals")],
+                        [globalsParam],
                          FsExpr.Lambda(
                             false,
                             ["args", FsType.ListOf(FsType.Of("Value"))],
                             body))])])])
                             
-    let private buildFreeze body =
+    let private buildFreeze context body =
         FsExpr.App(
             FsExpr.Id "Func",
             [FsExpr.App(
                 FsExpr.Id "Primitive",
                 [FsExpr.Tuple(
-                    [FsExpr.String "anonymous" // TODO: track context (surrounding defun name) to gen name
+                    [FsExpr.String (sprintf "%s/%s" context "freeze")
                      FsExpr.Int32 0
                      FsExpr.Lambda(
                         false,
-                        ["envGlobals", FsType.Of("Globals")],
+                        [globalsParam],
                          FsExpr.Lambda(
                             false,
                             ["args", FsType.ListOf(FsType.Of("Value"))],
                             body))])])])
 
-    let rec build defs expr =
+    let rec build context defs expr =
         let seBool synExpr = FsExpr.App(FsExpr.LongId ["Values"; "vbool"], [synExpr])
 
         match expr with
@@ -102,50 +104,54 @@ module Compiler =
                 then FsExpr.Id s
                 else FsExpr.App(FsExpr.Id "Sym", [FsExpr.String s])
         | AndExpr(left, right) ->
-            FsExpr.If(seBool(build defs left), build defs right, build defs (BoolExpr false))
+            FsExpr.If(seBool(build context defs left), build context defs right, build context defs (BoolExpr false))
         | OrExpr(left, right) ->
-            FsExpr.If(seBool(build defs left), build defs (BoolExpr true), build defs right)
+            FsExpr.If(seBool(build context defs left), build context defs (BoolExpr true), build context defs right)
         | IfExpr(condition, ifTrue, ifFalse) ->
-            FsExpr.If(seBool(build defs condition), build defs ifTrue, build defs ifFalse)
+            FsExpr.If(seBool(build context defs condition), build context defs ifTrue, build context defs ifFalse)
         | CondExpr(clauses) ->
             let rec buildClauses clauses =
                 match clauses with
                 | (BoolExpr false, _) :: rest -> buildClauses rest
-                | (BoolExpr true, ifTrue) :: _ -> build defs ifTrue
-                | (condition, ifTrue) :: rest -> FsExpr.If(seBool(build defs condition), build defs ifTrue, buildClauses rest)
+                | (BoolExpr true, ifTrue) :: _ -> build context defs ifTrue
+                | (condition, ifTrue) :: rest ->
+                    FsExpr.If(
+                        seBool(build context defs condition),
+                        build context defs ifTrue,
+                        buildClauses rest)
                 | [] -> FsFail.With("No condition was true")
             buildClauses clauses
         | LetExpr(symbol, binding, body) ->
-            FsExpr.Let([FsBinding.Of(symbol, build defs binding)], build (Set.add symbol defs) body)
+            FsExpr.Let([FsBinding.Of(symbol, build context defs binding)], build context (Set.add symbol defs) body)
         | LambdaExpr(symbol, body) ->
-            buildLambda symbol (build (Set.add symbol defs) body)
+            buildLambda context symbol (build context (Set.add symbol defs) body)
         | FreezeExpr(expr) ->
-            buildFreeze(build defs expr)
+            buildFreeze context (build context defs expr)
         | TrapExpr(_, body, handler) ->
             FsExpr.Try(
-                build defs body,
+                build context defs body,
                 [FsMatchClause.Of(FsPat.Name("SimpleError", FsPat.Name("e")), FsExpr.Id "Empty")])
         | AppExpr(_, f, args) ->
             match f with
             | SymExpr op ->
-                let builtArgs = List.map (build defs) args
+                let builtArgs = List.map (build context defs) args
                 let builtOp =
                     match Map.tryFind op primitiveNames with
                     | Some(pop) -> FsExpr.LongId ["Builtins"; pop]
                     | _ when Values.isVar op -> FsExpr.Id op
                     | _ -> FsExpr.LongId ["KlImpl"; op]
-                FsExpr.App(builtOp, [FsExpr.Id "envGlobals"; FsExpr.List(builtArgs)])
+                FsExpr.App(builtOp, [FsExpr.Id (fst globalsParam); FsExpr.List(builtArgs)])
             | _ -> failwith "application expression or special form must start with symbol"
 
     let private topLevelBuild expr =
         match expr with
         | DefunExpr(symbol, paramz, body) ->
-            let typedParamz = ["envGlobals", FsType.Of("Globals"); "args", FsType.ListOf(FsType.Of("Value"))]
+            let typedParamz = [globalsParam; "args", FsType.ListOf(FsType.Of("Value"))]
             FsModule.SingleLet(
                 symbol,
                 typedParamz,
                 FsExpr.Match(FsExpr.Id "args",
-                    [FsMatchClause.Of(FsPat.List(List.map FsPat.SimpleName paramz), build (Set.ofList paramz) body)
+                    [FsMatchClause.Of(FsPat.List(List.map FsPat.SimpleName paramz), build symbol (Set.ofList paramz) body)
                      FsMatchClause.Of(FsPat.Wild, FsFail.With("Wrong number or type of arguments"))]))
         | expr -> failwith "not a defun expr"
 
@@ -159,7 +165,7 @@ module Compiler =
             | [] -> FsExpr.Unit
         FsModule.SingleLet(
             "init",
-            ["envGlobals", FsType.Of("Globals")],
+            [globalsParam],
             buildSeq exprs)
 
     let buildModule exprs =
@@ -173,7 +179,7 @@ module Compiler =
             | OtherExpr e -> e
             | _ -> failwith "not other"
         let decls = exprs |> List.filter isDefun |> List.map topLevelBuild
-        let init = exprs |> List.filter isOtherApp |> List.map other |> List.map (build Set.empty) |> buildInit
+        let init = exprs |> List.filter isOtherApp |> List.map other |> List.map (build "_root/" Set.empty) |> buildInit
         let members = List.append decls [init]
         let openKl = FsModule.Open ["Kl"]
         FsFile.Of("KlImpl", [FsModule.Of("KlImpl", List.Cons(openKl, members))])

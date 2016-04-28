@@ -28,8 +28,8 @@ type CompilerTests() =
 
     [<Test>]
     member this.CompilerServicesBuildAst() =
-        let p = tokenize >> parse Head >> Compiler.build Set.empty
-        let r = AndExpr(BoolExpr true, BoolExpr false) |> Compiler.build Set.empty
+        let p = tokenize >> parse Head >> Compiler.build "test" Set.empty
+        let r = AndExpr(BoolExpr true, BoolExpr false) |> Compiler.build "test" Set.empty
         let text = """module Stuff
         
 open Kl
@@ -50,10 +50,10 @@ let fff = match (match 0 with
                           [openKl
                            FsModule.SingleLet(
                               "f",
-                              ["envGlobals", FsType.Of("Globals")
+                              [Compiler.globalsParam
                                "X", FsType.Of("Value")
                                "Y", FsType.Of("Value")],
-                              Compiler.build (Set.ofList ["X"; "Y"]) (
+                              Compiler.build "test" (Set.ofList ["X"; "Y"]) (
                                 Expr.AppExpr(
                                   Position.Head,
                                   Expr.SymExpr "+",
@@ -72,8 +72,8 @@ let fff = match (match 0 with
     [<Test>]
     member this.KlExprToSynExpr() =
         let kl = Expr.AndExpr(Expr.BoolExpr true, Expr.BoolExpr false)
-        let syn = Compiler.build Set.empty kl
-        let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
+        let syn = Compiler.build "test" Set.empty kl
+        let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
@@ -91,8 +91,8 @@ let fff = match (match 0 with
     [<Test>]
     member this.BuildFreezeExpr() =
         let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymExpr "number?", [Expr.StrExpr "hi"]))
-        let syn = Compiler.build Set.empty kl
-        let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
+        let syn = Compiler.build "test" Set.empty kl
+        let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
@@ -112,8 +112,8 @@ let fff = match (match 0 with
     [<Test>]
     member this.BuildCondExpr() =
         let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> tokenize |> parse Position.Head
-        let syn = Compiler.build (Set.singleton "X") kl
-        let ast = singleBinding ["envGlobals", FsType.Of("Globals"); "X", FsType.Of("Value")] syn
+        let syn = Compiler.build "test" (Set.singleton "X") kl
+        let ast = singleBinding [Compiler.globalsParam; "X", FsType.Of("Value")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
@@ -135,8 +135,8 @@ let fff = match (match 0 with
     [<Test>]
     member this.BuildLetExpr() =
         let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> tokenize |> parse Position.Head
-        let syn = Compiler.build Set.empty kl
-        let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
+        let syn = Compiler.build "test" Set.empty kl
+        let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
@@ -163,8 +163,8 @@ let fff = match (match 0 with
     [<Test>]
     member this.``compiler should keep track of local variables so it know what to emit as variable or idle symbol``() =
         let expr = parse Head (tokenize "(cons A (cons B (cons C ())))")
-        let syn = Compiler.build Set.empty expr
-        let ast = singleBinding ["envGlobals", FsType.Of("Globals")] syn
+        let syn = Compiler.build "test" Set.empty expr
+        let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
