@@ -181,7 +181,7 @@ let fff = match (match 0 with
         ()
 
     [<Test>]
-    //[<Ignore("would only work locally/not needed?")>]
+    [<Ignore("would only work locally/not needed?")>]
     member this.``dump code to disk and compile it there``() =
         let kl = """
         (defun pi () 3.1415926)
