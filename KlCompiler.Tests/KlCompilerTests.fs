@@ -178,3 +178,42 @@ let fff = match (match 0 with
         let fields = types.[0].GetFields()
         let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
         ()
+    
+    [<Test>]
+    [<Ignore("would only work locally/not needed?")>]
+    member this.``build shit``() =
+        let kl = """
+        (defun sq (X) (* X X))
+        """                    |> tokenizeAll |> List.map rootParse
+        let ast = Compiler.buildModule kl
+        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let srcPath = Path.Combine(Path.GetTempPath(), "klcompiler", Guid.NewGuid().ToString() + ".fs")
+        if not(Directory.Exists(Path.GetDirectoryName(srcPath))) then
+            Directory.CreateDirectory(Path.GetDirectoryName(srcPath)) |> ignore
+        File.WriteAllText(srcPath, str)
+        //System.Console.WriteLine(str)
+        //let ps = new System.Diagnostics.ProcessStartInfo(
+        //            "fsharpc",
+        //            @"-a -o:C:\Users\Bort\Workspace\ShenSharp\Shen.Core.dll -r:C:\Users\Bort\Workspace\ShenSharp\Kl\bin\Debug\Kl.dll " + srcPath)
+        //ps.RedirectStandardError <- true
+        //ps.RedirectStandardOutput <- true
+        //ps.UseShellExecute <- false
+        //let p = System.Diagnostics.Process.Start(ps)
+        //Assert.IsTrue(p.WaitForExit(30000))
+        let s = new SimpleSourceCodeServices()
+        //let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
+        let fsCorePath = @"C:\Program Files (x86)\Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.4.0.0\FSharp.Core.dll"
+        let mscorlibPath = @"C:\Windows\Microsoft.NET\Framework\v4.0.30319\mscorlib.dll"
+        let klPath = @"C:\Users\Bort\Workspace\ShenSharp\Kl\bin\Debug\Kl.dll"
+        let outPath = @"C:\Users\Bort\Workspace\ShenSharp\Shen.Core.dll"
+        let pdbPath = @"C:\Users\Bort\Workspace\ShenSharp\Shen.Core.pdb"
+        let (errors, i) = s.Compile([ast], "Shen.Core", outPath, [mscorlibPath; fsCorePath; klPath], pdbPath, false, true)
+        for e in errors do
+            printfn "%s" e.Message
+        Assert.AreEqual(0, i)
+        //let types = asm.Value.GetTypes()
+        //let methods = types.[0].GetMethods()
+        //let props = types.[0].GetProperties()
+        //let fields = types.[0].GetFields()
+        //let v = methods.[0].Invoke(null, [|Values.newGlobals(); [Int 3]|])
+        //Assert.AreEqual(Int 9, v)
