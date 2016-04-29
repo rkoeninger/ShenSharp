@@ -11,8 +11,8 @@ type BuiltinsTests() =
 
     [<Test>]
     member this.``string index out of bounds should cause uncaught error``() =
-        assertError "(pos \"\" 0)"
-        assertError "(pos \"hello\" 5)"
+        assertError """(pos "" 0)"""
+        assertError """(pos "hello" 5)"""
 
     [<Test>]
     member this.``vector index out of bounds should cause uncaught error``() =
@@ -20,12 +20,12 @@ type BuiltinsTests() =
 
     [<Test>]
     member this.``concatenation with empty string should produce same string``() =
-        assertEq (Str "abc") (runIt "(cn \"\" \"abc\")")
-        assertEq (Str "abc") (runIt "(cn \"abc\" \"\")")
+        assertEq (Str "abc") (runIt """(cn "" "abc")""")
+        assertEq (Str "abc") (runIt """(cn "abc" "")""")
 
     [<Test>]
     member this.``string->n and n->string functions should be able to result in same character``() =
-        assertEq (Str "Hello") (runIt "(cn (n->string (string->n \"Hello\")) (tlstr \"Hello\"))")
+        assertEq (Str "Hello") (runIt """(cn (n->string (string->n "Hello")) (tlstr "Hello"))""")
         
     [<Test>]
     member this.``vectors should be pre-filled with the symbol 'fail!``() =
@@ -41,16 +41,22 @@ type BuiltinsTests() =
         assertError "(tl 0)"
         assertError "(hd ())"
         assertError "(tl ())"
-        
+        assertNoError "(hd (cons 0 ()))"
+        assertNoError "(tl (cons 0 ()))"
+    
     [<Test>]
-    member this.EvalFunction() =
-        assertEq
-            (Int 3)
-            (runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))") // (+ 1 2)
+    member this.``eval-kl evaluating a constant should equal that constant``() =
+        assertEq (Int 5) (runIt "(eval-kl 5)")
+        assertEq (Str "abc") (runIt """(eval-kl "abc")""")
+        assertEq (Bool true) (runIt "(eval-kl true)")
+        assertEq Empty (runIt "(eval-kl ())")
+        assertEq (Sym "abc") (runIt "(eval-kl abc)")
 
-        match runIt "(eval-kl (cons lambda (cons X (cons (cons + (cons 1 (cons X ()))) ()))))" with // (lambda X (+ 1 X))
-        | Func f ->
-            assertEq
-                (Int 5)
-                (Values.go(apply Head (baseEnv()).Globals [] f [Int 4]))
-        | _ -> Assert.Fail "Function expected"
+    [<Test>]
+    member this.``eval-kl should have the same effect as straight KL that ``() =
+        assertEq
+            (runIt "(+ 1 2)")
+            (runIt "(eval-kl (cons + (cons 1 (cons 2 ()))))")
+        assertEq
+            (runIt "(if (< 4 5) a b)")
+            (runIt "(eval-kl (cons if (cons (cons < (cons 4 (cons 5 ()))) (cons a (cons b ())))))")

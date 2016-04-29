@@ -23,6 +23,7 @@ module TestCommon =
         match value with
         | Int _ -> ()
         | _ -> Assert.Fail "Int expected"
+    let assertNoError syntax = runIt syntax |> ignore
     let assertError syntax =
         try
             runIt syntax |> ignore
