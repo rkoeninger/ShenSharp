@@ -16,6 +16,7 @@ open System.Reflection
 
 type CompilerTests() =
 
+    let assertEq (x: 'a) (y: 'a) = Assert.AreEqual(x, y)
     let openKl = SynModuleDecl.Open(LongIdentWithDots.LongIdentWithDots([new Ident("Kl", FsAst.defaultRange)], []), FsAst.defaultRange)
     let formatConfig = Fantomas.FormatConfig.FormatConfig.create(4, 160, false, true, true, true, true, true, false, false, true)
     let singleBinding args syn =
@@ -178,42 +179,45 @@ let fff = match (match 0 with
         let fields = types.[0].GetFields()
         let v = methods.[0].Invoke(null, [|Values.newGlobals()|])
         ()
-    
+
     [<Test>]
-    [<Ignore("would only work locally/not needed?")>]
-    member this.``build shit``() =
+    //[<Ignore("would only work locally/not needed?")>]
+    member this.``dump code to disk and compile it there``() =
         let kl = """
+        (defun pi () 3.1415926)
+
         (defun sq (X) (* X X))
-        """                    |> tokenizeAll |> List.map rootParse
+
+        (defun circle-area (R) (* (pi) (sq R)))
+        """       |> tokenizeAll |> List.map rootParse
         let ast = Compiler.buildModule kl
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         let srcPath = Path.Combine(Path.GetTempPath(), "klcompiler", Guid.NewGuid().ToString() + ".fs")
         if not(Directory.Exists(Path.GetDirectoryName(srcPath))) then
             Directory.CreateDirectory(Path.GetDirectoryName(srcPath)) |> ignore
         File.WriteAllText(srcPath, str)
-        //System.Console.WriteLine(str)
-        //let ps = new System.Diagnostics.ProcessStartInfo(
-        //            "fsharpc",
-        //            @"-a -o:C:\Users\Bort\Workspace\ShenSharp\Shen.Core.dll -r:C:\Users\Bort\Workspace\ShenSharp\Kl\bin\Debug\Kl.dll " + srcPath)
-        //ps.RedirectStandardError <- true
-        //ps.RedirectStandardOutput <- true
-        //ps.UseShellExecute <- false
-        //let p = System.Diagnostics.Process.Start(ps)
-        //Assert.IsTrue(p.WaitForExit(30000))
-        let s = new SimpleSourceCodeServices()
-        //let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
         let fsCorePath = @"C:\Program Files (x86)\Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.4.0.0\FSharp.Core.dll"
         let mscorlibPath = @"C:\Windows\Microsoft.NET\Framework\v4.0.30319\mscorlib.dll"
-        let klPath = @"C:\Users\Bort\Workspace\ShenSharp\Kl\bin\Debug\Kl.dll"
-        let outPath = @"C:\Users\Bort\Workspace\ShenSharp\Shen.Core.dll"
-        let pdbPath = @"C:\Users\Bort\Workspace\ShenSharp\Shen.Core.pdb"
+        let binDir = TestContext.CurrentContext.TestDirectory
+        let klPath = Path.Combine(binDir, @"..\..\..\Kl\bin\Debug\Kl.dll")
+        let outDir = Path.Combine(binDir, "out")
+        if not(Directory.Exists(outDir)) then
+            Directory.CreateDirectory(outDir) |> ignore
+        let outPath = Path.Combine(outDir, "Shen.Core.dll")
+        let pdbPath = Path.Combine(outDir, "Shen.Core.pdb")
+        let s = new SimpleSourceCodeServices()
         let (errors, i) = s.Compile([ast], "Shen.Core", outPath, [mscorlibPath; fsCorePath; klPath], pdbPath, false, true)
         for e in errors do
             printfn "%s" e.Message
         Assert.AreEqual(0, i)
-        //let types = asm.Value.GetTypes()
-        //let methods = types.[0].GetMethods()
-        //let props = types.[0].GetProperties()
-        //let fields = types.[0].GetFields()
-        //let v = methods.[0].Invoke(null, [|Values.newGlobals(); [Int 3]|])
-        //Assert.AreEqual(Int 9, v)
+        let asm = Assembly.LoadFrom(outPath)
+        let typ = asm.GetType("Shen", true)
+        let methods = typ.GetMethods()
+        let m = Array.find (fun (m: MethodInfo) -> m.Name = "circle-area") methods
+        let v = m.Invoke(null, [|Values.newGlobals(); [Int 5]|]) :?> Value
+        match v with
+        | Dec i ->
+            if i > 70m && i < 80m
+                then ()
+                else Assert.Fail "decimal value out of range"
+        | _ -> Assert.Fail "Expected decimal value"

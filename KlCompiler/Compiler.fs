@@ -139,7 +139,7 @@ module Compiler =
                     match Map.tryFind op primitiveNames with
                     | Some(pop) -> FsExpr.LongId ["Builtins"; pop]
                     | _ when Values.isVar op -> FsExpr.Id op
-                    | _ -> FsExpr.LongId ["KlImpl"; op]
+                    | _ -> FsExpr.Id op
                 FsExpr.App(builtOp, [FsExpr.Id (fst globalsParam); FsExpr.List(builtArgs)])
             | _ -> failwith "application expression or special form must start with symbol"
 
@@ -182,4 +182,4 @@ module Compiler =
         let init = exprs |> List.filter isOtherApp |> List.map other |> List.map (build "_root/" Set.empty) |> buildInit
         let members = List.append decls [init]
         let openKl = FsModule.Open ["Kl"]
-        FsFile.Of("KlImpl", [FsModule.Of("KlImpl", List.Cons(openKl, members))])
+        FsFile.Of("Shen", [FsModule.Of("Shen", List.Cons(openKl, members))])
