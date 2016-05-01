@@ -1,8 +1,9 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
-open Kl
 open TestCommon
+open Kl
+open Kl.Startup
 
 [<TestFixture>]
 type ScopeCaptureTests() =
@@ -25,7 +26,7 @@ type ScopeCaptureTests() =
 
     [<Test>]
     member this.``preserves the value of closed-over function parameters``() =
-        let env = Startup.baseEnv()
+        let env = baseEnv()
         runIn env "(set foo (absvector 3))" |> ignore
         runIn env "(defun do-it (N) (if (= N 3) true (let _ (address-> (value foo) N (freeze N)) (do-it (+ N 1)))))" |> ignore
         runIn env "(do-it 0)" |> ignore
@@ -35,7 +36,7 @@ type ScopeCaptureTests() =
 
     [<Test>]
     member this.``preserves the value of closed-over local variables``() =
-        let env = Startup.baseEnv()
+        let env = baseEnv()
         runIn env "(set foo (absvector 3))" |> ignore
         runIn env "(defun do-it (N) (if (= N 3) true (let X N (let _ (address-> (value foo) N (freeze X)) (do-it (+ N 1))))))" |> ignore
         runIn env "(do-it 0)" |> ignore
@@ -45,7 +46,7 @@ type ScopeCaptureTests() =
 
     [<Test>]
     member this.``supports functions with zero arguments``() =
-        let env = Startup.baseEnv()
+        let env = baseEnv()
         runIn env "(set foo (absvector 3))" |> ignore
         runIn env "(set counter 0)" |> ignore
         runIn env "(defun count-down () (if (= 20000 (set counter (+ (value counter) 1))) true (count-down)))" |> ignore

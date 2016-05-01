@@ -7,6 +7,10 @@ open Extensions
 /// </summary>
 module Parser =
 
+    // TODO: add DoExpr?
+    //       has last expression in tail position
+    //       https://github.com/gregspurrier/klam/blob/master/spec/functional/extensions/do_spec.rb
+
     /// <summary>
     /// Parse a token into an expression.
     /// </summary>
