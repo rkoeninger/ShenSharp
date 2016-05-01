@@ -29,13 +29,15 @@ module TestCommon =
             runIt syntax |> ignore
             Assert.Fail "Error expected"
         with
-            _ -> ()
+            | :? AssertionException as e -> raise e
+            | _ -> ()
     let assertErrorInEnv env syntax =
         try
             runInEnv env syntax |> ignore
             Assert.Fail "Error expected"
         with
-            _ -> ()
+            | :? AssertionException as e -> raise e
+            | _ -> ()
     let assertEffect eff syntax =
         let env = baseEnv()
         runInEnv env "(defun do (X Y) Y)" |> ignore

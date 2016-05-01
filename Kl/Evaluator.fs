@@ -59,6 +59,7 @@ module Evaluator =
         // exactly 1 argument
         | Lambda(param, locals, body) as lambda ->
             match args with
+            | [] -> Done(Func lambda)
             | [x] -> evalw (appendLocals {env with Locals = locals} [(param, x)]) body
             | _ -> Done(Values.err "Lambdas take exactly 1 argument")
 
@@ -67,7 +68,10 @@ module Evaluator =
         | Defun(name, paramz, body) as defun ->
             match args.Length, paramz.Length with
             | Greater -> Values.arityErr name paramz.Length args
-            | Lesser -> Done(Func(Partial(defun, args)))
+            | Lesser ->
+                match args with
+                | [] -> Done(Func defun)
+                | _ -> Done(Func(Partial(defun, args)))
             | Equal ->
                 let env = appendLocals env (List.zip paramz args)
                 incCallCount env name
@@ -77,16 +81,15 @@ module Evaluator =
 
         // Tail calls do not apply to primitives as they are implemented natively
         | Primitive(name, arity, f) as primitive ->
-            if arity = -1 then
+            match args.Length, arity with
+            | Greater -> Values.arityErr name arity args
+            | Lesser ->
+                match args with
+                | [] -> Done(Func primitive)
+                | _ -> Done(Func(Partial(primitive, args)))
+            | Equal ->
                 incCallCount env name
                 Done(f globals args)
-            else
-                match args.Length, arity with
-                | Greater -> Values.arityErr name arity args
-                | Lesser -> Done(Func(Partial(primitive, args)))
-                | Equal ->
-                    incCallCount env name
-                    Done(f globals args)
 
         // Applying a partially applied function is just applying
         // the original function with the previous and current
@@ -208,6 +211,6 @@ module Evaluator =
         | DefunExpr(name, paramz, body) ->
             let f = Defun(name, paramz, body)
             globals.Functions.[name] <- f
-            Func f
+            Sym name
 
         | OtherExpr expr -> eval env expr

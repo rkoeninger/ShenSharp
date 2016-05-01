@@ -49,3 +49,9 @@ type SymbolEvaluationTests() =
         let env = baseEnv()
         runInEnv env "(set inc (lambda X (+ X 1)))" |> ignore
         assertErrorInEnv env "(inc 5)"
+
+    [<Test>]
+    member this.``evaluating a defun results in the defun name as a symbol``() =
+        match runIt "(defun inc (X) (+ 1 X))" with
+        | Sym s -> assertEq s "inc"
+        | _ -> Assert.Fail "Symbol expected"

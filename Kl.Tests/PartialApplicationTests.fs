@@ -25,12 +25,12 @@ type PartialApplicationTests() =
         | _ -> Assert.Fail "Partial expected"
 
     [<Test>]
-    member this.``applying a defun that takes 1 or more parameters to 0 arguments results in a partial``() =
+    member this.``applying a defun that takes 1 or more parameters to 0 arguments results in that same defun``() =
         let env = baseEnv()
         runInEnv env "(defun inc (X) (+ X 1))" |> ignore
         match runInEnv env "(inc)" with
-        | Func(Partial(Defun("inc", _, _), [])) -> ()
-        | _ -> Assert.Fail "Partial expected"
+        | Func(Defun("inc", _, _)) -> ()
+        | _ -> Assert.Fail "Defun expected"
 
     [<Test>]
     member this.``applying a defun to more arguments than it takes causes an error``() =
@@ -55,10 +55,10 @@ type PartialApplicationTests() =
         | _ -> Assert.Fail "Partial expected"
         
     [<Test>]
-    member this.``applying a primitive that takes 1 or more parameters to 0 arguments results in a partial``() =
+    member this.``applying a primitive that takes 1 or more parameters to 0 arguments results in that same primitve``() =
         match runIt "(+)" with
-        | Func(Partial(Primitive("+", _, _), [])) -> ()
-        | x -> Assert.Fail "Partial expected"
+        | Func(Primitive("+", _, _)) -> ()
+        | x -> Assert.Fail "Primitive expected"
 
     [<Test>]
     member this.``applying a primitive to more arguments than it takes causes an error``() =
@@ -75,5 +75,7 @@ type PartialApplicationTests() =
         assertEq (Int 4) (runIt "((lambda X X) 4)")
 
     [<Test>]
-    member this.``lambdas cannot be partially applied to 0 arguments``() =
-        assertError "((lambda X X))"
+    member this.``applying a lambda to 0 arguments results in the same lambda``() =
+        match runIt "((lambda X X))" with
+        | Func(Lambda("X", _, _)) -> ()
+        | _ -> Assert.Fail "Lambda expected"

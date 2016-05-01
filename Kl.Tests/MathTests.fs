@@ -1,6 +1,7 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
+open Kl
 open TestCommon
 
 [<TestFixture>]
@@ -55,3 +56,9 @@ type MathTests() =
         assertDec(runIt "(/ 1.1 2)")
         assertDec(runIt "(/ 11 -2.4)")
         assertDec(runIt "(/ 1.1 2.4)")
+
+    [<Test>]
+    member this.``dividing two integers does not truncate decimal``() =
+        match runIt "(/ 3 2)" with
+        | Dec d -> assertEq 1.5m d
+        | _ -> Assert.Fail "decimal expected"
