@@ -22,3 +22,31 @@ type ScopeCaptureTests() =
     [<Test>]
     member this.``freeze expressions should not have access to symbols outside lexical scope``() =
         assertEq (Sym "Y") (run "(let F (freeze Y) (let Y 3 (F)))")
+
+    [<Test>]
+    member this.``preserves the value of closed-over function parameters``() =
+        let env = Startup.baseEnv()
+        runIn env "(set foo (absvector 3))" |> ignore
+        runIn env "(defun do-it (N) (if (= N 3) true (let _ (address-> (value foo) N (freeze N)) (do-it (+ N 1)))))" |> ignore
+        runIn env "(do-it 0)" |> ignore
+        assertEq (Int 0) (runIn env "((<-address (value foo) 0))")
+        assertEq (Int 1) (runIn env "((<-address (value foo) 1))")
+        assertEq (Int 2) (runIn env "((<-address (value foo) 2))")
+
+    [<Test>]
+    member this.``preserves the value of closed-over local variables``() =
+        let env = Startup.baseEnv()
+        runIn env "(set foo (absvector 3))" |> ignore
+        runIn env "(defun do-it (N) (if (= N 3) true (let X N (let _ (address-> (value foo) N (freeze X)) (do-it (+ N 1))))))" |> ignore
+        runIn env "(do-it 0)" |> ignore
+        assertEq (Int 0) (runIn env "((<-address (value foo) 0))")
+        assertEq (Int 1) (runIn env "((<-address (value foo) 1))")
+        assertEq (Int 2) (runIn env "((<-address (value foo) 2))")
+
+    [<Test>]
+    member this.``supports functions with zero arguments``() =
+        let env = Startup.baseEnv()
+        runIn env "(set foo (absvector 3))" |> ignore
+        runIn env "(set counter 0)" |> ignore
+        runIn env "(defun count-down () (if (= 20000 (set counter (+ (value counter) 1))) true (count-down)))" |> ignore
+        assertTrue (runIn env "(count-down)")
