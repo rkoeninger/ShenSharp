@@ -53,21 +53,26 @@ module Evaluator =
         | Freeze(locals, body) ->
             match args with
             | [] -> evalw {env with Locals = locals} body
-            | _ -> Done(Values.err "Freezes do not take arguments")
+            | _ ->
+                match eval {env with Locals = locals} body with
+                | Func f -> apply pos globals trace callCounts f args
+                | _ -> Values.err "Function expected/too many arguments provided to freeze"
 
         // Lambdas do not get partially applied as they always take
         // exactly 1 argument
         | Lambda(param, locals, body) as lambda ->
             match args with
             | [] -> Done(Func lambda)
-            | [x] -> evalw (appendLocals {env with Locals = locals} [(param, x)]) body
-            | _ -> Done(Values.err "Lambdas take exactly 1 argument")
+            | [x] -> evalw (appendLocals {env with Locals = locals} [param, x]) body
+            | x :: args ->
+                match eval (appendLocals {env with Locals = locals} [param, x]) body with
+                | Func f -> apply pos globals trace callCounts f args
+                | _ -> Values.err "Function expected/too many arguments provided to lambda"
 
         // Defuns and Primitives can have any number of arguments and
         // can be partially applied
         | Defun(name, paramz, body) as defun ->
             match args.Length, paramz.Length with
-            | Greater -> Values.arityErr name paramz.Length args
             | Lesser ->
                 match args with
                 | [] -> Done(Func defun)
@@ -78,11 +83,16 @@ module Evaluator =
                 match pos with
                 | Head -> evalw env body
                 | Tail -> Values.thunkw(fun () -> evalw env body)
+            | Greater ->
+                let args0 = List.take paramz.Length args
+                let args1 = List.skip paramz.Length args
+                match eval (appendLocals env (List.zip paramz args0)) body with
+                | Func f -> apply pos globals trace callCounts f args1
+                | _ -> Values.err "Function expected/too many arguments provided to defun"
 
         // Tail calls do not apply to primitives as they are implemented natively
         | Primitive(name, arity, f) as primitive ->
             match args.Length, arity with
-            | Greater -> Values.arityErr name arity args
             | Lesser ->
                 match args with
                 | [] -> Done(Func primitive)
@@ -90,6 +100,12 @@ module Evaluator =
             | Equal ->
                 incCallCount env name
                 Done(f globals args)
+            | Greater ->
+                let args0 = List.take arity args
+                let args1 = List.skip arity args
+                match f globals args0 with
+                | Func f -> apply pos globals trace callCounts f args1
+                | _ -> Values.err "Function expected/too many arguments provided to defun"
 
         // Applying a partially applied function is just applying
         // the original function with the previous and current

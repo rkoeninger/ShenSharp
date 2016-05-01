@@ -79,3 +79,17 @@ type PartialApplicationTests() =
         match runIt "((lambda X X))" with
         | Func(Lambda("X", _, _)) -> ()
         | _ -> Assert.Fail "Lambda expected"
+
+    [<Test>]
+    member this.``application of multiple arguments should work over curried lambdas``() =
+        assertEq (Int 3) (runIt "(let F (lambda X (lambda Y (+ X Y))) (F 1 2))")
+
+    [<Test>]
+    member this.``arguments can be applied to freezes granted freeze eval's to an argument that accepts them``() =
+        assertEq (Int 3) (runIt "(let F (freeze (lambda X (lambda Y (+ X Y)))) (F 1 2))")
+
+    [<Test>]
+    member this.``application of excessive arguments to defuns then get applied to returned function``() =
+        let env = Startup.baseEnv()
+        runInEnv env "(defun add (X) (lambda Y (+ X Y)))" |> ignore
+        assertEq (Int 3) (runInEnv env "(add 1 2)")
