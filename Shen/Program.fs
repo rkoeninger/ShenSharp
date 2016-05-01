@@ -42,6 +42,7 @@ let main0 args =
             "map", (2, Builtins.klMap)
             "reverse", (1, Builtins.klReverse)
         ]
+    let defunList = new System.Collections.Generic.List<string>()
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
@@ -53,12 +54,22 @@ let main0 args =
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)
                 let expr = rootParse ast
+                match expr with
+                | DefunExpr(name, _, _) -> defunList.Add(name)
+                | _ -> ()
                 rootEval env.Globals env.CallCounts expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
+    let initEnv = Startup.baseEnv()
+    if List.forall2
+        (=)
+        (Seq.toList defunList |> List.sort)
+        (Seq.toList env.Globals.Functions.Keys |> List.filter (fun n -> not (initEnv.Globals.Functions.ContainsKey(n))) |> List.sort)
+        then printfn "defuns equal to functions"
+        else printfn "!!! defuns not equal"
     env.CallCounts
     |> Seq.sortBy (fun (KeyValue(k, v)) -> v)
     |> Seq.iter (fun (KeyValue(k,v)) -> printfn "%s: %d" k v)

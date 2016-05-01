@@ -223,6 +223,7 @@ let fff = match (match 0 with
         | _ -> Assert.Fail "Expected decimal value"
 
     [<Test>]
+    [<Ignore("informational only + paths broken on travis")>]
     member this.``analyze KL for recursive functions``() =
         let binDir = TestContext.CurrentContext.TestDirectory
         let klPath = Path.Combine(binDir, @"..\..\..\KLambda")
