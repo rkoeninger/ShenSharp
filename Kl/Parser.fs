@@ -90,3 +90,43 @@ module Parser =
 
         // Any other expr
         | _ -> OtherExpr(parse Head token)
+
+    /// <summary>
+    /// Converts an expression back into a token.
+    /// </summary>
+    let rec unparse expr =
+        match expr with
+        | BoolExpr b -> BoolToken b
+        | IntExpr i -> IntToken i
+        | DecExpr d -> DecToken d
+        | StrExpr s -> StrToken s
+        | SymExpr s -> SymToken s
+        | EmptyExpr -> ComboToken []
+        | AndExpr(left, right) ->
+            ComboToken [SymToken "and"; unparse left; unparse right]
+        | OrExpr(left, right) ->
+            ComboToken [SymToken "or"; unparse left; unparse right]
+        | IfExpr(condition, consequent, alternative) ->
+            ComboToken [SymToken "if"; unparse condition; unparse consequent; unparse alternative]
+        | CondExpr(clauses) ->
+            let unparseClause (condition, consequent) = ComboToken [unparse condition; unparse consequent]
+            ComboToken (List.Cons(SymToken "cond", List.map unparseClause clauses))
+        | LetExpr(symbol, binding, value) ->
+            ComboToken [SymToken "let"; SymToken symbol; unparse binding; unparse value]
+        | LambdaExpr(param, body) ->
+            ComboToken [SymToken "lambda"; SymToken param; unparse body]
+        | FreezeExpr body ->
+            ComboToken [SymToken "freeze"; unparse body]
+        | TrapExpr(_, body, handler) ->
+            ComboToken [SymToken "trap-error"; unparse body; unparse handler]
+        | AppExpr(_, f, args) ->
+            ComboToken (List.Cons(unparse f, List.map unparse args))
+
+    /// <summary>
+    /// Converts a root expression back into a token.
+    /// </summary>
+    let rootUnparse expr =
+        match expr with
+        | DefunExpr(name, paramz, body) ->
+            ComboToken [SymToken "defun"; SymToken name; ComboToken(List.map SymToken paramz); unparse body]
+        | OtherExpr expr -> unparse expr

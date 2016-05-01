@@ -42,3 +42,23 @@ module Tokenizer =
         match run pTokens s with
         | Success(result, _, _) -> result
         | Failure(error, _, _) -> failwith error
+    
+    /// <summary>
+    /// Converts a tree of tokens back into a string with standard spacing.
+    /// </summary>
+    let rec untokenize token =
+        match token with
+        | BoolToken true -> "true"
+        | BoolToken false -> "false"
+        | IntToken i -> i.ToString()
+        | DecToken d -> d.ToString()
+        | StrToken s -> sprintf "\"%s\"" s
+        | SymToken s -> s
+        | ComboToken xs -> sprintf "(%s)" (System.String.Join(" ", List.map untokenize xs))
+
+    /// <summary>
+    /// Converts multiple trees of tokens back into a string with standard spacing.
+    /// </summary>
+    /// <param name="tokens"></param>
+    let untokenizeAll tokens =
+        System.String.Join("\r\n\r\n", List.map untokenize tokens)

@@ -5,6 +5,30 @@ open Kl.Evaluator
 open System
 open System.IO
 
+let klVectorBuilder _ (args: Value list) =
+    let array = Array.create<Value>(args.Length) (Sym "shen.fail!")
+    List.iteri (fun i v -> array.[i] = v |> ignore) args
+    Vec array
+
+let buildClosure array =
+    let chunks = Array.chunkBySize 2 array
+    let define locals pair =
+        match pair with
+        | [|Sym name; value|] -> Map.add name value locals
+        | [|_; _|] -> Values.err "First item in each pair should be a symbol"
+        | _ -> failwith "shouldn't happen"
+    Array.fold define Map.empty chunks
+
+let klLambdaClosure _ args =
+    match args with
+    | [Vec array; Func(Lambda(param, _, body))] -> Func(Lambda(param, buildClosure array, body))
+    | _ -> failwith "lambda-closure: wrong number or type of args"
+
+let klFreezeClosure _ args =
+    match args with
+    | [Vec array; Func(Freeze(_, body))] -> Func(Freeze(buildClosure array, body))
+    | _ -> failwith "freeze-closure: wrong number or type of args"
+
 let main0 args =
     let stopwatch = System.Diagnostics.Stopwatch.StartNew()
     let files = [
@@ -24,6 +48,7 @@ let main0 args =
                                 // it contains (defun shen.typecheck ...) which types.kl uses
                                 // Double check this now that irresolvable symbols are Errors instead of failures
                     "types.kl"
+                   // @"preprocessed\preprocessed.kl"
                 ]
     let klFolder = @"..\..\..\KLambda"
     let rec astToStr = function
@@ -34,6 +59,9 @@ let main0 args =
         | StrToken s -> "\"" + s + "\""
         | SymToken s -> s
     let env = Startup.baseEnv()
+    env.Globals.Functions.["vector-builder"] <- Primitive("vector-builder", -1, klVectorBuilder)
+    env.Globals.Functions.["lambda-closure"] <- Primitive("lambda-closure", 2, klLambdaClosure)
+    env.Globals.Functions.["freeze-closure"] <- Primitive("freeze-closure", 2, klFreezeClosure)
     let overrides =
         Map.ofList [
             "symbol?", (1, Builtins.klIsSymbol)
@@ -54,25 +82,19 @@ let main0 args =
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)
                 let expr = rootParse ast
-                match expr with
-                | DefunExpr(name, _, _) -> defunList.Add(name)
-                | _ -> ()
+                //match expr with
+                //| DefunExpr(name, _, _) -> defunList.Add(name)
+                //| _ -> ()
                 rootEval env.Globals env.CallCounts expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
-    let initEnv = Startup.baseEnv()
-    if List.forall2
-        (=)
-        (Seq.toList defunList |> List.sort)
-        (Seq.toList env.Globals.Functions.Keys |> List.filter (fun n -> not (initEnv.Globals.Functions.ContainsKey(n))) |> List.sort)
-        then printfn "defuns equal to functions"
-        else printfn "!!! defuns not equal"
-    env.CallCounts
-    |> Seq.sortBy (fun (KeyValue(k, v)) -> v)
-    |> Seq.iter (fun (KeyValue(k,v)) -> printfn "%s: %d" k v)
+
+//    env.CallCounts
+//    |> Seq.sortBy (fun (KeyValue(k, v)) -> v)
+//    |> Seq.iter (fun (KeyValue(k,v)) -> printfn "%s: %d" k v)
     let load path = eval env (AppExpr (Head, (SymExpr "load"), [StrExpr path])) |> ignore
 //    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
 //    printfn "Starting shen repl..."
@@ -84,12 +106,12 @@ let main0 args =
 //        | ValueResult v -> printfn "%s" (KlBuiltins.klStr v)
 //        | ErrorResult e -> printfn "ERROR %s" e
 //    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
-//    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
-//    load <| "README.shen"
-//    load <| "tests.shen"
+    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
+    load <| "README.shen"
+    load <| "tests.shen"
 //    env.SymbolDefinitions.["logging"] <- Int 1
 //    load <| Path.Combine(testDir, "debug.shen")
-//    rootEval env.Globals (OtherExpr(AppExpr(Head, SymExpr "shen.shen", []))) |> ignore
+//    rootEval env.Globals env.CallCounts (OtherExpr(AppExpr(Head, SymExpr "shen.shen", []))) |> ignore
     printfn ""
     printfn "Press any key to exit..."
     System.Console.ReadKey() |> ignore

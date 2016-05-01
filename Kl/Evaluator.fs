@@ -77,12 +77,16 @@ module Evaluator =
 
         // Tail calls do not apply to primitives as they are implemented natively
         | Primitive(name, arity, f) as primitive ->
-            match args.Length, arity with
-            | Greater -> Values.arityErr name arity args
-            | Lesser -> Done(Func(Partial(primitive, args)))
-            | Equal ->
+            if arity = -1 then
                 incCallCount env name
                 Done(f globals args)
+            else
+                match args.Length, arity with
+                | Greater -> Values.arityErr name arity args
+                | Lesser -> Done(Func(Partial(primitive, args)))
+                | Equal ->
+                    incCallCount env name
+                    Done(f globals args)
 
         // Applying a partially applied function is just applying
         // the original function with the previous and current

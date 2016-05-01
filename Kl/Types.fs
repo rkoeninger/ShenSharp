@@ -3,6 +3,8 @@
 open System
 open System.Collections.Generic
 
+// TODO: remove distinction between decimal and int
+
 /// <summary>
 /// A node in a KL syntax tree.
 /// </summary>
