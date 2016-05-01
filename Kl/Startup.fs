@@ -62,7 +62,6 @@ module Startup =
             "*language*",       Str "F# 3.1"
             "*implementation*", Str(sprintf "CLR/%s" clrImpl)
             "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
-            "*version*",        Str "19.2"
             "*port*",           Str "0.1"
             "*porters*",        Str "Robert Koeninger"
             "*stinput*",        stinput
