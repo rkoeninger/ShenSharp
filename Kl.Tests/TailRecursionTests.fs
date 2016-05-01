@@ -11,11 +11,28 @@ open TestCommon
 type TailRecursionTests() =
 
     [<Test>]
+    member this.``optimizes self tail calls in an if consequent expression``() =
+        let env = baseEnv()
+        runIn env "(defun count-down (X) (if (> X 0) (count-down (- X 1)) true))" |> ignore
+        assertTrue (runIn env "(count-down 20000)")
+
+    [<Test>]
+    member this.``optimizes self tail calls in an if alternative expression``() =
+        let env = baseEnv()
+        runIn env "(defun count-down (X) (if (> X 0) true (count-down (- X 1))))" |> ignore
+        assertTrue (runIn env "(count-down 20000)")
+
+    [<Test>]
+    member this.``optimizes self tail calls in a let body``() =
+        let env = baseEnv()
+        runIn env "(defun count-down (X) (if (<= X 0) true (let F 1 (count-down (- X 1)))))" |> ignore
+        assertTrue (runIn env "(count-down 20000)")
+
+    [<Test>]
     member this.``deep-running tail-recursive function does not stack overflow``() =
         let env = baseEnv()
         runIn env "(defun fill (Vec Start Stop Val) (if (= Stop Start) (address-> Vec Start Val) (fill (address-> Vec Start Val) (+ 1 Start) Stop Val)))" |> ignore
         runIn env "(fill (absvector 20000) 0 19999 0)" |> ignore
-        ()
     
     [<Test>]
     member this.``deep-running mutually-recursive functions do not stack overflow``() =
