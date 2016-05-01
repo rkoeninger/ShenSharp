@@ -9,6 +9,13 @@ open TestCommon
 type SymbolEvaluationTests() =
 
     [<Test>]
+    member this.``symbols support full range of characters``() =
+        let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ=-*/+_?$!@~.><&%'#`;:{}"
+        for ch in chars do
+            let s = ch.ToString()
+            assertEq (SymToken s) (Tokenizer.tokenize s)
+
+    [<Test>]
     member this.``symbols not starting with an uppercase letter and not at the head of an application are always idle``() =
         assertEq (Sym "abc") (runIt "(let Id (lambda X X) abc)")
         assertEq (Sym "if") (runIt "(let Id (lambda X X) if)")

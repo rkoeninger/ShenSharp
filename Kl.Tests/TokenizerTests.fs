@@ -30,3 +30,8 @@ type TokenizerTests() =
     member this.``string literals including line breaks should be read as single token``() =
         let t = tokenizeAll "\"long copyright string\n\rwith line breaks\r\n\""
         assertEq 1 t.Length
+
+    [<Test>]
+    member this.``string literals can contain single quotes``() =
+        // NB: string literals in KL cannot contain double quotes as there is no way to escape them
+        assertEq (StrToken "'") (tokenize "\"'\"")
