@@ -138,7 +138,7 @@ module Builtins =
         | [v] ->
             Values.toToken v
             |> Parser.rootParse
-            |> Evaluator.rootEval globals
+            |> Evaluator.rootEval globals (new Defines<int>())
         | _ -> arityErr "eval-kl" 1 args
 
     let klType globals args =
@@ -339,7 +339,7 @@ module Builtins =
 
     let klFillVector _ args =
         match args with
-        | [Vec array as vector; Int stop; Int start; fillValue] ->
+        | [Vec array as vector; Int start; Int stop; fillValue] ->
             Array.fill array start (stop - start) fillValue
             vector
         | [_; _; _; _] -> typeErr4 "shen.fillvector" "vector" "int" "int" "value"
@@ -350,5 +350,30 @@ module Builtins =
         | [_; Empty] -> Values.falsev
         | [key; Cons(head, _)] when Values.eq key head -> Values.truev
         | [key; Cons(_, tail)] -> klElement globals [key; tail]
-        | [_; _] -> typeErr2 "element?" "value" "cons"
+        | [_; _] -> typeErr2 "element?" "value" "list"
         | _ -> arityErr "element?" 2 args
+
+    let klReverse _ args =
+        let rec reverseHelp v r =
+            match v with
+            | Cons(head, tail) -> reverseHelp tail (Cons(head, r))
+            | x -> x
+
+        match args with
+        | [Empty] -> Empty
+        | [Cons _ as v] -> reverseHelp v Empty
+        | [_] -> typeErr1 "reverse" "list"
+        | _ -> arityErr "reverse" 1 args
+
+    let klMap globals args =
+        match args with
+        | [_; Empty] -> Empty
+        | [Func f; Cons _ as c] ->
+            let applyF v = Evaluator.apply Head globals [] (new Defines<int>()) f [v] |> Values.go
+            let rec m v r =
+                match v with
+                | Cons(head, tail) -> m tail (Cons(applyF head, r))
+                | _ -> r
+            m c Empty
+        | [_; _] -> typeErr2 "map" "function" "list"
+        | _ -> arityErr "map" 2 args

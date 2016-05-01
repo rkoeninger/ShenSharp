@@ -221,3 +221,39 @@ let fff = match (match 0 with
                 then ()
                 else Assert.Fail "decimal value out of range"
         | _ -> Assert.Fail "Expected decimal value"
+
+    [<Test>]
+    member this.``analyze KL for recursive functions``() =
+        let binDir = TestContext.CurrentContext.TestDirectory
+        let klPath = Path.Combine(binDir, @"..\..\..\KLambda")
+        let rec contains name expr =
+            match expr with
+            | AppExpr(_, SymExpr n, _) when n = name -> true
+            | AppExpr(_, f, args) -> contains name f || List.exists (contains name) args
+            | IfExpr(c, t, f) -> contains name c || contains name t || contains name f
+            | CondExpr(clauses) -> List.exists (fun (c, t) -> contains name c || contains name t) clauses
+            | AndExpr(l, r) -> contains name l || contains name r
+            | OrExpr(l, r) -> contains name l || contains name r
+            | LetExpr(_, v, e) -> contains name v || contains name e
+            | TrapExpr(_, b, h) -> contains name b || contains name h
+            | LambdaExpr(_, b) -> contains name b
+            | FreezeExpr(e) -> contains name e
+            | _ -> false
+        let isRecursive expr =
+            match expr with
+            | DefunExpr(name, paramz, body) -> contains name body
+            | _ -> false
+        let exprs =
+            Directory.GetFiles(klPath)
+            |> Array.toList
+            |> List.map File.ReadAllText
+            |> List.map tokenizeAll
+            |> List.concat
+            |> List.map rootParse
+            |> List.filter isRecursive
+            |> List.map (function
+                         | DefunExpr(name, _, _) -> name
+                         | _ -> failwith "not a defun expr")
+            |> List.sort
+        for e in exprs do
+            printfn "%s" e

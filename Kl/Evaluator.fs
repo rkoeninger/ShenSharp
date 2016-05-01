@@ -8,6 +8,9 @@ module Evaluator =
 
     let private appendTrace env frame = {env with Trace = List.Cons(frame, env.Trace)}
 
+    let private incCallCount (env: Env) name =
+        env.CallCounts.[name] <- if env.CallCounts.ContainsKey name then env.CallCounts.[name] + 1 else 1
+
     // For symbols not in operator position:
     // Those starting with upper-case letter are idle if not defined.
     // Those not starting with upper-case letter are always idle.
@@ -41,8 +44,8 @@ module Evaluator =
     /// environment, considering whether to full evaluate
     /// passed on the Head/Tail position of the application.
     /// </summary>
-    let rec apply pos globals trace f args =
-        let env = {Globals = globals; Locals = Map.empty; Trace = trace}
+    let rec apply pos globals trace callCounts f args =
+        let env = {Globals = globals; Locals = Map.empty; Trace = trace; CallCounts = callCounts}
 
         match f with
 
@@ -67,6 +70,7 @@ module Evaluator =
             | Lesser -> Done(Func(Partial(defun, args)))
             | Equal ->
                 let env = appendLocals env (List.zip paramz args)
+                incCallCount env name
                 match pos with
                 | Head -> evalw env body
                 | Tail -> Values.thunkw(fun () -> evalw env body)
@@ -76,7 +80,9 @@ module Evaluator =
             match args.Length, arity with
             | Greater -> Values.arityErr name arity args
             | Lesser -> Done(Func(Partial(primitive, args)))
-            | Equal -> Done(f globals args)
+            | Equal ->
+                incCallCount env name
+                Done(f globals args)
 
         // Applying a partially applied function is just applying
         // the original function with the previous and current
@@ -84,7 +90,7 @@ module Evaluator =
         | Partial(f, args0) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> apply pos globals trace f (List.append args0 args)
+            | _ -> apply pos globals trace callCounts f (List.append args0 args)
 
     and private evalw env expr =
         match expr with
@@ -158,7 +164,7 @@ module Evaluator =
             with
             | SimpleError message ->
                 match eval (appendTrace env "trap-error/handler") handler with
-                | Func f -> apply pos env.Globals env.Trace f [Err message]
+                | Func f -> apply pos env.Globals env.Trace env.CallCounts f [Err message]
                 | _ -> Values.err "Trap handler did not evaluate to a function"
             | e -> raise e
 
@@ -171,13 +177,13 @@ module Evaluator =
                 let operator = resolveFunction env s
                 let operands = List.map (eval env) args
                 let env = appendTrace env (sprintf "app/%s" s)
-                apply pos env.Globals env.Trace operator operands
+                apply pos env.Globals env.Trace env.CallCounts operator operands
             | expr ->
                 match eval env expr with
                 | Func operator ->
                     let operands = List.map (eval env) args
                     let env = appendTrace env "app"
-                    apply pos env.Globals env.Trace operator operands
+                    apply pos env.Globals env.Trace env.CallCounts operator operands
                 | _ -> Values.err "Expression at head of application did not resolve to function"
 
     
@@ -191,8 +197,8 @@ module Evaluator =
     /// Evaluates a root-level expression into a value, running all side
     /// effects in the process.
     /// </summary>
-    let rootEval globals expr =
-        let env = {Globals = globals; Locals = Map.empty; Trace = []}
+    let rootEval globals callCounts expr =
+        let env = {Globals = globals; Locals = Map.empty; Trace = []; CallCounts = callCounts}
 
         match expr with
         | DefunExpr(name, paramz, body) ->

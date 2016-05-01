@@ -34,6 +34,14 @@ let main0 args =
         | StrToken s -> "\"" + s + "\""
         | SymToken s -> s
     let env = Startup.baseEnv()
+    let overrides =
+        Map.ofList [
+            "symbol?", (1, Builtins.klIsSymbol)
+            "shen.fillvector", (4, Builtins.klFillVector)
+            "element?", (2, Builtins.klElement)
+            "map", (2, Builtins.klMap)
+            "reverse", (1, Builtins.klReverse)
+        ]
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
@@ -43,14 +51,17 @@ let main0 args =
         for ast in tokenizeAll text do
             match ast with
             | ComboToken (command :: symbol :: _) ->
-                //printfn "%s %s" (astToStr command) (astToStr symbol)
+                printfn "%s %s" (astToStr command) (astToStr symbol)
                 let expr = rootParse ast
-                rootEval env.Globals expr |> ignore
+                rootEval env.Globals env.CallCounts expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
+    env.CallCounts
+    |> Seq.sortBy (fun (KeyValue(k, v)) -> v)
+    |> Seq.iter (fun (KeyValue(k,v)) -> printfn "%s: %d" k v)
     let load path = eval env (AppExpr (Head, (SymExpr "load"), [StrExpr path])) |> ignore
 //    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
 //    printfn "Starting shen repl..."
@@ -62,9 +73,9 @@ let main0 args =
 //        | ValueResult v -> printfn "%s" (KlBuiltins.klStr v)
 //        | ErrorResult e -> printfn "ERROR %s" e
 //    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
-    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
-    load <| "README.shen"
-    load <| "tests.shen"
+//    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
+//    load <| "README.shen"
+//    load <| "tests.shen"
 //    env.SymbolDefinitions.["logging"] <- Int 1
 //    load <| Path.Combine(testDir, "debug.shen")
 //    rootEval env.Globals (OtherExpr(AppExpr(Head, SymExpr "shen.shen", []))) |> ignore
