@@ -59,18 +59,18 @@ let main0 args =
         | StrToken s -> "\"" + s + "\""
         | SymToken s -> s
     let env = Startup.baseEnv()
-    env.Globals.Functions.["vector-builder"] <- Primitive("vector-builder", -1, klVectorBuilder)
-    env.Globals.Functions.["lambda-closure"] <- Primitive("lambda-closure", 2, klLambdaClosure)
-    env.Globals.Functions.["freeze-closure"] <- Primitive("freeze-closure", 2, klFreezeClosure)
-    let overrides =
-        Map.ofList [
-            "symbol?", (1, Builtins.klIsSymbol)
-            "shen.fillvector", (4, Builtins.klFillVector)
-            "element?", (2, Builtins.klElement)
-            "map", (2, Builtins.klMap)
-            "reverse", (1, Builtins.klReverse)
-        ]
-    let defunList = new System.Collections.Generic.List<string>()
+    //env.Globals.Functions.["vector-builder"] <- Primitive("vector-builder", -1, klVectorBuilder)
+    //env.Globals.Functions.["lambda-closure"] <- Primitive("lambda-closure", 2, klLambdaClosure)
+    //env.Globals.Functions.["freeze-closure"] <- Primitive("freeze-closure", 2, klFreezeClosure)
+//    let overrides =
+//        Map.ofList [
+//            "symbol?", (1, Builtins.klIsSymbol)
+//            "shen.fillvector", (4, Builtins.klFillVector)
+//            "element?", (2, Builtins.klElement)
+//            "map", (2, Builtins.klMap)
+//            "reverse", (1, Builtins.klReverse)
+//        ]
+    //let defunList = new System.Collections.Generic.List<string>()
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
