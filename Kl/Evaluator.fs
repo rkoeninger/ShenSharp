@@ -76,13 +76,13 @@ module Evaluator =
             let env = {Globals = globals; Locals = locals}
             match args with
             | [] -> Done(Func lambda)
-            | [x] -> evalw (appendLocals env [param, x]) body
-            | x :: args ->
-                match eval (appendLocals env [param, x]) body with
-                | Func f -> apply pos globals f args
+            | [arg0] -> evalw (appendLocals env [param, arg0]) body
+            | arg0 :: args1 ->
+                match eval (appendLocals env [param, arg0]) body with
+                | Func f -> apply pos globals f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args
+                    apply pos globals f args1
                 | _ -> err "Function expected/too many arguments provided to lambda"
 
         // Defuns take any number of arguments and do not retain any local state.
@@ -106,7 +106,7 @@ module Evaluator =
                 | Func f -> apply pos globals f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args
+                    apply pos globals f args1
                 | _ -> err "Function expected/too many arguments provided to defun"
 
         // Primitives take and number of arguments and do not retain any local state.
@@ -208,6 +208,9 @@ module Evaluator =
             | SimpleError message ->
                 match eval env handler with
                 | Func f -> apply pos env.Globals f [Err message]
+                | Sym s ->
+                    let f = resolveFunction env s
+                    apply pos env.Globals f [Err message]
                 | _ -> err "Trap handler did not evaluate to a function"
             | _ -> reraise()
 
@@ -216,6 +219,8 @@ module Evaluator =
         | AppExpr (pos, f, args) ->
             match f with
             | SymExpr s ->
+                if s = "y-or-n?" then
+                    ()
                 let operator = resolveFunction env s
                 let operands = List.map (eval env) args
                 apply pos env.Globals operator operands

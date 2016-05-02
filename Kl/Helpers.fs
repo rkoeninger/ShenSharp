@@ -63,6 +63,11 @@ module Values =
         | Bool b -> b
         | _ -> err "Boolean expected"
 
+    let vstr v =
+        match v with
+        | Str s -> s
+        | _ -> err "String expected"
+
     let nativev name arity f = Native(name, arity, f)
 
     let rec eq a b =

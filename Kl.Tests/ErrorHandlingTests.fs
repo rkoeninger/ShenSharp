@@ -3,6 +3,7 @@
 open NUnit.Framework
 open Kl
 open Kl.Startup
+open Kl.Values
 open TestCommon
 
 [<TestFixture>]
@@ -28,12 +29,16 @@ type ErrorHandlingTests() =
     member this.``trap-error should eval and apply second expression if eval of first results in uncaught error``() =
         let env = baseEnv()
         runIn env "(defun do (X Y) Y)" |> ignore
-        assertEq
-            Values.truev
-            (runIn env "(trap-error (do (pos \"\" 0) false) (lambda E true))")
+        assertEq truev (runIn env "(trap-error (do (pos \"\" 0) false) (lambda E true))")
 
     [<Test>]
     member this.``error message should be preserved when error is caught and handled``() =
-        assertEq
-            (Str "hi")
-            (run "(trap-error (simple-error \"hi\") (lambda E (error-to-string E)))")
+        assertEq (Str "hi") (run "(trap-error (simple-error \"hi\") (lambda E (error-to-string E)))")
+
+    [<Test>]
+    member this.``error handler can just be specified as a global symbol``() =
+        assertEq (Str "hi") (run "(trap-error (simple-error \"hi\") error-to-string)")
+
+    [<Test>]
+    member this.``error handler can just be specified as a local variable``() =
+        assertEq (Str "hi") (run "(let ERR (lambda E (error-to-string E)) (trap-error (simple-error \"hi\") ERR))")

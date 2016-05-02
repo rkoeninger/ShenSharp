@@ -215,7 +215,7 @@ module Builtins =
     /// </remarks>
     let klGetTime _ args =
         match args with
-        | [Sym "run"] -> Int(int (stopwatch.ElapsedTicks / 10000L))
+        | [Sym "run"] | [Sym "real"] -> Int(int (stopwatch.ElapsedTicks / 10000L))
         | [Sym "unix"] -> Int(int (DateTime.UtcNow - epoch).TotalSeconds)
         | [Sym s] -> err(sprintf "get-time expects symbols 'run or 'unix' as argument, not %s" s)
         | [_] -> typeErr "get-time" ["symbol"]
@@ -309,6 +309,12 @@ module Builtins =
         let consoleOutStream = Console.OpenStandardOutput()
         OutStream {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
 
+    let klIsBoolean _ args =
+        match args with
+        | [Bool _] -> truev
+        | [_] -> falsev
+        | _ -> arityErr "boolean?" 1 args
+
     let klIsSymbol _ args =
         match args with
         | [Sym _] -> truev
@@ -361,3 +367,48 @@ module Builtins =
             m c Empty
         | [_; _] -> typeErr "map" ["function"; "list"]
         | _ -> arityErr "map" 2 args
+
+    let klModulus _ args =
+        match args with
+        | [Int x; Int y] -> Int(x % y)
+        | [Int x; Dec y] -> Dec(decimal x % y)
+        | [Dec x; Int y] -> Dec(x % decimal y)
+        | [Dec x; Dec y] -> Dec(x % y)
+        | [_; _] -> typeErr "shen.mod" ["int/decimal"; "int/decimal"]
+        | _ -> arityErr "shen.mod" 2 args
+
+    let klIsAlpha _ args =
+        match args with
+        | [Str s] ->
+            if s.Length <> 1
+                then err "String must be 1 character long"
+                else Bool(('A' <= s.[0] && s.[0] <= 'Z') || ('a' <= s.[0] && 'z' <= s.[0]))
+        | [_] -> typeErr "shen.alpha?" ["string"]
+        | _ -> arityErr "shen.alpha?" 1 args
+
+    let klIsDigit _ args =
+        match args with
+        | [Str s] ->
+            if s.Length <> 1
+                then err "String must be 1 character long"
+                else Bool('0' <= s.[0] && s.[0] <= '9')
+        | [_] -> typeErr "shen.digit?" ["string"]
+        | _ -> arityErr "shen.digit?" 1 args
+
+    let rec klAppend globals args =
+        match args with
+        | [Empty; Empty] -> Empty
+        | [Empty; Cons _ as cons] -> cons
+        | [Cons _ as cons; Empty] -> cons
+        | [Cons(a, b); Cons _ as cons] -> Cons(a, klAppend globals [b; cons])
+        | [_; _] -> typeErr "append" ["list"; "list"]
+        | _ -> arityErr "append" 2 args
+
+    let klCd (globals: Globals) args =
+        match args with
+        | [Str s] ->
+            let path = Str(Path.Combine(vstr(globals.Symbols.["*home-directory*"]), s))
+            globals.Symbols.["*home-directory*"] <- path
+            path
+        | [_] -> typeErr "cd" ["string"]
+        | _ -> arityErr "cd" 1 args
