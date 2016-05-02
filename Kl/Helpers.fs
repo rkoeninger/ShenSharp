@@ -118,3 +118,7 @@ module Values =
     let arityErr name expected (args: Value list) =
         err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
     
+    let typeErr name (types: string list) =
+        if types.IsEmpty
+            then err(sprintf "%s expected no arguments" name)
+            else err(sprintf "%s expected arguments of type(s): %s" name (String.Join(" ", types)))

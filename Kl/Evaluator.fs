@@ -210,6 +210,8 @@ module Evaluator =
                 | _ -> Values.err "Expression at head of application did not resolve to function"
 
     
+        // TODO: if operator expression eval's to symbol, lookup that symbol and apply that function
+
     /// <summary>
     /// Evaluates an sub-expression into a value, running all side effects
     /// in the process.
