@@ -116,8 +116,16 @@ type Work =
 and Thunk(cont: unit -> Work) =
     member this.Run = cont
 
+type AverageTime = int * int64
+type ProfilingInfo() =
+    member val On = false with get, set
+    member val Times = new Defines<AverageTime>() with get
+    member this.Report
+        with get() =
+            System.String.Join("\r\n", Seq.map (fun (KeyValue(id, (n, avg))) -> sprintf "%s\t%i\t%i" id n (int avg)) this.Times)
+
 /// <summary>
 /// A KL environment state, with a reference to global definitions
 /// and local variable bindings.
 /// </summary>
-type Env = {Globals: Globals; Locals: Locals}
+type Env = {Globals: Globals; Locals: Locals; ProfilingInfo: ProfilingInfo}

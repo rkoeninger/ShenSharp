@@ -49,7 +49,7 @@ module Evaluator =
     /// the first N arguments and the result must resolve to
     /// a function which is then applied to the remaining arguments.
     /// </remarks>
-    let rec apply pos globals f args =
+    let rec apply pos globals pinfo f args =
         match f with
 
         // Freezes always take 0 arguments and they retain local
@@ -57,15 +57,15 @@ module Evaluator =
         // Freezes do not consider Head/Tail position as they cannot
         // naturally be recursive.
         | Freeze(locals, body) ->
-            let env = {Globals = globals; Locals = locals}
+            let env = {Globals = globals; Locals = locals; ProfilingInfo = pinfo}
             match args with
             | [] -> evalw env body
             | _ ->
                 match eval env body with
-                | Func f -> apply pos globals f args
+                | Func f -> apply pos globals pinfo f args
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args
+                    apply pos globals pinfo f args
                 | _ -> err "Function expected/too many arguments provided to freeze"
                 
         // Lambdas always take 1 arguments and they retain local
@@ -73,22 +73,22 @@ module Evaluator =
         // Lambdas do not consider Head/Tail position as they cannot
         // naturally be recursive.
         | Lambda(param, locals, body) as lambda ->
-            let env = {Globals = globals; Locals = locals}
+            let env = {Globals = globals; Locals = locals; ProfilingInfo = pinfo}
             match args with
             | [] -> Done(Func lambda)
             | [arg0] -> evalw (appendLocals env [param, arg0]) body
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
-                | Func f -> apply pos globals f args1
+                | Func f -> apply pos globals pinfo f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args1
+                    apply pos globals pinfo f args1
                 | _ -> err "Function expected/too many arguments provided to lambda"
 
         // Defuns take any number of arguments and do not retain any local state.
         // Evaluation is deferred if the application is in tail position.
         | Defun(name, paramz, body) as defun ->
-            let env = {Globals = globals; Locals = Map.empty}
+            let env = {Globals = globals; Locals = Map.empty; ProfilingInfo = pinfo}
             match args.Length, paramz.Length with
             | Lesser ->
                 match args with
@@ -103,10 +103,10 @@ module Evaluator =
                 let args0 = List.take paramz.Length args
                 let args1 = List.skip paramz.Length args
                 match eval (appendLocals env (List.zip paramz args0)) body with
-                | Func f -> apply pos globals f args1
+                | Func f -> apply pos globals pinfo f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args1
+                    apply pos globals pinfo f args1
                 | _ -> err "Function expected/too many arguments provided to defun"
 
         // Primitives take and number of arguments and do not retain any local state.
@@ -121,11 +121,11 @@ module Evaluator =
             | Greater ->
                 let (args0, args1) = List.splitAt arity args
                 match f globals args0 with
-                | Func f -> apply pos globals f args1
+                | Func f -> apply pos globals pinfo f args1
                 | Sym s ->
-                    let env = {Globals = globals; Locals = Map.empty}
+                    let env = {Globals = globals; Locals = Map.empty; ProfilingInfo = pinfo}
                     let f = resolveFunction env s
-                    apply pos globals f args1
+                    apply pos globals pinfo f args1
                 | _ -> err "Function expected/too many arguments provided to native"
 
         // Applying a partial is just applying  the original function
@@ -133,7 +133,7 @@ module Evaluator =
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> apply pos globals f (List.append previousArgs args)
+            | _ -> apply pos globals pinfo f (List.append previousArgs args)
 
     and private evalw env expr =
         match expr with
@@ -207,10 +207,10 @@ module Evaluator =
             with
             | SimpleError message ->
                 match eval env handler with
-                | Func f -> apply pos env.Globals f [Err message]
+                | Func f -> apply pos env.Globals env.ProfilingInfo f [Err message]
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos env.Globals f [Err message]
+                    apply pos env.Globals env.ProfilingInfo f [Err message]
                 | _ -> err "Trap handler did not evaluate to a function"
             | _ -> reraise()
 
@@ -219,20 +219,29 @@ module Evaluator =
         | AppExpr (pos, f, args) ->
             match f with
             | SymExpr s ->
-                if s = "y-or-n?" then
-                    ()
                 let operator = resolveFunction env s
                 let operands = List.map (eval env) args
-                apply pos env.Globals operator operands
+                if env.ProfilingInfo.On then
+                    let stopwatch = System.Diagnostics.Stopwatch.StartNew()
+                    let result = apply pos env.Globals env.ProfilingInfo operator operands
+                    stopwatch.Stop()
+                    if env.ProfilingInfo.Times.ContainsKey(s) then
+                        let (n, avg) = env.ProfilingInfo.Times.[s]
+                        env.ProfilingInfo.Times.[s] <- (n + 1, ((int64 n) * avg + stopwatch.ElapsedMilliseconds) / (int64 (n + 1)))
+                    else
+                        env.ProfilingInfo.Times.Add(s, (1, stopwatch.ElapsedMilliseconds))
+                    result
+                else
+                    apply pos env.Globals env.ProfilingInfo operator operands
             | expr ->
                 match eval env expr with
                 | Func operator ->
                     let operands = List.map (eval env) args
-                    apply pos env.Globals operator operands
+                    apply pos env.Globals env.ProfilingInfo operator operands
                 | Sym s ->
                     let operator = resolveFunction env s
                     let operands = List.map (eval env) args
-                    apply pos env.Globals operator operands
+                    apply pos env.Globals env.ProfilingInfo operator operands
                 | _ -> err "Expression at head of application did not resolve to function"
 
     /// <summary>
@@ -245,7 +254,7 @@ module Evaluator =
     /// Evaluates a root-level expression into a value, running all side
     /// effects in the process.
     /// </summary>
-    let rootEval globals expr =
+    let rootEval globals pinfo expr =
         match expr with
         | DefunExpr(name, paramz, body) ->
             let f = Defun(name, paramz, body)
@@ -253,5 +262,5 @@ module Evaluator =
             Sym name
 
         | OtherExpr expr ->
-            let env = {Globals = globals; Locals = Map.empty}
+            let env = {Globals = globals; Locals = Map.empty; ProfilingInfo = pinfo}
             eval env expr

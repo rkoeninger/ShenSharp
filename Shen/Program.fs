@@ -68,6 +68,7 @@ let main0 args =
 //            "reverse", (1, Builtins.klReverse)
 //        ]
     //let defunList = new System.Collections.Generic.List<string>()
+    let pinfo = new ProfilingInfo()
     env.Globals.Symbols.["shen-*installing-kl*"] <- Bool true
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
@@ -83,7 +84,10 @@ let main0 args =
                 //match expr with
                 //| DefunExpr(name, _, _) -> defunList.Add(name)
                 //| _ -> ()
-                rootEval env.Globals expr |> ignore
+                pinfo.On <- (command = SymToken "set") && (symbol = SymToken "shen.*symbol-table*")
+                rootEval env.Globals pinfo expr |> ignore
+                if (command = SymToken "set") && (symbol = SymToken "shen.*symbol-table*") then
+                    ()
             | _ -> () // ignore copyright block at top
     env.Globals.Symbols.["shen-*installing-kl*"] <- Bool false
     env.Globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))

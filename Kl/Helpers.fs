@@ -56,7 +56,7 @@ module Values =
     let isVar (s: string) = Char.IsUpper(s.Chars 0)
 
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv() = {Globals = newGlobals(); Locals = Map.empty}
+    let newEnv() = {Globals = newGlobals(); Locals = Map.empty; ProfilingInfo = new ProfilingInfo()}
 
     let vbool v =
         match v with
