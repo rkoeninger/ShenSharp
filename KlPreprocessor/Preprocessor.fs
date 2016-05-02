@@ -32,7 +32,7 @@ and genClosure (locals: Locals) =
 and genFunc f =
     match f with
     | Defun(name, paramz, body) -> sprintf "(defun %s (%s) %s)" name (String.Join(" ", paramz)) (genExpr body)
-    | Primitive(name, _, _) -> name
+    | Native(name, _, _) -> name
     | Partial(f, args) -> sprintf "(%s %s)" (genValue (Func f)) (String.Join(" ", List.map genValue args))
     | Lambda(param, locals, body) -> sprintf "(lambda-closure %s (lambda %s %s))" (genClosure locals) param (genExpr body)
     | Freeze(locals, body) -> sprintf "(freeze-closure %s (freeze %s))" (genClosure locals) (genExpr body)
@@ -100,7 +100,7 @@ let main args =
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)
                 let expr = rootParse ast
-                rootEval env.Globals env.CallCounts expr |> ignore
+                rootEval env.Globals expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"

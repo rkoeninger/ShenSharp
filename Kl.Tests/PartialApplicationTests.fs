@@ -51,13 +51,13 @@ type PartialApplicationTests() =
     [<Test>]
     member this.``applying a primitive to fewer arguments than it takes results in a partial``() =
         match run "(+ 2)" with
-        | Func(Partial(Primitive("+", _, _), [Int 2])) -> ()
+        | Func(Partial(Native("+", _, _), [Int 2])) -> ()
         | _ -> Assert.Fail "Partial expected"
         
     [<Test>]
     member this.``applying a primitive that takes 1 or more parameters to 0 arguments results in that same primitve``() =
         match run "(+)" with
-        | Func(Primitive("+", _, _)) -> ()
+        | Func(Native("+", _, _)) -> ()
         | x -> Assert.Fail "Primitive expected"
 
     [<Test>]

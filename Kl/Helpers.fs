@@ -46,24 +46,24 @@ module Values =
 
     let err s = raise(SimpleError s)
 
-    let thunkw f = new Thunk(f) |> Pending
+    let thunkw f = Pending(new Thunk(f))
 
     let rec go work =
         match work with
-        | Pending thunk -> thunk.Run() |> go
+        | Pending thunk -> go(thunk.Run())
         | Done result -> result
 
     let isVar (s: string) = Char.IsUpper(s.Chars 0)
 
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv() = {Globals = newGlobals(); Locals = Map.empty; Trace = []; CallCounts = new Defines<int>()}
+    let newEnv() = {Globals = newGlobals(); Locals = Map.empty}
 
     let vbool v =
         match v with
         | Bool b -> b
         | _ -> err "Boolean expected"
 
-    let primitivev name arity f = Primitive(name, arity, f)
+    let primitivev name arity f = Native(name, arity, f)
 
     let rec eq a b =
         match a, b with
@@ -84,6 +84,7 @@ module Values =
         | _, _ -> false
 
     let rec toStr value =
+        let join values = (String.Join("", (Seq.map (fun s -> " " + toStr s) values)))
         match value with
         | Empty -> "()"
         | Bool b -> if b then "true" else "false"
@@ -92,9 +93,13 @@ module Values =
         | Str s -> "\"" + s + "\""
         | Sym s -> s
         | Cons (head, tail) -> sprintf "(cons %s %s)" (toStr head) (toStr tail)
-        | Vec value -> sprintf "(@v%s)" (String.Join("", (Array.map (fun s -> " " + toStr s) value)))
+        | Vec array -> sprintf "(@v%s)" (join array)
         | Err message -> sprintf "(simple-error \"%s\")" message
-        | Func f -> sprintf "<Function %s>" (f.ToString())
+        | Func(Defun(name, _, _)) -> name
+        | Func(Native(name, _, _)) -> name
+        | Func(Lambda(param, _, _)) -> sprintf "<Lambda (%s)>" param
+        | Func(Freeze _) -> "<Freeze>"
+        | Func(Partial(f, args)) -> sprintf "<Partial %s%s>" (toStr (Func f)) (join args)
         | InStream s -> sprintf "<InStream %s>" (s.ToString())
         | OutStream s -> sprintf "<OutStream %s>" (s.ToString())
 
@@ -111,9 +116,9 @@ module Values =
                 match value with
                 | Cons (head, tail) -> Some(toToken head, tail)
                 | Empty -> None
-                | _ -> failwith "Cons chains must form linked lists to be converted to syntax"
+                | _ -> err "Cons chains must form linked lists to be converted to syntax"
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
-        | x -> invalidArg "_" <| x.ToString()
+        | x -> err(sprintf "Invalid value to be converted to token: %A" x)
     
     let arityErr name expected (args: Value list) =
         err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)

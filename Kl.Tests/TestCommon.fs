@@ -10,7 +10,7 @@ open Kl.Startup
 
 module TestCommon =
     
-    let runIn env syntax = rootEval env.Globals env.CallCounts (rootParse(tokenize syntax))
+    let runIn env syntax = rootEval env.Globals (rootParse(tokenize syntax))
     let run = runIn (baseEnv())
     let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
     let assertTrue = assertEq Values.truev

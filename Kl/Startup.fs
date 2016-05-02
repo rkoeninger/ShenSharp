@@ -5,6 +5,13 @@ open Builtins
 
 module Startup =
     
+    // TODO: find a way to eliminate extra stack frames:
+    //       klIntern
+    //       installBase@SomeNumber
+    //       apply
+    //       evalw
+    //       ...
+
     let rec install (functions: Defines<'a>) defs =
         match defs with
         | [] -> ()
@@ -73,4 +80,4 @@ module Startup =
         ]
         env
 
-    let baseEnv() = installBase <| Values.newEnv()
+    let baseEnv() = installBase(Values.newEnv())

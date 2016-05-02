@@ -122,10 +122,7 @@ module Builtins =
 
     let klEval globals args =
         match args with
-        | [v] ->
-            toToken v
-            |> rootParse
-            |> rootEval globals (new Defines<int>())
+        | [v] -> v |> toToken |> rootParse |> rootEval globals
         | _ -> arityErr "eval-kl" 1 args
 
     let klType globals args =
@@ -356,7 +353,7 @@ module Builtins =
         match args with
         | [_; Empty] -> Empty
         | [Func f; Cons _ as c] ->
-            let applyF v = Evaluator.apply Head globals [] (new Defines<int>()) f [v] |> go
+            let applyF v = go(apply Head globals f [v])
             let rec m v r =
                 match v with
                 | Cons(head, tail) -> m tail (Cons(applyF head, r))

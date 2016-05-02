@@ -60,7 +60,7 @@ module Compiler =
         FsExpr.App(
             FsExpr.Id "Func",
             [FsExpr.App(
-                FsExpr.Id "Primitive",
+                FsExpr.Id "Native",
                 [FsExpr.Tuple(
                     [FsExpr.String (sprintf "%s/%s" context "lambda")
                      FsExpr.Int32 1
@@ -76,7 +76,7 @@ module Compiler =
         FsExpr.App(
             FsExpr.Id "Func",
             [FsExpr.App(
-                FsExpr.Id "Primitive",
+                FsExpr.Id "Native",
                 [FsExpr.Tuple(
                     [FsExpr.String (sprintf "%s/%s" context "freeze")
                      FsExpr.Int32 0

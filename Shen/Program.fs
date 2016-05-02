@@ -85,7 +85,7 @@ let main0 args =
                 //match expr with
                 //| DefunExpr(name, _, _) -> defunList.Add(name)
                 //| _ -> ()
-                rootEval env.Globals env.CallCounts expr |> ignore
+                rootEval env.Globals expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"

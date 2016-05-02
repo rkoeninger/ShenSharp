@@ -55,7 +55,7 @@ module Parser =
                 // (~condition ~consequent)
                 | ComboToken [condition; consequent] -> (parse Head condition, parse pos consequent)
                 | _ -> failwith "Invalid cond clause"
-            List.map buildClause clauses |> CondExpr
+            CondExpr(List.map buildClause clauses)
 
         // (let ~name ~binding ~body)
         | ComboToken [(SymToken "let"); (SymToken name); binding; body] ->

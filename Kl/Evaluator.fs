@@ -1,21 +1,19 @@
 ﻿namespace Kl
 
 open Extensions
+open Values
 
 module Evaluator =
 
-    let private appendLocals env defs = {env with Locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs}
-
-    let private appendTrace env frame = {env with Trace = List.Cons(frame, env.Trace)}
-
-    let private incCallCount (env: Env) name =
-        env.CallCounts.[name] <- if env.CallCounts.ContainsKey name then env.CallCounts.[name] + 1 else 1
+    let private appendLocals env defs =
+        let locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs
+        {env with Locals = locals}
 
     // For symbols not in operator position:
     // Those starting with upper-case letter are idle if not defined.
     // Those not starting with upper-case letter are always idle.
     let private resolveSymbol env id =
-        if Values.isVar id then
+        if isVar id then
             match Map.tryFind id env.Locals with
             | Some value -> value
             | None -> Sym id
@@ -27,51 +25,64 @@ module Evaluator =
     // Those not starting with upper-case letter are resolved using the global function namespace.
     // Symbols in operator position are never idle.
     let private resolveFunction env id =
-        if Values.isVar id then
+        if isVar id then
             match Map.tryFind id env.Locals with
             | Some value ->
                 match value with
                 | Func f -> f
-                | _ -> Values.err "Symbol does not represent a function"
-            | None -> Values.err("Symbol not defined: " + id)
+                | _ -> err "Symbol does not represent a function"
+            | None -> err("Symbol not defined: " + id)
         else
             match env.Globals.Functions.GetMaybe id with
             | Some f -> f
-            | None -> Values.err("Symbol not defined: " + id)
+            | None -> err("Symbol not defined: " + id)
 
     /// <summary>
     /// Applies a function to a set of arguments and a global
-    /// environment, considering whether to full evaluate
-    /// passed on the Head/Tail position of the application.
+    /// environment, considering whether to defer evaluation
+    /// based on the Head/Tail position of the application.
     /// </summary>
-    let rec apply pos globals trace callCounts f args =
-        let env = {Globals = globals; Locals = Map.empty; Trace = trace; CallCounts = callCounts}
-
+    /// <remarks>
+    /// Applying a function to fewer arguments than it takes
+    /// results in a partial. Applying a function to more arguments
+    /// than it takes causes the function to get applied to only
+    /// the first N arguments and the result must resolve to
+    /// a function which is then applied to the remaining arguments.
+    /// </remarks>
+    let rec apply pos globals f args =
         match f with
 
-        // Freezes do not get partially applied as they always take 0 arguments
+        // Freezes always take 0 arguments and they retain local
+        // state that they capture when a freeze expression is evaluated.
+        // Freezes do not consider Head/Tail position as they cannot
+        // naturally be recursive.
         | Freeze(locals, body) ->
+            let env = {Globals = globals; Locals = locals}
             match args with
-            | [] -> evalw {env with Locals = locals} body
+            | [] -> evalw env body
             | _ ->
-                match eval {env with Locals = locals} body with
-                | Func f -> apply pos globals trace callCounts f args
-                | _ -> Values.err "Function expected/too many arguments provided to freeze"
-
-        // Lambdas do not get partially applied as they always take
-        // exactly 1 argument
+                match eval env body with
+                | Func f -> apply pos globals f args
+                | _ -> err "Function expected/too many arguments provided to freeze"
+                
+        // Lambdas always take 1 arguments and they retain local
+        // state that they capture when a lambda expression is evaluated.
+        // Lambdas do not consider Head/Tail position as they cannot
+        // naturally be recursive.
         | Lambda(param, locals, body) as lambda ->
+            let env = {Globals = globals; Locals = locals}
             match args with
             | [] -> Done(Func lambda)
-            | [x] -> evalw (appendLocals {env with Locals = locals} [param, x]) body
+            | [x] -> evalw (appendLocals env [param, x]) body
             | x :: args ->
-                match eval (appendLocals {env with Locals = locals} [param, x]) body with
-                | Func f -> apply pos globals trace callCounts f args
-                | _ -> Values.err "Function expected/too many arguments provided to lambda"
+                match eval (appendLocals env [param, x]) body with
+                | Func f -> apply pos globals f args
+                | _ -> err "Function expected/too many arguments provided to lambda"
 
-        // Defuns and Primitives can have any number of arguments and
-        // can be partially applied
+        // Defuns take any number of arguments and do not retain any local state.
+        // Evaluation is deferred if the application is in tail position.
         | Defun(name, paramz, body) as defun ->
+            let env = {Globals = globals; Locals = Map.empty}
             match args.Length, paramz.Length with
             | Lesser ->
                 match args with
@@ -79,41 +90,38 @@ module Evaluator =
                 | _ -> Done(Func(Partial(defun, args)))
             | Equal ->
                 let env = appendLocals env (List.zip paramz args)
-                incCallCount env name
                 match pos with
                 | Head -> evalw env body
-                | Tail -> Values.thunkw(fun () -> evalw env body)
+                | Tail -> thunkw(fun () -> evalw env body)
             | Greater ->
                 let args0 = List.take paramz.Length args
                 let args1 = List.skip paramz.Length args
                 match eval (appendLocals env (List.zip paramz args0)) body with
-                | Func f -> apply pos globals trace callCounts f args1
-                | _ -> Values.err "Function expected/too many arguments provided to defun"
+                | Func f -> apply pos globals f args1
+                | _ -> err "Function expected/too many arguments provided to defun"
 
-        // Tail calls do not apply to primitives as they are implemented natively
-        | Primitive(name, arity, f) as primitive ->
+        // Primitives take and number of arguments and do not retain any local state.
+        // Head/Tail position is also not considered.
+        | Native(name, arity, f) as primitive ->
             match args.Length, arity with
             | Lesser ->
                 match args with
                 | [] -> Done(Func primitive)
                 | _ -> Done(Func(Partial(primitive, args)))
-            | Equal ->
-                incCallCount env name
-                Done(f globals args)
+            | Equal -> Done(f globals args)
             | Greater ->
                 let args0 = List.take arity args
                 let args1 = List.skip arity args
                 match f globals args0 with
-                | Func f -> apply pos globals trace callCounts f args1
-                | _ -> Values.err "Function expected/too many arguments provided to defun"
+                | Func f -> apply pos globals f args1
+                | _ -> err "Function expected/too many arguments provided to defun"
 
-        // Applying a partially applied function is just applying
-        // the original function with the previous and current
-        // argument lists appended.
-        | Partial(f, args0) as partial ->
+        // Applying a partial is just applying  the original function
+        // with the previous and current argument lists appended.
+        | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> apply pos globals trace callCounts f (List.append args0 args)
+            | _ -> apply pos globals f (List.append previousArgs args)
 
     and private evalw env expr =
         match expr with
@@ -133,43 +141,43 @@ module Evaluator =
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
-            if Values.vbool(eval (appendTrace env "and/left") left)
-                then evalw (appendTrace env "and/right") right
-                else Values.falsew
+            if vbool(eval env left)
+                then evalw env right
+                else falsew
             
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
-            if Values.vbool(eval (appendTrace env "or/left") left)
-                then Values.truew
-                else evalw (appendTrace env "or/right") right
+            if vbool(eval env left)
+                then truew
+                else evalw env right
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
         | IfExpr (condition, consequent, alternative) ->
-            if Values.vbool(eval (appendTrace env "if/condition") condition)
-                then evalw (appendTrace env "if/consequent") consequent
-                else evalw (appendTrace env "if/alternative") alternative
+            if vbool(eval env condition)
+                then evalw env consequent
+                else evalw env alternative
         
         // Condition expressions must evaluate to boolean values
         // Evaluation of clauses stops when one of their conditions
         // evaluates to true.
         | CondExpr clauses ->
             let rec evalClauses = function
-                | [] -> Values.err "No condition was true"
+                | [] -> err "No condition was true"
                 | (condition, consequent) :: rest ->
-                    if Values.vbool(eval (appendTrace env "cond/condition") condition)
-                        then evalw (appendTrace env "cond/consequent") consequent
+                    if vbool(eval env condition)
+                        then evalw env consequent
                         else evalClauses rest
             evalClauses clauses
 
         // Let expressions evaluate the symbol binding first and then evaluate the body
         // with the result of evaluating the binding bound to the symbol
         | LetExpr (symbol, binding, body) ->
-            let value = eval (appendTrace env (sprintf "let/%s/binding" symbol)) binding
-            evalw (appendLocals (appendTrace env (sprintf "let/%s/body" symbol)) [symbol, value]) body
+            let value = eval env binding
+            evalw (appendLocals env [symbol, value]) body
 
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr (param, body) ->
@@ -183,13 +191,13 @@ module Evaluator =
         // Handler expression must evaluate to a function
         | TrapExpr (pos, body, handler) ->
             try
-                Done(eval (appendTrace env "trap-error/body") body)
+                Done(eval env body)
             with
             | SimpleError message ->
-                match eval (appendTrace env "trap-error/handler") handler with
-                | Func f -> apply pos env.Globals env.Trace env.CallCounts f [Err message]
-                | _ -> Values.err "Trap handler did not evaluate to a function"
-            | e -> raise e
+                match eval env handler with
+                | Func f -> apply pos env.Globals f [Err message]
+                | _ -> err "Trap handler did not evaluate to a function"
+            | _ -> reraise()
 
         // The operator expression in an application must evaluate
         // to a function. An error will be raised if it does not.
@@ -199,36 +207,35 @@ module Evaluator =
             | SymExpr s ->
                 let operator = resolveFunction env s
                 let operands = List.map (eval env) args
-                let env = appendTrace env (sprintf "app/%s" s)
-                apply pos env.Globals env.Trace env.CallCounts operator operands
+                apply pos env.Globals operator operands
             | expr ->
                 match eval env expr with
                 | Func operator ->
                     let operands = List.map (eval env) args
-                    let env = appendTrace env "app"
-                    apply pos env.Globals env.Trace env.CallCounts operator operands
-                | _ -> Values.err "Expression at head of application did not resolve to function"
+                    apply pos env.Globals operator operands
+                | _ -> err "Expression at head of application did not resolve to function"
 
     
         // TODO: if operator expression eval's to symbol, lookup that symbol and apply that function
+        //       this needs to be considered in evalw/match:AppExpr and apply/match:*
 
     /// <summary>
     /// Evaluates an sub-expression into a value, running all side effects
     /// in the process.
     /// </summary>
-    and eval env expr = Values.go(evalw env expr)
+    and eval env expr = go(evalw env expr)
 
     /// <summary>
     /// Evaluates a root-level expression into a value, running all side
     /// effects in the process.
     /// </summary>
-    let rootEval globals callCounts expr =
-        let env = {Globals = globals; Locals = Map.empty; Trace = []; CallCounts = callCounts}
-
+    let rootEval globals expr =
         match expr with
         | DefunExpr(name, paramz, body) ->
             let f = Defun(name, paramz, body)
             globals.Functions.[name] <- f
             Sym name
 
-        | OtherExpr expr -> eval env expr
+        | OtherExpr expr ->
+            let env = {Globals = globals; Locals = Map.empty}
+            eval env expr

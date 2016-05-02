@@ -79,7 +79,7 @@ and Locals = Map<string, Value>
 /// The different types of functions in KL.
 /// </summary>
 and [<ReferenceEquality>] Function =
-    | Primitive of string * int * (Globals -> Value list -> Value)
+    | Native of string * int * (Globals -> Value list -> Value)
     | Defun of string * string list * Expr
     | Lambda of string * Locals * Expr
     | Freeze of Locals * Expr
@@ -120,4 +120,4 @@ and Thunk(cont: unit -> Work) =
 /// A KL environment state, with a reference to global definitions
 /// and local variable bindings.
 /// </summary>
-type Env = {Globals: Globals; Locals: Locals; Trace: string list; CallCounts: Defines<int>}
+type Env = {Globals: Globals; Locals: Locals}
