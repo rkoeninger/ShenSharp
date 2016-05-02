@@ -23,18 +23,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 
-(defun declare (V15776 V15777)
-	(let Record (set shen.*signedfuncs* (cons (cons V15776 V15777) (value shen.*signedfuncs*)))
-	(let Variancy (trap-error (shen.variancy-test V15776 V15777) (lambda E shen.skip))
-	(let Type (shen.rcons_form (shen.demodulate V15777))
-	(let F* (concat shen.type-signature-of- V15776)
-	(let Parameters (shen.parameters 1)
-	(let Clause (cons (cons F* (cons X ())) (cons :- (cons (cons (cons unify! (cons X (cons Type ()))) ()) ())))
-	(let AUM_instruction (shen.aum Clause Parameters)
-	(let Code (shen.aum_to_shen AUM_instruction)
-	(let ShenDef (cons define (cons F* (append Parameters (append (cons ProcessN (cons Continuation ())) (cons -> (cons Code ()))))))
-	(let Eval (shen.eval-without-macros ShenDef)
-	V15776)))))))))))
+(defun declare (V15776 V15777) (let Record (set shen.*signedfuncs* (cons (cons V15776 V15777) (value shen.*signedfuncs*))) (let Variancy (trap-error (shen.variancy-test V15776 V15777) (lambda E shen.skip)) (let Type (shen.rcons_form (shen.demodulate V15777)) (let F* (concat shen.type-signature-of- V15776) (let Parameters (shen.parameters 1) (let Clause (cons (cons F* (cons X ())) (cons :- (cons (cons (cons unify! (cons X (cons Type ()))) ()) ()))) (let AUM_instruction (shen.aum Clause Parameters) (let Code (shen.aum_to_shen AUM_instruction) (let ShenDef (cons define (cons F* (append Parameters (append (cons ProcessN (cons Continuation ())) (cons -> (cons Code ())))))) (let Eval (shen.eval-without-macros ShenDef) V15776)))))))))))
 
 (defun shen.demodulate (V15779) (trap-error (let Demod (shen.walk (lambda Y (shen.demod Y)) V15779) (if (= Demod V15779) V15779 (shen.demodulate Demod))) (lambda E V15779)))
 
