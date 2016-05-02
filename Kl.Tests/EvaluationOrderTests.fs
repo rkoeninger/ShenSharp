@@ -24,3 +24,7 @@ type EvaluationOrderTests() =
         runIn env "(defun app (X) (set foo (cn (value foo) X)))" |> ignore
         assertEq (Int 8) (runIn env "((do (app \"b\") (lambda X (lambda Y (+ X Y)))) (do (app \"c\") 3) (do (app \"d\") 5))")
         assertEq (Str "abcd") (runIn env "(value foo)")
+
+    [<Test>]
+    member this.``if operator expression eval's to a symbol, that symbol must resolve to a function, which will be applied``() =
+        assertEq (Int 3) (run "((if true + -) 1 2)")

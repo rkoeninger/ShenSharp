@@ -59,9 +59,9 @@ let main0 args =
         | StrToken s -> "\"" + s + "\""
         | SymToken s -> s
     let env = Startup.baseEnv()
-    //env.Globals.Functions.["vector-builder"] <- Primitive("vector-builder", -1, klVectorBuilder)
-    //env.Globals.Functions.["lambda-closure"] <- Primitive("lambda-closure", 2, klLambdaClosure)
-    //env.Globals.Functions.["freeze-closure"] <- Primitive("freeze-closure", 2, klFreezeClosure)
+    //env.Globals.Functions.["vector-builder"] <- Native("vector-builder", -1, klVectorBuilder)
+    //env.Globals.Functions.["lambda-closure"] <- Native("lambda-closure", 2, klLambdaClosure)
+    //env.Globals.Functions.["freeze-closure"] <- Native("freeze-closure", 2, klFreezeClosure)
 //    let overrides =
 //        Map.ofList [
 //            "symbol?", (1, Builtins.klIsSymbol)

@@ -63,6 +63,9 @@ module Evaluator =
             | _ ->
                 match eval env body with
                 | Func f -> apply pos globals f args
+                | Sym s ->
+                    let f = resolveFunction env s
+                    apply pos globals f args
                 | _ -> err "Function expected/too many arguments provided to freeze"
                 
         // Lambdas always take 1 arguments and they retain local
@@ -77,6 +80,9 @@ module Evaluator =
             | x :: args ->
                 match eval (appendLocals env [param, x]) body with
                 | Func f -> apply pos globals f args
+                | Sym s ->
+                    let f = resolveFunction env s
+                    apply pos globals f args
                 | _ -> err "Function expected/too many arguments provided to lambda"
 
         // Defuns take any number of arguments and do not retain any local state.
@@ -98,23 +104,29 @@ module Evaluator =
                 let args1 = List.skip paramz.Length args
                 match eval (appendLocals env (List.zip paramz args0)) body with
                 | Func f -> apply pos globals f args1
+                | Sym s ->
+                    let f = resolveFunction env s
+                    apply pos globals f args
                 | _ -> err "Function expected/too many arguments provided to defun"
 
         // Primitives take and number of arguments and do not retain any local state.
         // Head/Tail position is also not considered.
-        | Native(name, arity, f) as primitive ->
+        | Native(name, arity, f) as native ->
             match args.Length, arity with
             | Lesser ->
                 match args with
-                | [] -> Done(Func primitive)
-                | _ -> Done(Func(Partial(primitive, args)))
+                | [] -> Done(Func native)
+                | _ -> Done(Func(Partial(native, args)))
             | Equal -> Done(f globals args)
             | Greater ->
-                let args0 = List.take arity args
-                let args1 = List.skip arity args
+                let (args0, args1) = List.splitAt arity args
                 match f globals args0 with
                 | Func f -> apply pos globals f args1
-                | _ -> err "Function expected/too many arguments provided to defun"
+                | Sym s ->
+                    let env = {Globals = globals; Locals = Map.empty}
+                    let f = resolveFunction env s
+                    apply pos globals f args1
+                | _ -> err "Function expected/too many arguments provided to native"
 
         // Applying a partial is just applying  the original function
         // with the previous and current argument lists appended.
@@ -199,9 +211,8 @@ module Evaluator =
                 | _ -> err "Trap handler did not evaluate to a function"
             | _ -> reraise()
 
-        // The operator expression in an application must evaluate
-        // to a function. An error will be raised if it does not.
-        // See `resolveFunction`.
+        // Expression in operator position must eval to a function
+        // or to a symbol which resolves to a function.
         | AppExpr (pos, f, args) ->
             match f with
             | SymExpr s ->
@@ -213,15 +224,15 @@ module Evaluator =
                 | Func operator ->
                     let operands = List.map (eval env) args
                     apply pos env.Globals operator operands
+                | Sym s ->
+                    let operator = resolveFunction env s
+                    let operands = List.map (eval env) args
+                    apply pos env.Globals operator operands
                 | _ -> err "Expression at head of application did not resolve to function"
 
-    
-        // TODO: if operator expression eval's to symbol, lookup that symbol and apply that function
-        //       this needs to be considered in evalw/match:AppExpr and apply/match:*
-
     /// <summary>
-    /// Evaluates an sub-expression into a value, running all side effects
-    /// in the process.
+    /// Evaluates an sub-expression into a value, running all deferred
+    /// computations in the process.
     /// </summary>
     and eval env expr = go(evalw env expr)
 
