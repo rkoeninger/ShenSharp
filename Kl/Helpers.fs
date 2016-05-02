@@ -63,24 +63,24 @@ module Values =
         | Bool b -> b
         | _ -> err "Boolean expected"
 
-    let primitivev name arity f = Native(name, arity, f)
+    let nativev name arity f = Native(name, arity, f)
 
     let rec eq a b =
         match a, b with
-        | Empty,         Empty         -> true
-        | Bool x,        Bool y        -> x = y
-        | Int x,         Int y         -> x = y
-        | Dec x,         Dec y         -> x = y
-        | Int x,         Dec y         -> decimal x = y
-        | Dec x,         Int y         -> x = decimal y
-        | Str x,         Str y         -> x = y
-        | Sym x,         Sym y         -> x = y
-        | InStream x,    InStream y    -> x = y
-        | OutStream x,   OutStream y   -> x = y
-        | Func x,        Func y        -> x = y
-        | Err x,         Err y         -> x = y
-        | Cons (x1, x2), Cons (y1, y2) -> eq x1 y1 && eq x2 y2
-        | Vec xs,        Vec ys        -> xs.Length = ys.Length && Array.forall2 eq xs ys
+        | Empty,        Empty        -> true
+        | Bool x,       Bool y       -> x = y
+        | Int x,        Int y        -> x = y
+        | Dec x,        Dec y        -> x = y
+        | Int x,        Dec y        -> decimal x = y
+        | Dec x,        Int y        -> x = decimal y
+        | Str x,        Str y        -> x = y
+        | Sym x,        Sym y        -> x = y
+        | InStream x,   InStream y   -> x = y
+        | OutStream x,  OutStream y  -> x = y
+        | Func x,       Func y       -> x = y
+        | Err x,        Err y        -> x = y
+        | Cons(x1, x2), Cons(y1, y2) -> eq x1 y1 && eq x2 y2
+        | Vec xs,       Vec ys       -> xs.Length = ys.Length && Array.forall2 eq xs ys
         | _, _ -> false
 
     let rec toStr value =
@@ -90,7 +90,7 @@ module Values =
         | Bool b -> if b then "true" else "false"
         | Int n -> n.ToString()
         | Dec n -> n.ToString()
-        | Str s -> "\"" + s + "\""
+        | Str s -> sprintf "\"%s\"" s
         | Sym s -> s
         | Cons (head, tail) -> sprintf "(cons %s %s)" (toStr head) (toStr tail)
         | Vec array -> sprintf "(@v%s)" (join array)
@@ -114,7 +114,7 @@ module Values =
         | Cons _ as cons ->
             let generator value =
                 match value with
-                | Cons (head, tail) -> Some(toToken head, tail)
+                | Cons(head, tail) -> Some(toToken head, tail)
                 | Empty -> None
                 | _ -> err "Cons chains must form linked lists to be converted to syntax"
             cons |> Seq.unfold generator |> Seq.toList |> ComboToken
