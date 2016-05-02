@@ -44,11 +44,8 @@ let main0 args =
                     "writer.kl"
                     "macros.kl"
                     "declarations.kl"
-                    "t-star.kl" // TODO contrary to spec, this gets loaded before types.kl?
-                                // it contains (defun shen.typecheck ...) which types.kl uses
-                                // Double check this now that irresolvable symbols are Errors instead of failures
                     "types.kl"
-                   // @"preprocessed\preprocessed.kl"
+                    "t-star.kl"
                 ]
     let klFolder = @"..\..\..\KLambda"
     let rec astToStr = function
@@ -71,6 +68,7 @@ let main0 args =
 //            "reverse", (1, Builtins.klReverse)
 //        ]
     //let defunList = new System.Collections.Generic.List<string>()
+    env.Globals.Symbols.["shen-*installing-kl*"] <- Bool true
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
@@ -87,11 +85,24 @@ let main0 args =
                 //| _ -> ()
                 rootEval env.Globals expr |> ignore
             | _ -> () // ignore copyright block at top
+    env.Globals.Symbols.["shen-*installing-kl*"] <- Bool false
+    env.Globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
-
+    
+    env.Globals.Functions.["symbol?"] <- Native("symbol?", 1, Builtins.klIsSymbol)
+    env.Globals.Functions.["boolean?"] <- Native("boolean?", 1, Builtins.klIsBoolean)
+    //env.Globals.Functions.["shen.fillvector"] <- Native("shen.fillvector", 4, Builtins.klFillVector)
+    env.Globals.Functions.["shen.mod"] <- Native("shen.mod", 2, Builtins.klModulus)
+    //env.Globals.Functions.["element?"] <- Native("element?", 2, Builtins.klElement)
+    //env.Globals.Functions.["map"] <- Native("map", 2, Builtins.klMap)
+    //env.Globals.Functions.["reverse"] <- Native("reverse", 1, Builtins.klReverse)
+    //env.Globals.Functions.["shen.alpha?"] <- Native("shen.alpha?", 1, Builtins.klIsAlpha)
+    //env.Globals.Functions.["shen.digit?"] <- Native("shen.digit?", 1, Builtins.klIsDigit)
+    env.Globals.Functions.["append"] <- Native("append", 2, Builtins.klAppend)
+    env.Globals.Functions.["cd"] <- Native("cd", 1, Builtins.klCd)
 //    env.CallCounts
 //    |> Seq.sortBy (fun (KeyValue(k, v)) -> v)
 //    |> Seq.iter (fun (KeyValue(k,v)) -> printfn "%s: %d" k v)
@@ -107,8 +118,10 @@ let main0 args =
 //        | ErrorResult e -> printfn "ERROR %s" e
 //    KlEvaluator.eval env (AppExpr (Head, SymbolExpr "shen.shen", [])) |> ignore
     Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, "..\\..\\..\\Tests")
-    load <| "README.shen"
-    load <| "tests.shen"
+    load "README.shen"
+    load "tests.shen"
+    //load "einstein.shen"
+    //eval env (AppExpr(Head, SymExpr "shen.shen", [])) |> ignore
 //    env.SymbolDefinitions.["logging"] <- Int 1
 //    load <| Path.Combine(testDir, "debug.shen")
 //    rootEval env.Globals env.CallCounts (OtherExpr(AppExpr(Head, SymExpr "shen.shen", []))) |> ignore

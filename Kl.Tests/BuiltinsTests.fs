@@ -60,3 +60,11 @@ type BuiltinsTests() =
         assertEq
             (run "(if (< 4 5) a b)")
             (run "(eval-kl (cons if (cons (cons < (cons 4 (cons 5 ()))) (cons a (cons b ())))))")
+
+    [<Test>]
+    member this.``append should preserve the original order``() =
+        assertEq
+            (Cons(Int 1, Cons(Int 2, Cons(Int 3, Cons(Int 4, Cons(Int 5, Cons(Int 6, Empty)))))))
+            (Builtins.klAppend (Values.newGlobals()) [
+                Cons(Int 1, Cons(Int 2, Cons(Int 3, Empty)))
+                Cons(Int 4, Cons(Int 5, Cons(Int 6, Empty)))])
