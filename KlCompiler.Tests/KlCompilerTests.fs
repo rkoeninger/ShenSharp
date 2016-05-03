@@ -153,7 +153,7 @@ let fff = match (match 0 with
         Assert.AreEqual(Str "positive", v)
 
     [<Test>]
-    //[<Ignore("takes too long and doesn't do anything")>]
+    [<Ignore("takes too long and doesn't do anything")>]
     member this.BuildModule() =
         let workingDirectory = Path.GetDirectoryName((new Uri(Assembly.GetExecutingAssembly().CodeBase)).LocalPath)
         let fileNames = [
