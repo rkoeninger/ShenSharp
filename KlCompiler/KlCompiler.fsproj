@@ -53,6 +53,7 @@
     <None Include="app.config" />
     <None Include="packages.config" />
     <Compile Include="FsAst.fs" />
+    <Compile Include="Fex.fs" />
     <Compile Include="Compiler.fs" />
   </ItemGroup>
   <ItemGroup>

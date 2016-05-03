@@ -89,7 +89,7 @@ let main args =
             "map", (2, Builtins.klMap)
             "reverse", (1, Builtins.klReverse)
         ]
-    let pinfo = new ProfilingInfo()
+    let pinfo = new PInfo()
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file

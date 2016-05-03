@@ -68,7 +68,7 @@ let main0 args =
 //            "reverse", (1, Builtins.klReverse)
 //        ]
     //let defunList = new System.Collections.Generic.List<string>()
-    let pinfo = new ProfilingInfo()
+    let pinfo = new PInfo()
     env.Globals.Symbols.["shen-*installing-kl*"] <- Bool true
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""

@@ -46,6 +46,10 @@ module Values =
 
     let err s = raise(SimpleError s)
 
+    let trap f handler =
+        try f()
+        with SimpleError e -> handler(Err e)
+
     let thunkw f = Pending(new Thunk(f))
 
     let rec go work =
@@ -56,7 +60,7 @@ module Values =
     let isVar (s: string) = Char.IsUpper(s.Chars 0)
 
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv() = {Globals = newGlobals(); Locals = Map.empty; ProfilingInfo = new ProfilingInfo()}
+    let newEnv() = {Globals = newGlobals(); Locals = Map.empty; PInfo = new PInfo()}
 
     let vbool v =
         match v with
@@ -68,7 +72,10 @@ module Values =
         | Str s -> s
         | _ -> err "String expected"
 
-    let nativev name arity f = Native(name, arity, f)
+    let vfunc v =
+        match v with
+        | Func f -> f
+        | _ -> err "Function expected"
 
     let rec eq a b =
         match a, b with

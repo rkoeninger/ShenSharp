@@ -153,14 +153,87 @@ let fff = match (match 0 with
         Assert.AreEqual(Str "positive", v)
 
     [<Test>]
-    [<Ignore("takes too long and doesn't do anything")>]
+    //[<Ignore("takes too long and doesn't do anything")>]
     member this.BuildModule() =
         let workingDirectory = Path.GetDirectoryName((new Uri(Assembly.GetExecutingAssembly().CodeBase)).LocalPath)
-        let src = File.ReadAllText(Path.Combine(workingDirectory, "../../../KLambda/toplevel.kl"))
-        let exprs = src |> tokenizeAll |> List.map rootParse |> Seq.take 6 |> Seq.toList
+        let fileNames = [
+            "toplevel.kl"
+            "core.kl"
+            "sys.kl"
+            "sequent.kl"
+            "yacc.kl"
+            "reader.kl"
+            "prolog.kl"
+            "track.kl"
+            "load.kl"
+            "writer.kl"
+            "macros.kl"
+            "declarations.kl"
+            "types.kl"
+            "t-star.kl"
+        ]
+        let fileContents = List.map (fun n -> File.ReadAllText(Path.Combine(workingDirectory, "../../../KLambda", n))) fileNames
+        let fullSource = String.Join("\r\n", fileContents)
+        let exprs =
+            fullSource
+            |> tokenizeAll
+            |> List.map rootParse
+            //|> Seq.take 6
+            |> Seq.toList
         let parsedInput = Compiler.buildModule exprs
         let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
         System.Console.WriteLine(str)
+
+    [<Test>]
+    member this.``test Fex format``() =
+        let workingDirectory = Path.GetDirectoryName((new Uri(Assembly.GetExecutingAssembly().CodeBase)).LocalPath)
+        let fileNames = [
+            "toplevel.kl"
+            "core.kl"
+            "sys.kl"
+            "sequent.kl"
+            "yacc.kl"
+            "reader.kl"
+            "prolog.kl"
+            "track.kl"
+            "load.kl"
+            "writer.kl"
+            "macros.kl"
+            "declarations.kl"
+            "types.kl"
+            "t-star.kl"
+        ]
+        let fileContents = List.map (fun n -> File.ReadAllText(Path.Combine(workingDirectory, "../../../KLambda", n))) fileNames
+        let fullSource = String.Join("\r\n", fileContents)
+        let klExprs =
+            fullSource
+            |> tokenizeAll
+            |> List.map rootParse
+            //|> Seq.take 6
+            |> Seq.toList
+        let isDefun = function
+            | DefunExpr _ -> true
+            | _ -> false
+        let isOther = function
+            | OtherExpr(AppExpr _) -> true
+            | _ -> false
+        let other = function
+            | OtherExpr e -> e
+            | _ -> failwith "not other"
+        let defun = function
+            | DefunExpr(n,ps,body) -> (n,ps,body)
+            | _ -> failwith "not defun"
+        let defuns =
+            List.append
+                (klExprs |> List.filter isDefun |> List.map defun)
+                ["shen.demod", ["X"], AppExpr(Head, SymExpr "simple-error", [StrExpr "shen.demod is not defined"])]
+        let others = klExprs |> List.filter isOther |> List.map other
+        let str =
+            FexFormat.formatModule
+                (List.map (fun (n, ps, body) -> n, ps, Compiler.buildFex n (Set.ofList ps) body) defuns)
+                (List.map (Compiler.buildFex "_initEnv" Set.empty) others)
+        System.Console.WriteLine(str)
+        File.WriteAllText(@"C:\Users\Bort\Downloads\shen.fs", str)
 
     [<Test>]
     member this.``compiler should keep track of local variables so it know what to emit as variable or idle symbol``() =

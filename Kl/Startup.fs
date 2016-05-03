@@ -19,7 +19,7 @@ module Startup =
             functions.[name] <- value
             install functions rest
 
-    let private fn name arity f = name, Values.nativev name arity f
+    let private fn name arity f = name, Native(name, arity, f)
 
     let installBase env =
         install env.Globals.Functions [

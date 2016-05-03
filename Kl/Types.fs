@@ -117,7 +117,7 @@ and Thunk(cont: unit -> Work) =
     member this.Run = cont
 
 type AverageTime = int * int64
-type ProfilingInfo() =
+type PInfo() =
     member val On = false with get, set
     member val Times = new Defines<AverageTime>() with get
     member this.Report
@@ -128,4 +128,4 @@ type ProfilingInfo() =
 /// A KL environment state, with a reference to global definitions
 /// and local variable bindings.
 /// </summary>
-type Env = {Globals: Globals; Locals: Locals; ProfilingInfo: ProfilingInfo}
+type Env = {Globals: Globals; Locals: Locals; PInfo: PInfo}
