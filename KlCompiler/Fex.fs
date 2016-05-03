@@ -5,7 +5,6 @@ open System.Text.RegularExpressions
 type Fex =
     | Tup of Fex list
     | Lst of Fex list
-    | SafeId of string
     | Id of string
     | Boolex of bool
     | Intex of int
@@ -129,10 +128,11 @@ module FexFormat =
     let join s (xs: string list) = System.String.Join(s, xs)
     let reg = new Regex("^[a-zA-Z_][a-zA-Z0-9_]*$")
     let escapeId (id: string) =
+        let id = id.Replace("@", "_AT_")
         if reg.IsMatch id && not(Set.contains id keywords) then
-            sprintf "%s" (id.Replace("@", "_AT_"))
+            sprintf "%s" id
         else
-            sprintf "``%s``" (id.Replace("@", "_AT_"))
+            sprintf "``%s``" id
     let escapeStr (s: string) =
         s.Replace("\n", "\\n")
          .Replace("\r", "\\r")
@@ -142,38 +142,39 @@ module FexFormat =
         match e with
         | If _ -> true
         | _ -> false
-    let wrap s = sprintf "(%s)" s
+    let wrap (a, s) = sprintf (if a then "%s" else "(%s)") s
     let rec format fex =
         match fex with
-        | Tup exprs -> sprintf "(%s)" (join ", " (List.map (format >> wrap) exprs))
-        | Lst exprs -> sprintf "[%s]" (join "; " (List.map (format >> wrap) exprs))
-        | Wild -> "_"
-        | SafeId id -> id
-        | Id id -> escapeId id
-        | Boolex b -> if b then "true" else "false"
-        | Intex i -> sprintf "%i" i
-        | Decex d -> sprintf "%fm" d
-        | Strex s -> sprintf "\"%s\"" (escapeStr s)
-        | If(c, t, f) -> sprintf "if (%s) then (%s) else (%s)" (format c) (format t) (format f)
-        | Infix(op, l, r) -> sprintf "(%s) %s (%s)" (format l) op (format r)
-        | App(f, xs) -> sprintf "(%s) %s" (format f) (join " " (List.map (fun x -> "(" + format x + ")") xs))
-        | Let(id, v, b) -> sprintf "let %s = (%s) in (%s)" (escapeId id) (format v) (format b)
-        | Try(body, handler) -> sprintf "trap (fun () -> (%s)) (fun v -> go(apply Head _globals (new PInfo()) (vfunc(%s)) [v]))" (format body) (format handler)
-        | Lamb(arg, typeName, body) -> sprintf "(fun (%s: %s) -> (%s))" arg typeName (format body)
-        | Match(expr, clauses) -> sprintf "match %s with %s" (format expr) (join "" (List.map formatClause clauses))
-    and formatClause(pat, body) = sprintf " | %s -> (%s)" (format pat) (format body)
+        | Tup exprs -> true, sprintf "(%s)" (join ", " (List.map formatw exprs))
+        | Lst exprs -> true, sprintf "[%s]" (join "; " (List.map formatw exprs))
+        | Wild -> true, "_"
+        | Id id -> true, escapeId id
+        | Boolex b -> true, if b then "true" else "false"
+        | Intex i -> true, sprintf "%i" i
+        | Decex d -> true, sprintf "%fm" d
+        | Strex s -> true, sprintf "\"%s\"" (escapeStr s)
+        | If(c, t, f) -> false, sprintf "if %s then %s else %s" (formatw c) (formatw t) (formatw f)
+        | Infix(op, l, r) -> false, sprintf "%s %s %s" (formatw l) op (formatw r)
+        | App(f, xs) -> false, sprintf "%s %s" (formatw f) (join " " (List.map formatw xs))
+        | Let(id, v, b) -> false, sprintf "let %s = %s in %s" (escapeId id) (formatw v) (formatw b)
+        | Try(body, handler) -> false, sprintf "trap (fun () -> %s) (fun v -> go(apply Head _globals (new PInfo()) (vfunc %s) [v]))" (formatw body) (formatw handler)
+        | Lamb(arg, typeName, body) -> false, sprintf "fun (%s: %s) -> %s" arg typeName (formatw body)
+        | Match(expr, clauses) -> false, sprintf "match %s with %s" (formatw expr) (join "" (List.map formatClause clauses))
+    and formatClause(pat, body) = sprintf " | %s -> %s" (formatw pat) (formatw body)
+    and formatw = format >> wrap
+    and formatnow = snd
     let formatFunction first (name, paramz, body) =
         sprintf
-            """    %s %s (_globals: Globals) (_args: Value list) : Value = match _args with | [%s] -> (%s) | _ -> (err "args") """
+            "    %s %s (_globals: Globals) (_args: Value list) : Value = match _args with | [%s] -> %s | _ -> (err \"args\")"
             (if first then "let rec" else "and")
             (escapeId name)
-            (join "; " (List.map escapeId paramz))
-            (format body)
+            (join "; " (List.map (fun id -> escapeId("_" + id)) paramz))
+            (formatw body)
     let formatFunctions funs =
         match funs with
         | [] -> []
         | first :: rest -> List.Cons(formatFunction true first, List.map (formatFunction false) rest)
-    let formatInit ex = sprintf "        (%s) |> ignore" (format ex)
+    let formatInit ex = sprintf "        %s |> ignore" (formatw ex)
     let formatModule funs inits =
         sprintf
             """namespace Shen

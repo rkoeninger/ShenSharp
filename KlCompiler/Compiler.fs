@@ -185,38 +185,36 @@ module Compiler =
         FsFile.Of("Shen", [FsModule.Of("Shen", List.Cons(openKl, members))])
         
     let lambdaFex name paramz body =
-        let mat = Match(Id "_args", [Lst(List.map Id paramz), body; Wild, App(Id "err", [Strex "args"])])
+        let mat = Match(Id "_args", [Lst(List.map (fun p -> Id("_" + p)) paramz), body; Wild, App(Id "err", [Strex "args"])])
         App(Id "Func", [App(Id "Native", [Tup [Strex name; Intex (List.length paramz); Lamb("_globals", "Globals", Lamb("_args", "Value list", mat))]])])
     let rec buildFex ctx defs expr =
         match expr with
-        | EmptyExpr -> SafeId "Empty"
-        | BoolExpr b -> App(SafeId "Bool", [Boolex b])
-        | IntExpr i -> App(SafeId "Int", [Intex i])
-        | DecExpr d -> App(SafeId "Dec", [Decex d])
-        | StrExpr s -> App(SafeId "Str", [Strex s])
+        | EmptyExpr -> Id "Empty"
+        | BoolExpr b -> App(Id "Bool", [Boolex b])
+        | IntExpr i -> App(Id "Int", [Intex i])
+        | DecExpr d -> App(Id "Dec", [Decex d])
+        | StrExpr s -> App(Id "Str", [Strex s])
         | SymExpr s ->
             if not(Set.contains s defs) then
-                App(SafeId "Sym", [Strex s])
-            else if primitiveNames.ContainsKey s then
-                Id primitiveNames.[s]
+                App(Id "Sym", [Strex s])
             else
-                Id s
-        | AndExpr(left, right) -> App(SafeId "Bool", [Infix("&&", App(SafeId "vbool", [buildFex ctx defs left]), App(SafeId "vbool", [buildFex ctx defs right]))])
-        | OrExpr(left, right) -> App(SafeId "Bool", [Infix("||", App(SafeId "vbool", [buildFex ctx defs left]), App(SafeId "vbool", [buildFex ctx defs right]))])
+                Id("_" + s)
+        | AndExpr(left, right) -> App(Id "Bool", [Infix("&&", App(Id "vbool", [buildFex ctx defs left]), App(Id "vbool", [buildFex ctx defs right]))])
+        | OrExpr(left, right) -> App(Id "Bool", [Infix("||", App(Id "vbool", [buildFex ctx defs left]), App(Id "vbool", [buildFex ctx defs right]))])
         | IfExpr(condition, consequent, alternative) ->
-            If(App(SafeId "vbool", [buildFex ctx defs condition]),
+            If(App(Id "vbool", [buildFex ctx defs condition]),
                buildFex ctx defs consequent,
                buildFex ctx defs alternative)
         | CondExpr clauses ->
             let rec buildClauses clauses =
                 match clauses with
-                | [] -> App(SafeId "err", [Strex "No condition was true"])
+                | [] -> App(Id "err", [Strex "No condition was true"])
                 | (condition, consequent) :: rest ->
-                    If(App(SafeId "vbool", [buildFex ctx defs condition]),
+                    If(App(Id "vbool", [buildFex ctx defs condition]),
                        buildFex ctx defs consequent,
                        buildClauses rest)
             buildClauses clauses
-        | LetExpr(symbol, binding, body) -> Let(symbol, buildFex ctx defs binding, buildFex ctx (Set.add symbol defs) body)
+        | LetExpr(symbol, binding, body) -> Let("_" + symbol, buildFex ctx defs binding, buildFex ctx (Set.add symbol defs) body)
         | LambdaExpr(param, body) -> lambdaFex (ctx + "@lambda") [param] (buildFex ctx (Set.add param defs) body)
             // Func(Native("", 1, fun _globals -> fun _args -> match _args with | [param] -> body | _ -> err "args"))
         | FreezeExpr body -> lambdaFex (ctx + "@freeze") [] (buildFex ctx defs body)
@@ -225,16 +223,16 @@ module Compiler =
         | AppExpr(_, SymExpr s, args) ->
             let builtArgs = Lst(List.map (buildFex ctx defs) args)
             if Set.contains s defs then
-                App(SafeId "applyc", [SafeId "_globals"; App(SafeId "vfunc", [Id s]); builtArgs])
+                App(Id "applyc", [Id "_globals"; App(Id "vfunc", [Id("_" + s)]); builtArgs])
                 // applyc _globals (vfunc V12345) [args]
             else if primitiveNames.ContainsKey s then
-                App(SafeId primitiveNames.[s], [SafeId "_globals"; builtArgs])
+                App(Id primitiveNames.[s], [Id "_globals"; builtArgs])
                 // klPrim _globals [args]
             else
-                App(Id s, [SafeId "_globals"; builtArgs])
+                App(Id s, [Id "_globals"; builtArgs])
                 // ``shen.whatever`` _globals [args]
         | AppExpr(_, f, args) ->
             let builtArgs = Lst(List.map (buildFex ctx defs) args)
             let builtF = buildFex ctx defs f
-            App(SafeId "applyc", [SafeId "_globals"; App(SafeId "vfunc", [builtF]); builtArgs])
+            App(Id "applyc", [Id "_globals"; App(Id "vfunc", [builtF]); builtArgs])
             // applyc _globals (vfunc f) [args]
