@@ -7,3 +7,10 @@ Making a second attempt at implementing a certified Shen implementation. This ti
 Shen 19 doc can be found here:
 
 http://www.shenlanguage.org/documentation/shendoc.htm
+
+Status:
+  * I can generate F# using FSharp.Compiler.Services, but it's really slow
+  * I can generate F# by string concatenation (Fex), but it crashes when you try to compile it
+  * Evaluator is still very slow
+  * Shen Tests still do not pass
+  * Need to package relevant FSharp.Core.dll,.optdata,.sigdata with Kl.dll, etc.
