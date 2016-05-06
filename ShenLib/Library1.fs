@@ -13,6 +13,15 @@ type Value =
     | Cons of Value * Value
     | Absvector of Value array
 
+module Cons =
+    let rec fold f acc c =
+        match c with
+        | Empty -> acc
+        | Cons(x, y) -> fold f (f acc x) y
+        | _ -> failwith "list expected"
+    let reverse c = fold (fun acc x -> Cons(x, acc)) Empty c
+    let map f c = reverse(fold (fun acc x -> Cons(f x, acc)) Empty c)
+
 type Result<'a> =
     | Ok of 'a
     | Uncaught of string
@@ -128,11 +137,6 @@ module Core =
         match left with
         | [] -> right
         | x :: xs -> Cons(x, append xs right)
-    let rec consMap f c =
-        match c with
-        | Empty -> Empty
-        | Cons(x, y) -> Cons(f x, consMap f y)
-        | _ -> failwith ""
     let inline isUppercase ch = 'A' <= ch && ch <= 'Z'
     let inline digitChar ch = '0' <= ch && ch <= '9'
     let inline alphaChar ch = ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z')
@@ -182,7 +186,7 @@ module Yacc =
             if isGrammarSymbol sym then Cons(Symbol "hdtl", Cons(Symbol("Parse_" + s), Empty))
             elif Core.isVariable s then Symbol("Parse_" + s)
             else sym
-        | Cons _ -> Core.consMap semantics v
+        | Cons _ -> Cons.map semantics v
         | x -> x
     let checkStream ss stream semans =
         match ss with
@@ -237,7 +241,7 @@ module TStar =
         ]
     let rec curry code =
         match code with
-        | Cons(f, x) when isSpecial f -> Cons(f, Core.consMap curry x)
+        | Cons(f, x) when isSpecial f -> Cons(f, Cons.map curry x)
         | Cons(d, Cons(f, x)) when isExtraSpecial d -> Cons(d, Cons(f, x))
         | Cons(Symbol "type", Cons(x, Cons(a, Empty))) -> Cons(Symbol "type", Cons(curry x, Cons(a, Empty)))
         | Cons(f, Cons(x, Cons(y, z))) -> curry (Cons(Cons(f, Cons(x, Empty)), Cons(y, z)))
