@@ -2,16 +2,17 @@
 
 open NUnit.Framework
 open Kl
-open Kl.Tokenizer
+open Kl.Reader
+open Kl.Values
 open TestCommon
 
 [<TestFixture>]
-type TokenizerTests() =
+type ReaderTests() =
 
     [<Test>]
     member this.``tokenizer does not handle extra spaces inside of parens``() =
         try
-            tokenize "( 1 )" |> ignore // should be (ComboToken [IntToken 1])
+            read "( 1 )" |> ignore // should be Cons(Int 1, Empty)
             Assert.Fail "Expected tokenizer fail"
         with
             x -> ()
@@ -19,19 +20,19 @@ type TokenizerTests() =
     [<Test>]
     member this.``tokenizer handles extra space inbetween tokens``() =
         assertEq
-            (ComboToken
-                [SymToken "A"
-                 ComboToken [SymToken "B"; SymToken "C"]
-                 ComboToken [SymToken "X"; ComboToken [SymToken "Y"; SymToken "Z"]]
-                 ComboToken [SymToken "U"; SymToken "V"]])
-            (tokenize "(A (B    C) (X  (Y  Z))  (U    V))")
+            (toCons
+                [Sym "A"
+                 toCons [Sym "B"; Sym "C"]
+                 toCons [Sym "X"; toCons [Sym "Y"; Sym "Z"]]
+                 toCons [Sym "U"; Sym "V"]])
+            (read "(A (B    C) (X  (Y  Z))  (U    V))")
 
     [<Test>]
     member this.``string literals including line breaks should be read as single token``() =
-        let t = tokenizeAll "\"long copyright string\n\rwith line breaks\r\n\""
+        let t = readAll "\"long copyright string\n\rwith line breaks\r\n\""
         assertEq 1 t.Length
 
     [<Test>]
     member this.``string literals can contain single quotes``() =
         // NB: string literals in KL cannot contain double quotes as there is no way to escape them
-        assertEq (StrToken "'") (tokenize "\"'\"")
+        assertEq (Str "'") (read "\"'\"")

@@ -59,7 +59,7 @@ module Evaluator =
         | Freeze(locals, body) ->
             let env = {Globals = globals; Locals = locals}
             match args with
-            | [] -> evalw env body
+            | [] -> evalw Tail env body
             | _ ->
                 match eval env body with
                 | Func f -> apply pos globals f args
@@ -76,7 +76,7 @@ module Evaluator =
             let env = {Globals = globals; Locals = locals}
             match args with
             | [] -> Done(Func lambda)
-            | [arg0] -> evalw (appendLocals env [param, arg0]) body
+            | [arg0] -> evalw Tail (appendLocals env [param, arg0]) body
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
                 | Func f -> apply pos globals f args1
@@ -97,8 +97,8 @@ module Evaluator =
             | Equal ->
                 let env = appendLocals env (List.zip paramz args)
                 match pos with
-                | Head -> evalw env body
-                | Tail -> thunkw(fun () -> evalw env body)
+                | Head -> evalw pos env body
+                | Tail -> thunkw(fun () -> evalw pos env body)
             | Greater ->
                 let args0 = List.take paramz.Length args
                 let args1 = List.skip paramz.Length args
@@ -135,73 +135,83 @@ module Evaluator =
             | [] -> Done(Func(partial))
             | _ -> apply pos globals f (List.append previousArgs args)
 
-    and private evalw env expr =
+    and private evalw pos env expr =
         match expr with
 
+        // TODO: add DoExpr?
+        //       (do ~@exprs)
+        //       has last expression in tail position
+        //       https://github.com/gregspurrier/klam/blob/master/spec/functional/extensions/do_spec.rb
+
         // Atomic values besides symbols are self-evaluating
-        | EmptyExpr  -> Done(Empty)
-        | BoolExpr b -> Done(Bool b)
-        | IntExpr n  -> Done(Int n)
-        | DecExpr n  -> Done(Dec n)
-        | StrExpr s  -> Done(Str s)
+        | (Empty | Bool _ | Int _ | Dec _ | Str _) as x  -> Done x
 
         // Should only get here in the case of symbols not in operator position
         // In this case, symbols always evaluate without error.
-        | SymExpr s -> Done(resolveSymbol env s)
+        | Sym s -> Done(resolveSymbol env s)
 
+        // (and ~left ~right)
         // When the first expression evaluates to false,
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
-        | AndExpr(left, right) ->
+        | Cons(Sym "and", Cons(left, Cons(right, Empty))) ->
             if vbool(eval env left)
-                then evalw env right
+                then evalw pos env right
                 else falsew
-            
+        
+        // (or ~left ~right)
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
-        | OrExpr(left, right) ->
+        | Cons(Sym "or", Cons(left, Cons(right, Empty))) ->
             if vbool(eval env left)
                 then truew
-                else evalw env right
+                else evalw pos env right
 
+        // (if ~condition ~consequent ~alternative)
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
-        | IfExpr (condition, consequent, alternative) ->
+        | Cons(Sym "if", Cons(condition, Cons(consequent, Cons(alternative, Empty)))) ->
             if vbool(eval env condition)
-                then evalw env consequent
-                else evalw env alternative
+                then evalw pos env consequent
+                else evalw pos env alternative
         
+        // (cond ~@clauses)
         // Condition expressions must evaluate to boolean values
         // Evaluation of clauses stops when one of their conditions
         // evaluates to true.
-        | CondExpr clauses ->
+        | Cons(Sym "cond", clauses) ->
             let rec evalClauses = function
-                | [] -> err "No condition was true"
-                | (condition, consequent) :: rest ->
+                | Empty -> err "No condition was true"
+                | Cons(condition, Cons(consequent, rest)) ->
                     if vbool(eval env condition)
-                        then evalw env consequent
+                        then evalw pos env consequent
                         else evalClauses rest
+                | _ -> err "Unexpected value in cond"
             evalClauses clauses
 
+        // (let ~symbol ~binding ~body)
         // Let expressions evaluate the symbol binding first and then evaluate the body
         // with the result of evaluating the binding bound to the symbol
-        | LetExpr (symbol, binding, body) ->
+        | Cons(Sym "let", Cons(Sym symbol, Cons(binding, Cons(body, Empty)))) ->
             let value = eval env binding
-            evalw (appendLocals env [symbol, value]) body
+            evalw pos (appendLocals env [symbol, value]) body
 
+        // (lambda ~param ~body)
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
-        | LambdaExpr (param, body) ->
+        | Cons(Sym "lambda", Cons(Sym param, Cons(body, Empty))) ->
             Done(Func(Lambda(param, env.Locals, body)))
 
+        // (freeze ~body)
         // Evaluating a freeze just captures the local state and the body expression
-        | FreezeExpr expr ->
-            Done(Func(Freeze(env.Locals, expr)))
+        | Cons(Sym "freeze", body) ->
+            Done(Func(Freeze(env.Locals, body)))
 
+        // (trap-error ~body ~handler)
         // Handler expression is not evaluated unless body results in an error
         // Handler expression must evaluate to a function
-        | TrapExpr (pos, body, handler) ->
+        | Cons(Sym "trap-error", Cons(body, Cons(handler, Empty))) ->
             try
                 Done(eval env body)
             with
@@ -214,30 +224,42 @@ module Evaluator =
                 | _ -> err "Trap handler did not evaluate to a function"
             | _ -> reraise()
 
+        // (~f ~@args)
         // Expression in operator position must eval to a function
         // or to a symbol which resolves to a function.
-        | AppExpr (pos, f, args) ->
+        | Cons(f, args) ->
             match f with
-            | SymExpr s ->
+            | Sym s ->
                 let operator = resolveFunction env s
-                let operands = List.map (eval env) args
+                let operands = List.map (eval env) (toList args)
                 apply pos env.Globals operator operands
             | expr ->
                 match eval env expr with
                 | Func operator ->
-                    let operands = List.map (eval env) args
+                    let operands = List.map (eval env) (toList args)
                     apply pos env.Globals operator operands
                 | Sym s ->
                     let operator = resolveFunction env s
-                    let operands = List.map (eval env) args
+                    let operands = List.map (eval env) (toList args)
                     apply pos env.Globals operator operands
                 | _ -> err "Expression at head of application did not resolve to function"
+
+        // TODO: explicitly raise error on special forms with incorrect number of args?
+        //        | ComboToken(SymToken "or" :: _) ->
+        //    failwith "or expression must have exactly 2 argument expressions"
+
+        // TODO: explicitly reject defun's not at root level?
+        //// (defun ...)
+        //| ComboToken(SymToken "defun" :: _) ->
+        //    failwith "defun expressions cannot appear below the root level"
+
+        | _ -> err "Unexpected value type - cannot evaluate"
 
     /// <summary>
     /// Evaluates an sub-expression into a value, running all deferred
     /// computations in the process.
     /// </summary>
-    and eval env expr = go(evalw env expr)
+    and eval env expr = go(evalw Tail env expr)
 
     /// <summary>
     /// Evaluates a root-level expression into a value, running all side
@@ -245,12 +267,12 @@ module Evaluator =
     /// </summary>
     let rootEval globals expr =
         match expr with
-        | DefunExpr(name, paramz, body) ->
-            let f = Defun(name, paramz, body)
+        | Cons(Sym "defun", Cons(Sym name, Cons(paramz, Cons(body, Empty)))) ->
+            let f = Defun(name, List.map vsym (toList paramz), body)
             globals.Functions.[name] <- f
             Sym name
 
-        | OtherExpr expr ->
+        | expr ->
             let env = {Globals = globals; Locals = Map.empty}
             eval env expr
 

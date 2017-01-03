@@ -3,8 +3,7 @@
 open NUnit.Framework
 open Kl.Extensions
 open Kl
-open Kl.Tokenizer
-open Kl.Parser
+open Kl.Reader
 open Kl.Evaluator
 open Kl.Builtins
 open Kl.Startup

@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open Kl
+open Kl.Reader
 open Kl.Startup
 open TestCommon
 
@@ -13,7 +14,7 @@ type SymbolEvaluationTests() =
         let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ=-*/+_?$!@~.><&%'#`;:{}"
         for ch in chars do
             let s = ch.ToString()
-            assertEq (SymToken s) (Tokenizer.tokenize s)
+            assertEq (Sym s) (read s)
 
     [<Test>]
     member this.``symbols not starting with an uppercase letter and not at the head of an application are always idle``() =

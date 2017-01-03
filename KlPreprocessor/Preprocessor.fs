@@ -1,11 +1,10 @@
 ﻿open Kl
-open Kl.Tokenizer
-open Kl.Parser
+open Kl.Reader
 open Kl.Evaluator
 open System
 open System.IO
 
-let rec genExpr e = untokenize(unparse e)
+let rec genExpr e = Values.toStr e
 
 let rec genValue v =
     match v with
@@ -73,13 +72,6 @@ let main args =
                     "types.kl"
                 ]
     let klFolder = @"..\..\..\KLambda"
-    let rec astToStr = function
-        | ComboToken tokens -> sprintf "(%s)" <| String.concat " " (Seq.map astToStr tokens)
-        | BoolToken b -> if b then "true" else "false"
-        | IntToken i -> i.ToString()
-        | DecToken d -> d.ToString()
-        | StrToken s -> "\"" + s + "\""
-        | SymToken s -> s
     let env = Startup.baseEnv()
     let overrides =
         Map.ofList [
@@ -95,12 +87,11 @@ let main args =
         printfn ""
         stdout.Flush()
         let text = System.IO.File.ReadAllText(file)
-        for ast in tokenizeAll text do
+        for ast in readAll text do
             match ast with
-            | ComboToken (command :: symbol :: _) ->
-                printfn "%s %s" (astToStr command) (astToStr symbol)
-                let expr = rootParse ast
-                rootEval env.Globals expr |> ignore
+            | Cons(command, Cons(symbol, _)) ->
+                printfn "%s %s" (Values.toStr command) (Values.toStr symbol)
+                rootEval env.Globals ast |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"

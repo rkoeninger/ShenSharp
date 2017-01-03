@@ -5,7 +5,6 @@ open System
 open System.Diagnostics
 open System.IO
 open Kl.Values
-open Kl.Parser
 open Kl.Evaluator
 
 module Builtins =
@@ -122,7 +121,7 @@ module Builtins =
 
     let klEval globals args =
         match args with
-        | [v] -> v |> toToken |> rootParse |> rootEval globals
+        | [v] -> rootEval globals v
         | _ -> arityErr "eval-kl" 1 args
 
     let klType globals args =

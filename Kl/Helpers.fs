@@ -67,6 +67,11 @@ module Values =
         | Bool b -> b
         | _ -> err "Boolean expected"
 
+    let vsym v =
+        match v with
+        | Sym s -> s
+        | _ -> err "Symbol expected"
+
     let vstr v =
         match v with
         | Str s -> s
@@ -115,23 +120,17 @@ module Values =
         | InStream s -> sprintf "<InStream %s>" (s.ToString())
         | OutStream s -> sprintf "<OutStream %s>" (s.ToString())
 
-    let rec toToken value =
-        match value with
-        | Empty  -> ComboToken []
-        | Bool b -> BoolToken b
-        | Int i  -> IntToken i
-        | Dec d  -> DecToken d
-        | Str s  -> StrToken s
-        | Sym s  -> SymToken s
-        | Cons _ as cons ->
-            let generator value =
-                match value with
-                | Cons(head, tail) -> Some(toToken head, tail)
-                | Empty -> None
-                | _ -> err "Cons chains must form linked lists to be converted to syntax"
-            cons |> Seq.unfold generator |> Seq.toList |> ComboToken
-        | x -> err(sprintf "Invalid value to be converted to token: %A" x)
-    
+    let rec toCons list =
+        match list with
+        | [] -> Empty
+        | x :: xs -> Cons(x, toCons xs)
+
+    let rec toList cons =
+        match cons with
+        | Empty -> []
+        | Cons(x, xs) -> List.Cons(x, toList xs)
+        | _ -> err "Invalid value in Cons list"
+
     let arityErr name expected (args: Value list) =
         err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
     

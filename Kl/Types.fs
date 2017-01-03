@@ -4,49 +4,10 @@ open System
 open System.Collections.Generic
 
 /// <summary>
-/// A node in a KL syntax tree.
-/// </summary>
-type Token =
-    | BoolToken  of bool
-    | IntToken   of int
-    | DecToken   of decimal
-    | StrToken   of string
-    | SymToken   of string
-    | ComboToken of Token list
-
-/// <summary>
 /// Head/Tail position of an expression.
 /// Used for tail call optimization.
 /// </summary>
 type Position = Head | Tail
-
-/// <summary>
-/// A KL expression.
-/// </summary>
-type Expr =
-    | EmptyExpr
-    | BoolExpr   of bool
-    | IntExpr    of int
-    | DecExpr    of decimal
-    | StrExpr    of string
-    | SymExpr    of string
-    | AndExpr    of Expr * Expr
-    | OrExpr     of Expr * Expr
-    | IfExpr     of Expr * Expr * Expr
-    | CondExpr   of (Expr * Expr) list
-    | LetExpr    of string * Expr * Expr
-    | LambdaExpr of string * Expr
-    | FreezeExpr of Expr
-    | TrapExpr   of Position * Expr * Expr
-    | AppExpr    of Position * Expr * Expr list
-
-/// <summary>
-/// A separate type used to enforce the fact that <c>DefunExpr</c>s
-/// can only appear at the root level.
-/// </summary>
-type RootExpr =
-    | DefunExpr of string * string list * Expr
-    | OtherExpr of Expr
 
 // TODO: these just show up as "exception of type Kl.SimpleError raised"
 //       needs to show actual message
@@ -80,9 +41,9 @@ and Locals = Map<string, Value>
 /// </summary>
 and [<ReferenceEquality>] Function =
     | Native of string * int * (Globals -> Value list -> Value)
-    | Defun of string * string list * Expr
-    | Lambda of string * Locals * Expr
-    | Freeze of Locals * Expr
+    | Defun of string * string list * Value
+    | Lambda of string * Locals * Value
+    | Freeze of Locals * Value
     | Partial of Function * Value list
     
 /// <summary>

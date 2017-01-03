@@ -2,8 +2,7 @@
 
 open NUnit.Framework
 open Kl
-open Kl.Tokenizer
-open Kl.Parser
+open Kl.Reader
 open KlCompiler
 open Fantomas
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
@@ -29,8 +28,8 @@ type CompilerTests() =
 
     [<Test>]
     member this.CompilerServicesBuildAst() =
-        let p = tokenize >> parse Head >> Compiler.build "test" Set.empty
-        let r = AndExpr(BoolExpr true, BoolExpr false) |> Compiler.build "test" Set.empty
+        let p = read >> Compiler.build "test" Set.empty
+        let r = Cons(Sym "and", Cons(Bool true, Cons(Bool false, Empty))) |> Compiler.build "test" Set.empty
         let text = """module Stuff
         
 open Kl
@@ -55,10 +54,7 @@ let fff = match (match 0 with
                                "X", FsType.Of("Value")
                                "Y", FsType.Of("Value")],
                               Compiler.build "test" (Set.ofList ["X"; "Y"]) (
-                                Expr.AppExpr(
-                                  Position.Head,
-                                  Expr.SymExpr "+",
-                                  [SymExpr "X"; SymExpr "Y"])))])])
+                                Cons(Sym "+", Cons(Sym "X", Cons(Sym "Y", Empty)))))])])
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
@@ -72,7 +68,7 @@ let fff = match (match 0 with
 
     [<Test>]
     member this.KlExprToSynExpr() =
-        let kl = Expr.AndExpr(Expr.BoolExpr true, Expr.BoolExpr false)
+        let kl = Values.toCons [Bool true; Bool false]
         let syn = Compiler.build "test" Set.empty kl
         let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -91,7 +87,7 @@ let fff = match (match 0 with
     
     [<Test>]
     member this.BuildFreezeExpr() =
-        let kl = Expr.FreezeExpr(Expr.AppExpr(Head, Expr.SymExpr "number?", [Expr.StrExpr "hi"]))
+        let kl = Values.toCons [Sym "freeze"; Values.toCons [Sym "number?"; Str "hi"]]
         let syn = Compiler.build "test" Set.empty kl
         let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -112,7 +108,7 @@ let fff = match (match 0 with
 
     [<Test>]
     member this.BuildCondExpr() =
-        let kl = "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))" |> tokenize |> parse Position.Head
+        let kl = read "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))"
         let syn = Compiler.build "test" (Set.singleton "X") kl
         let ast = singleBinding [Compiler.globalsParam; "X", FsType.Of("Value")] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -135,7 +131,7 @@ let fff = match (match 0 with
 
     [<Test>]
     member this.BuildLetExpr() =
-        let kl = "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))" |> tokenize |> parse Position.Head
+        let kl = read "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))"
         let syn = Compiler.build "test" Set.empty kl
         let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -176,8 +172,7 @@ let fff = match (match 0 with
         let fullSource = String.Join("\r\n", fileContents)
         let exprs =
             fullSource
-            |> tokenizeAll
-            |> List.map rootParse
+            |> readAll
             //|> Seq.take 6
             |> Seq.toList
         let parsedInput = Compiler.buildModule exprs
@@ -208,27 +203,23 @@ let fff = match (match 0 with
         let fullSource = String.Join("\r\n", fileContents)
         let klExprs =
             fullSource
-            |> tokenizeAll
-            |> List.map rootParse
+            |> readAll
             //|> Seq.take 6
             |> Seq.toList
         let isDefun = function
-            | DefunExpr _ -> true
+            | Cons(Sym "defun", _) -> true
             | _ -> false
         let isOther = function
-            | OtherExpr(AppExpr _) -> true
-            | _ -> false
-        let other = function
-            | OtherExpr e -> e
-            | _ -> failwith "not other"
+            | Cons(Sym "defun", _) -> false
+            | _ -> true
         let defun = function
-            | DefunExpr(n,ps,body) -> (n,ps,body)
+            | Cons(_, Cons(Sym n, Cons(ps, Cons(body, Empty)))) -> (n, List.map Values.vsym (Values.toList ps), body)
             | _ -> failwith "not defun"
         let defuns =
             List.append
                 (klExprs |> List.filter isDefun |> List.map defun)
-                ["shen.demod", ["X"], AppExpr(Head, SymExpr "simple-error", [StrExpr "shen.demod is not defined"])]
-        let others = klExprs |> List.filter isOther |> List.map other
+                ["shen.demod", ["X"], Values.toCons [Sym "simple-error"; Str "shen.demod is not defined"]]
+        let others = klExprs |> List.filter isOther
         let str =
             FexFormat.formatModule
                 (List.map (fun (n, ps, body) -> n, ps, Compiler.buildFex n (Set.ofList ps) body) defuns)
@@ -238,7 +229,7 @@ let fff = match (match 0 with
 
     [<Test>]
     member this.``compiler should keep track of local variables so it know what to emit as variable or idle symbol``() =
-        let expr = parse Head (tokenize "(cons A (cons B (cons C ())))")
+        let expr = read "(cons A (cons B (cons C ())))"
         let syn = Compiler.build "test" Set.empty expr
         let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
@@ -258,13 +249,13 @@ let fff = match (match 0 with
     [<Test>]
     [<Ignore("would only work locally/not needed?")>]
     member this.``dump code to disk and compile it there``() =
-        let kl = """
+        let kl = readAll """
         (defun pi () 3.1415926)
 
         (defun sq (X) (* X X))
 
         (defun circle-area (R) (* (pi) (sq R)))
-        """       |> tokenizeAll |> List.map rootParse
+        """
         let ast = Compiler.buildModule kl
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
         let srcPath = Path.Combine(Path.GetTempPath(), "klcompiler", Guid.NewGuid().ToString() + ".fs")
@@ -304,31 +295,22 @@ let fff = match (match 0 with
         let klPath = Path.Combine(binDir, @"..\..\..\KLambda")
         let rec contains name expr =
             match expr with
-            | AppExpr(_, SymExpr n, _) when n = name -> true
-            | AppExpr(_, f, args) -> contains name f || List.exists (contains name) args
-            | IfExpr(c, t, f) -> contains name c || contains name t || contains name f
-            | CondExpr(clauses) -> List.exists (fun (c, t) -> contains name c || contains name t) clauses
-            | AndExpr(l, r) -> contains name l || contains name r
-            | OrExpr(l, r) -> contains name l || contains name r
-            | LetExpr(_, v, e) -> contains name v || contains name e
-            | TrapExpr(_, b, h) -> contains name b || contains name h
-            | LambdaExpr(_, b) -> contains name b
-            | FreezeExpr(e) -> contains name e
+            | Sym s -> s = name
+            | Cons(x, y) -> contains name x || contains name y
             | _ -> false
         let isRecursive expr =
             match expr with
-            | DefunExpr(name, paramz, body) -> contains name body
+            | Cons(Sym "defun", Cons(Sym name, Cons(_, Cons(body, Empty)))) -> contains name body
             | _ -> false
         let exprs =
             Directory.GetFiles(klPath)
             |> Array.toList
             |> List.map File.ReadAllText
-            |> List.map tokenizeAll
+            |> List.map readAll
             |> List.concat
-            |> List.map rootParse
             |> List.filter isRecursive
             |> List.map (function
-                         | DefunExpr(name, _, _) -> name
+                         | Cons(Sym "defun", Cons(Sym name, _)) -> name
                          | _ -> failwith "not a defun expr")
             |> List.sort
         for e in exprs do

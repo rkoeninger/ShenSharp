@@ -1,6 +1,5 @@
 ﻿open Kl
-open Kl.Tokenizer
-open Kl.Parser
+open Kl.Reader
 open Kl.Evaluator
 open System
 open System.IO
@@ -48,13 +47,6 @@ let main0 args =
                     "t-star.kl"
                 ]
     let klFolder = @"..\..\..\KLambda"
-    let rec astToStr = function
-        | ComboToken tokens -> sprintf "(%s)" <| String.concat " " (Seq.map astToStr tokens)
-        | BoolToken b -> if b then "true" else "false"
-        | IntToken i -> i.ToString()
-        | DecToken d -> d.ToString()
-        | StrToken s -> "\"" + s + "\""
-        | SymToken s -> s
     let env = Startup.baseEnv()
     //env.Globals.Functions.["vector-builder"] <- Native("vector-builder", -1, klVectorBuilder)
     //env.Globals.Functions.["lambda-closure"] <- Native("lambda-closure", 2, klLambdaClosure)
@@ -75,16 +67,15 @@ let main0 args =
         printfn ""
         stdout.Flush()
         let text = System.IO.File.ReadAllText(file)
-        for ast in tokenizeAll text do
+        for ast in readAll text do
             match ast with
-            | ComboToken (command :: symbol :: _) ->
-                printfn "%s %s" (astToStr command) (astToStr symbol)
-                let expr = rootParse ast
+            | Cons(command, Cons(symbol, _)) ->
+                printfn "%s %s" (Values.toStr command) (Values.toStr symbol)
                 //match expr with
                 //| DefunExpr(name, _, _) -> defunList.Add(name)
                 //| _ -> ()
-                rootEval env.Globals expr |> ignore
-                if (command = SymToken "set") && (symbol = SymToken "shen.*symbol-table*") then
+                rootEval env.Globals ast |> ignore
+                if (command = Sym "set") && (symbol = Sym "shen.*symbol-table*") then
                     ()
             | _ -> () // ignore copyright block at top
     env.Globals.Symbols.["shen-*installing-kl*"] <- Bool false
@@ -108,7 +99,7 @@ let main0 args =
 //    env.CallCounts
 //    |> Seq.sortBy (fun (KeyValue(k, v)) -> v)
 //    |> Seq.iter (fun (KeyValue(k,v)) -> printfn "%s: %d" k v)
-    let load path = eval env (AppExpr (Head, (SymExpr "load"), [StrExpr path])) |> ignore
+    let load path = eval env (Cons(Sym "load", Cons(Str path, Empty))) |> ignore
 //    let runIt = KlTokenizer.tokenize >> KlParser.parse Head >> KlEvaluator.eval env >> ignore
 //    printfn "Starting shen repl..."
 //    printfn ""

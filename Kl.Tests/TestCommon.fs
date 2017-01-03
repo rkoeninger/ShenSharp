@@ -3,14 +3,13 @@
 open NUnit.Framework
 open Kl
 open Kl.Extensions
-open Kl.Tokenizer
-open Kl.Parser
 open Kl.Evaluator
+open Kl.Reader
 open Kl.Startup
 
 module TestCommon =
     
-    let runIn env syntax = rootEval env.Globals (rootParse(tokenize syntax))
+    let runIn env syntax = rootEval env.Globals (read syntax)
     let run = runIn (baseEnv())
     let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
     let assertTrue = assertEq Values.truev
