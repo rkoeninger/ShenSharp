@@ -11,8 +11,7 @@ http://www.shenlanguage.org/documentation/shendoc.htm
 
 The proper order for browsing the KL interpreter is as follows:
   * [Types](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Types.fs)
-  * [Tokenizer](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Tokenizer.fs)
-  * [Parser](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Parser.fs)
+  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Readerfs)
   * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Evaluator.fs)
   * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Builtins.fs)
   * [Startup](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Startup.fs)
