@@ -9,13 +9,13 @@ module Reader =
 
     let private pValue, pValueRef = createParserForwardedToRef<Value, unit>()
     let private pBool = (stringReturn "true" (Bool true)) <|> (stringReturn "false" (Bool false))
-    let private pInt = regex "[-+]?[0-9]*" |>> (int >> Int)
-    let private pDec = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> (decimal >> Dec)
-    let private pSym = regex "[^\\s\\x28\\x29]+" |>> Sym
+    let private number (n: string) = if (n.Contains(".")) then Dec(decimal n) else Int(int n)
+    let private pNum = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> number
     let private pStr = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"')) |>> Str
+    let private pSym = regex "[^\\s\\x28\\x29]+" |>> Sym
     let private pList = between (pchar '(') (pchar ')') (sepBy pValue spaces1) |>> toCons
     let private pValues = spaces >>. (many (pValue .>> spaces))
-    do pValueRef := choice [pBool; pInt; pDec; pSym; pStr; pList]
+    do pValueRef := choice [pBool; pNum; pStr; pSym; pList]
     
     /// <summary>Read first complete KL source expression into value.</summary>
     /// <exception>Throws when syntax is invalid.</exception>

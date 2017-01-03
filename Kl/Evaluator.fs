@@ -205,7 +205,7 @@ module Evaluator =
 
         // (freeze ~body)
         // Evaluating a freeze just captures the local state and the body expression
-        | Cons(Sym "freeze", body) ->
+        | Cons(Sym "freeze", Cons(body, Empty)) ->
             Done(Func(Freeze(env.Locals, body)))
 
         // (trap-error ~body ~handler)

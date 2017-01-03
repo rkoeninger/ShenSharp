@@ -36,3 +36,11 @@ type ReaderTests() =
     member this.``string literals can contain single quotes``() =
         // NB: string literals in KL cannot contain double quotes as there is no way to escape them
         assertEq (Str "'") (read "\"'\"")
+
+    [<Test>]
+    member this.``integers are parsable``() =
+        assertEq (Int 45) (read "45")
+
+    [<Test>]
+    member this.``decimals are parsable``() =
+        assertEq (Dec 4.25m) (read "4.25")
