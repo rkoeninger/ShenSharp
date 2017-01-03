@@ -89,7 +89,6 @@ let main args =
             "map", (2, Builtins.klMap)
             "reverse", (1, Builtins.klReverse)
         ]
-    let pinfo = new PInfo()
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
@@ -101,7 +100,7 @@ let main args =
             | ComboToken (command :: symbol :: _) ->
                 printfn "%s %s" (astToStr command) (astToStr symbol)
                 let expr = rootParse ast
-                rootEval env.Globals pinfo expr |> ignore
+                rootEval env.Globals expr |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
