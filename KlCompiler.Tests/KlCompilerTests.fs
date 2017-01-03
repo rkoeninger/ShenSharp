@@ -68,7 +68,7 @@ let fff = match (match 0 with
 
     [<Test>]
     member this.KlExprToSynExpr() =
-        let kl = Values.toCons [Bool true; Bool false]
+        let kl = Values.toCons [Sym "and"; Bool true; Bool false]
         let syn = Compiler.build "test" Set.empty kl
         let ast = singleBinding [Compiler.globalsParam] syn
         let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)

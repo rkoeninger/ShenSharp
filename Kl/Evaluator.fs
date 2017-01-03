@@ -184,7 +184,7 @@ module Evaluator =
         | Cons(Sym "cond", clauses) ->
             let rec evalClauses = function
                 | Empty -> err "No condition was true"
-                | Cons(condition, Cons(consequent, rest)) ->
+                | Cons(Cons(condition, Cons(consequent, Empty)), rest) ->
                     if vbool(eval env condition)
                         then evalw pos env consequent
                         else evalClauses rest

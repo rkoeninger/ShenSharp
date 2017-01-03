@@ -112,9 +112,9 @@ module Compiler =
         | Cons(Sym "cond", clauses) ->
             let rec buildClauses clauses =
                 match clauses with
-                | Cons(Bool false, Cons(_, rest)) -> buildClauses rest
-                | Cons(Bool true, Cons(ifTrue, _)) -> build context defs ifTrue
-                | Cons(condition, Cons(ifTrue, rest)) ->
+                | Cons(Cons(Bool false, Cons(_, Empty)), rest) -> buildClauses rest
+                | Cons(Cons(Bool true, Cons(ifTrue, Empty)), _) -> build context defs ifTrue
+                | Cons(Cons(condition, Cons(ifTrue, Empty)), rest) ->
                     FsExpr.If(
                         seBool(build context defs condition),
                         build context defs ifTrue,
