@@ -10,11 +10,11 @@ Shen 19 doc can be found here:
 http://www.shenlanguage.org/documentation/shendoc.htm
 
 The proper order for browsing the KL interpreter is as follows:
-  * [Types](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Types.fs)
-  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Reader.fs)
-  * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Evaluator.fs)
-  * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Builtins.fs)
-  * [Startup](https://github.com/rkoeninger/ShenSharp/blob/kl-compiler/Kl/Startup.fs)
+  * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs)
+  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Reader.fs)
+  * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Evaluator.fs)
+  * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Builtins.fs)
+  * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs)
 
 Status:
   * I can generate F# using FSharp.Compiler.Services, but it's really slow
