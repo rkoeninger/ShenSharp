@@ -58,6 +58,7 @@
     <Content Include="packages.config" />
     <Compile Include="Types.fs" />
     <Compile Include="Helpers.fs" />
+    <Compile Include="Reader.fs" />
     <Compile Include="Tokenizer.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Evaluator.fs" />
