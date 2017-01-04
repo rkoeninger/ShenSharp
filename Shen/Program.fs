@@ -56,7 +56,6 @@ let main0 args =
 //            "symbol?", (1, Builtins.klIsSymbol)
 //            "shen.fillvector", (4, Builtins.klFillVector)
 //            "element?", (2, Builtins.klElement)
-//            "map", (2, Builtins.klMap)
 //            "reverse", (1, Builtins.klReverse)
 //        ]
     //let defunList = new System.Collections.Generic.List<string>()
@@ -90,7 +89,6 @@ let main0 args =
     //env.Globals.Functions.["shen.fillvector"] <- Native("shen.fillvector", 4, Builtins.klFillVector)
     env.Globals.Functions.["shen.mod"] <- Native("shen.mod", 2, Builtins.klModulus)
     //env.Globals.Functions.["element?"] <- Native("element?", 2, Builtins.klElement)
-    //env.Globals.Functions.["map"] <- Native("map", 2, Builtins.klMap)
     //env.Globals.Functions.["reverse"] <- Native("reverse", 1, Builtins.klReverse)
     //env.Globals.Functions.["shen.alpha?"] <- Native("shen.alpha?", 1, Builtins.klIsAlpha)
     //env.Globals.Functions.["shen.digit?"] <- Native("shen.digit?", 1, Builtins.klIsDigit)

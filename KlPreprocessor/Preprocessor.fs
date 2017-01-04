@@ -78,7 +78,6 @@ let main args =
             "symbol?", (1, Builtins.klIsSymbol)
             "shen.fillvector", (4, Builtins.klFillVector)
             "element?", (2, Builtins.klElement)
-            "map", (2, Builtins.klMap)
             "reverse", (1, Builtins.klReverse)
         ]
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do

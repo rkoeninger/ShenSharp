@@ -354,19 +354,6 @@ module Builtins =
         | [_] -> typeErr "reverse" ["list"]
         | _ -> arityErr "reverse" 1 args
 
-    let klMap globals args =
-        match args with
-        | [_; Empty] -> Empty
-        | [Func f; Cons _ as c] ->
-            let applyF v = go(apply Head globals f [v])
-            let rec m v r =
-                match v with
-                | Cons(head, tail) -> m tail (Cons(applyF head, r))
-                | _ -> r
-            m c Empty
-        | [_; _] -> typeErr "map" ["function"; "list"]
-        | _ -> arityErr "map" 2 args
-
     let klModulus _ args =
         match args with
         | [Int x; Int y] -> Int(x % y)

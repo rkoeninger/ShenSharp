@@ -50,7 +50,7 @@ module Evaluator =
     /// the first N arguments and the result must resolve to
     /// a function which is then applied to the remaining arguments.
     /// </remarks>
-    let rec apply pos globals f args =
+    let rec applyw pos globals f args =
         match f with
 
         // Freezes always take 0 arguments and they retain local
@@ -63,10 +63,10 @@ module Evaluator =
             | [] -> evalw Tail env body
             | _ ->
                 match eval env body with
-                | Func f -> apply pos globals f args
+                | Func f -> applyw pos globals f args
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args
+                    applyw pos globals f args
                 | _ -> err "Function expected/too many arguments provided to freeze"
                 
         // Lambdas always take 1 arguments and they retain local
@@ -80,10 +80,10 @@ module Evaluator =
             | [arg0] -> evalw Tail (appendLocals env [param, arg0]) body
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
-                | Func f -> apply pos globals f args1
+                | Func f -> applyw pos globals f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args1
+                    applyw pos globals f args1
                 | _ -> err "Function expected/too many arguments provided to lambda"
 
         // Defuns take any number of arguments and do not retain any local state.
@@ -104,10 +104,10 @@ module Evaluator =
                 let args0 = List.take paramz.Length args
                 let args1 = List.skip paramz.Length args
                 match eval (appendLocals env (List.zip paramz args0)) body with
-                | Func f -> apply pos globals f args1
+                | Func f -> applyw pos globals f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos globals f args1
+                    applyw pos globals f args1
                 | _ -> err "Function expected/too many arguments provided to defun"
 
         // Primitives take and number of arguments and do not retain any local state.
@@ -122,11 +122,11 @@ module Evaluator =
             | Greater ->
                 let (args0, args1) = List.splitAt arity args
                 match f globals args0 with
-                | Func f -> apply pos globals f args1
+                | Func f -> applyw pos globals f args1
                 | Sym s ->
                     let env = {Globals = globals; Locals = Map.empty}
                     let f = resolveFunction env s
-                    apply pos globals f args1
+                    applyw pos globals f args1
                 | _ -> err "Function expected/too many arguments provided to native"
 
         // Applying a partial is just applying  the original function
@@ -134,7 +134,7 @@ module Evaluator =
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> apply pos globals f (List.append previousArgs args)
+            | _ -> applyw pos globals f (List.append previousArgs args)
 
     and private evalw pos env expr =
         match expr with
@@ -205,7 +205,7 @@ module Evaluator =
             with
             | :? SimpleError as e ->
                 let operator = evalFunction env handler
-                apply pos env.Globals operator [Err e.Message]
+                applyw pos env.Globals operator [Err e.Message]
             | _ -> reraise()
 
         // Evaluate all expressions, returns result of last expression.
@@ -226,7 +226,7 @@ module Evaluator =
         | AppExpr(f, args) ->
             let operator = evalFunction env f
             let operands = List.map (eval env) args
-            apply pos env.Globals operator operands
+            applyw pos env.Globals operator operands
 
         | _ -> err "Unexpected value type - cannot evaluate"
 
@@ -265,4 +265,4 @@ module Evaluator =
             let env = {Globals = globals; Locals = Map.empty}
             eval env expr
 
-    let applyc globals f args = go(apply Head globals f args)
+    let applyc globals f args = go(applyw Head globals f args)
