@@ -15,7 +15,8 @@ type Position = Head | Tail
 /// <summary>
 /// Exception type that embodies KL errors.
 /// </summary>
-exception SimpleError of string
+type SimpleError(message) =
+    inherit Exception(message)
 
 type [<ReferenceEquality>] Input = {Read: unit -> int; Close: unit -> unit}
 type [<ReferenceEquality>] Output = {Write: byte -> unit; Close: unit -> unit}

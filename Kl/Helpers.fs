@@ -49,7 +49,7 @@ module Values =
 
     let trap f handler =
         try f()
-        with SimpleError e -> handler(Err e)
+        with :? SimpleError as e -> handler(Err e.Message)
 
     let thunkw f = Pending(new Thunk(f))
 

@@ -188,7 +188,8 @@ module Evaluator =
             let value = eval env binding
             evalw pos (appendLocals env [symbol, value]) body
 
-        // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
+        // Evaluating a lambda captures the local state,
+        // the lambda parameter name and the body expression
         | LambdaExpr(param, body) ->
             Done(Func(Lambda(param, env.Locals, body)))
 
@@ -202,12 +203,12 @@ module Evaluator =
             try
                 Done(eval env body)
             with
-            | SimpleError message ->
+            | :? SimpleError as e ->
                 match eval env handler with
-                | Func f -> apply pos env.Globals f [Err message]
+                | Func f -> apply pos env.Globals f [Err e.Message]
                 | Sym s ->
                     let f = resolveFunction env s
-                    apply pos env.Globals f [Err message]
+                    apply pos env.Globals f [Err e.Message]
                 | _ -> err "Trap handler did not evaluate to a function"
             | _ -> reraise()
 
