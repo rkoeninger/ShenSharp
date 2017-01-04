@@ -50,7 +50,7 @@ module Evaluator =
     /// the first N arguments and the result must resolve to
     /// a function which is then applied to the remaining arguments.
     /// </remarks>
-    let rec private applyw pos globals f args =
+    let rec private applyw globals f args =
         match f with
 
         // Freezes always take 0 arguments and they retain local
@@ -60,13 +60,13 @@ module Evaluator =
         | Freeze(locals, body) ->
             let env = {Globals = globals; Locals = locals}
             match args with
-            | [] -> evalw Tail env body
+            | [] -> evalw env body
             | _ ->
                 match eval env body with
-                | Func f -> applyw pos globals f args
+                | Func f -> applyw globals f args
                 | Sym s ->
                     let f = resolveFunction env s
-                    applyw pos globals f args
+                    applyw globals f args
                 | _ -> err "Function expected/too many arguments provided to freeze"
                 
         // Lambdas always take 1 arguments and they retain local
@@ -77,13 +77,13 @@ module Evaluator =
             let env = {Globals = globals; Locals = locals}
             match args with
             | [] -> Done(Func lambda)
-            | [arg0] -> evalw Tail (appendLocals env [param, arg0]) body
+            | [arg0] -> evalw (appendLocals env [param, arg0]) body
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
-                | Func f -> applyw pos globals f args1
+                | Func f -> applyw globals f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    applyw pos globals f args1
+                    applyw globals f args1
                 | _ -> err "Function expected/too many arguments provided to lambda"
 
         // Defuns take any number of arguments and do not retain any local state.
@@ -97,17 +97,15 @@ module Evaluator =
                 | _ -> Done(Func(Partial(defun, args)))
             | Equal ->
                 let env = appendLocals env (List.zip paramz args)
-                match pos with
-                | Head -> evalw pos env body
-                | Tail -> thunkw(fun () -> evalw pos env body)
+                thunkw(fun () -> evalw env body)
             | Greater ->
                 let args0 = List.take paramz.Length args
                 let args1 = List.skip paramz.Length args
                 match eval (appendLocals env (List.zip paramz args0)) body with
-                | Func f -> applyw pos globals f args1
+                | Func f -> applyw globals f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    applyw pos globals f args1
+                    applyw globals f args1
                 | _ -> err "Function expected/too many arguments provided to defun"
 
         // Primitives take and number of arguments and do not retain any local state.
@@ -122,11 +120,11 @@ module Evaluator =
             | Greater ->
                 let (args0, args1) = List.splitAt arity args
                 match f globals args0 with
-                | Func f -> applyw pos globals f args1
+                | Func f -> applyw globals f args1
                 | Sym s ->
                     let env = {Globals = globals; Locals = Map.empty}
                     let f = resolveFunction env s
-                    applyw pos globals f args1
+                    applyw globals f args1
                 | _ -> err "Function expected/too many arguments provided to native"
 
         // Applying a partial is just applying  the original function
@@ -134,9 +132,9 @@ module Evaluator =
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> applyw pos globals f (List.append previousArgs args)
+            | _ -> applyw globals f (List.append previousArgs args)
 
-    and private evalw pos env expr =
+    and private evalw env expr =
         match expr with
 
         // Atomic values besides symbols are self-evaluating
@@ -151,7 +149,7 @@ module Evaluator =
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
             if vbool(eval env left)
-                then evalw pos env right
+                then evalw env right
                 else falsew
 
         // When the first expression evaluates to true,
@@ -160,15 +158,15 @@ module Evaluator =
         | OrExpr(left, right) ->
             if vbool(eval env left)
                 then truew
-                else evalw pos env right
+                else evalw env right
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
         | IfExpr(condition, consequent, alternative) ->
             if vbool(eval env condition)
-                then evalw pos env consequent
-                else evalw pos env alternative
+                then evalw env consequent
+                else evalw env alternative
 
         // Condition expressions must evaluate to boolean values
         // Evaluation of clauses stops when one of their conditions
@@ -178,7 +176,7 @@ module Evaluator =
                 | [] -> err "No condition was true"
                 | (condition, consequent) :: rest ->
                     if vbool(eval env condition)
-                        then evalw pos env consequent
+                        then evalw env consequent
                         else evalClauses rest
             evalClauses clauses
 
@@ -186,7 +184,7 @@ module Evaluator =
         // with the result of evaluating the binding bound to the symbol
         | LetExpr(symbol, binding, body) ->
             let value = eval env binding
-            evalw pos (appendLocals env [symbol, value]) body
+            evalw (appendLocals env [symbol, value]) body
 
         // Evaluating a lambda captures the local state,
         // the lambda parameter name and the body expression
@@ -205,7 +203,7 @@ module Evaluator =
             with
             | :? SimpleError as e ->
                 let operator = evalFunction env handler
-                applyw pos env.Globals operator [Err e.Message]
+                applyw env.Globals operator [Err e.Message]
             | _ -> reraise()
 
         // Evaluate all expressions, returns result of last expression.
@@ -218,7 +216,7 @@ module Evaluator =
                 | [] -> result
                 | expr :: rest ->
                     go result |> ignore
-                    doAll (evalw Tail env expr) rest
+                    doAll (evalw env expr) rest
             doAll (Done Empty) exprs
 
         // Expression in operator position must eval to a function
@@ -226,7 +224,7 @@ module Evaluator =
         | AppExpr(f, args) ->
             let operator = evalFunction env f
             let operands = List.map (eval env) args
-            applyw pos env.Globals operator operands
+            applyw env.Globals operator operands
 
         | _ -> err "Unexpected value type - cannot evaluate"
 
@@ -248,7 +246,7 @@ module Evaluator =
     /// Evaluates an sub-expression into a value, running all deferred
     /// computations in the process.
     /// </summary>
-    and eval env expr = go(evalw Tail env expr)
+    and eval env expr = go(evalw env expr)
 
     /// <summary>
     /// Evaluates a root-level expression into a value, running all side
@@ -265,4 +263,4 @@ module Evaluator =
             let env = {Globals = globals; Locals = Map.empty}
             eval env expr
 
-    let apply globals f args = go(applyw Head globals f args)
+    let apply globals f args = go(applyw globals f args)

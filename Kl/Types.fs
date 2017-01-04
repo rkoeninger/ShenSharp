@@ -3,12 +3,6 @@
 open System
 open System.Collections.Generic
 
-/// <summary>
-/// Head/Tail position of an expression.
-/// Used for tail call optimization.
-/// </summary>
-type Position = Head | Tail
-
 // TODO: these just show up as "exception of type Kl.SimpleError raised"
 //       needs to show actual message
 
