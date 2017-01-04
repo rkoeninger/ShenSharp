@@ -50,7 +50,7 @@ module Evaluator =
     /// the first N arguments and the result must resolve to
     /// a function which is then applied to the remaining arguments.
     /// </remarks>
-    let rec applyw pos globals f args =
+    let rec private applyw pos globals f args =
         match f with
 
         // Freezes always take 0 arguments and they retain local
@@ -265,4 +265,4 @@ module Evaluator =
             let env = {Globals = globals; Locals = Map.empty}
             eval env expr
 
-    let applyc globals f args = go(applyw Head globals f args)
+    let apply globals f args = go(applyw Head globals f args)
