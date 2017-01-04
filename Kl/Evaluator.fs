@@ -230,6 +230,11 @@ module Evaluator =
 
         | _ -> err "Unexpected value type - cannot evaluate"
 
+    // Does a full eval of expr, looking to get a Function.
+    // 3 ways this can work:
+    //   * expr can eval to function
+    //   * expr can be a symbol that resolves to a function
+    //   * expr can eval to a symbol that evals to a function
     and evalFunction env expr =
         match expr with
         | Sym s -> resolveFunction env s
