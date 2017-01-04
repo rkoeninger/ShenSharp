@@ -2,6 +2,7 @@
 
 open Extensions
 open Values
+open ExpressionPatterns
 
 module Evaluator =
 
@@ -138,19 +139,13 @@ module Evaluator =
     and private evalw pos env expr =
         match expr with
 
-        // TODO: add DoExpr?
-        //       (do ~@exprs)
-        //       has last expression in tail position
-        //       https://github.com/gregspurrier/klam/blob/master/spec/functional/extensions/do_spec.rb
-
         // Atomic values besides symbols are self-evaluating
-        | (Empty | Bool _ | Int _ | Dec _ | Str _) as x  -> Done x
+        | (Empty | Bool _ | Int _ | Dec _ | Str _) as x -> Done x
 
         // Should only get here in the case of symbols not in operator position
         // In this case, symbols always evaluate without error.
         | Sym s -> Done(resolveSymbol env s)
 
-        // (and ~left ~right)
         // When the first expression evaluates to false,
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
@@ -158,8 +153,7 @@ module Evaluator =
             if vbool(eval env left)
                 then evalw pos env right
                 else falsew
-        
-        // (or ~left ~right)
+
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
@@ -168,7 +162,6 @@ module Evaluator =
                 then truew
                 else evalw pos env right
 
-        // (if ~condition ~consequent ~alternative)
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
@@ -176,8 +169,7 @@ module Evaluator =
             if vbool(eval env condition)
                 then evalw pos env consequent
                 else evalw pos env alternative
-        
-        // (cond ~@clauses)
+
         // Condition expressions must evaluate to boolean values
         // Evaluation of clauses stops when one of their conditions
         // evaluates to true.
@@ -190,24 +182,20 @@ module Evaluator =
                         else evalClauses rest
             evalClauses clauses
 
-        // (let ~symbol ~binding ~body)
         // Let expressions evaluate the symbol binding first and then evaluate the body
         // with the result of evaluating the binding bound to the symbol
         | LetExpr(symbol, binding, body) ->
             let value = eval env binding
             evalw pos (appendLocals env [symbol, value]) body
 
-        // (lambda ~param ~body)
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
         | LambdaExpr(param, body) ->
             Done(Func(Lambda(param, env.Locals, body)))
 
-        // (freeze ~body)
         // Evaluating a freeze just captures the local state and the body expression
         | FreezeExpr body ->
             Done(Func(Freeze(env.Locals, body)))
 
-        // (trap-error ~body ~handler)
         // Handler expression is not evaluated unless body results in an error
         // Handler expression must evaluate to a function
         | TrapExpr(body, handler) ->
@@ -223,34 +211,32 @@ module Evaluator =
                 | _ -> err "Trap handler did not evaluate to a function"
             | _ -> reraise()
 
-        // (~f ~@args)
+        // Evaluate all expressions, returns result of last expression.
+        // All but the last expression are evaluated in Head position.
+        // Last expression is evaluated in Tail position.
+        // Default result is Empty.
+        | DoExpr exprs ->
+            let rec doAll result exprs =
+                match exprs with
+                | [] -> result
+                | expr :: rest ->
+                    go result |> ignore
+                    doAll (evalw Tail env expr) rest
+            doAll (Done Empty) exprs
+
         // Expression in operator position must eval to a function
         // or to a symbol which resolves to a function.
         | AppExpr(f, args) ->
-            match f with
-            | Sym s ->
-                let operator = resolveFunction env s
-                let operands = List.map (eval env) (toList args)
-                apply pos env.Globals operator operands
-            | expr ->
-                match eval env expr with
-                | Func operator ->
-                    let operands = List.map (eval env) (toList args)
-                    apply pos env.Globals operator operands
-                | Sym s ->
-                    let operator = resolveFunction env s
-                    let operands = List.map (eval env) (toList args)
-                    apply pos env.Globals operator operands
-                | _ -> err "Expression at head of application did not resolve to function"
-
-        // TODO: explicitly raise error on special forms with incorrect number of args?
-        //        | ComboToken(SymToken "or" :: _) ->
-        //    failwith "or expression must have exactly 2 argument expressions"
-
-        // TODO: explicitly reject defun's not at root level?
-        //// (defun ...)
-        //| ComboToken(SymToken "defun" :: _) ->
-        //    failwith "defun expressions cannot appear below the root level"
+            let operator =
+                match f with
+                | Sym s -> resolveFunction env s
+                | expr ->
+                    match eval env expr with
+                    | Func operator -> operator
+                    | Sym s -> resolveFunction env s
+                    | _ -> err "Expression at head of application did not resolve to function"
+            let operands = List.map (eval env) args
+            apply pos env.Globals operator operands
 
         | _ -> err "Unexpected value type - cannot evaluate"
 

@@ -24,7 +24,21 @@ type ConsoleIn(stream: Stream) =
             currentPos <- currentPos + 1
             (int) ch
     member this.Close() = stream.Close()
-   
+
+module Extensions =
+    type Dictionary<'a, 'b> with
+        member this.GetMaybe(key: 'a) =
+            match this.TryGetValue(key) with
+            | true, x -> Some x
+            | false, _ -> None
+
+    let (|Greater|Equal|Lesser|) (x, y) =
+        if x > y
+            then Greater
+        elif x < y
+            then Lesser
+        else Equal
+
 module Values =
     let truev = Bool true
     let falsev = Bool false
@@ -119,11 +133,16 @@ module Values =
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
 
-    let rec toList cons =
+    let rec toListOption cons =
         match cons with
-        | Empty -> []
-        | Cons(x, xs) -> List.Cons(x, toList xs)
-        | _ -> err "Invalid value in Cons list"
+        | Empty -> Some []
+        | Cons(x, y) -> Option.map (fun xs -> List.Cons(x, xs)) (toListOption y)
+        | _ -> None
+
+    let toList value =
+        match toListOption value with
+        | Some cons -> cons
+        | None -> err "Invalid value in Cons list"
 
     let arityErr name expected (args: Value list) =
         err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
@@ -133,65 +152,51 @@ module Values =
             then err(sprintf "%s expected no arguments" name)
             else err(sprintf "%s expected arguments of type(s): %s" name (String.Join(" ", types)))
 
-module Extensions =
-    type Dictionary<'a, 'b> with
-        member this.GetMaybe(key: 'a) =
-            match this.TryGetValue(key) with
-            | true, x -> Some x
-            | false, _ -> None
-    let (|Greater|Equal|Lesser|) (x, y) =
-        if x > y
-            then Greater
-        elif x < y
-            then Lesser
-        else Equal
-    let (|AndExpr|_|) x =
-        match x with
-        | Cons(Sym "and", Cons(left, Cons(right, Empty))) ->
-            Some(left, right)
+open Values
+
+module ExpressionPatterns =
+    let (|Expr|_|) = toListOption
+
+    let (|AndExpr|_|) = function
+        | Expr [Sym "and"; left; right] -> Some(left, right)
         | _ -> None
-    let (|OrExpr|_|) x =
-        match x with
-        | Cons(Sym "or", Cons(left, Cons(right, Empty))) ->
-            Some(left, right)
+
+    let (|OrExpr|_|) = function
+        | Expr [Sym "or"; left; right] -> Some(left, right)
         | _ -> None
-    let (|IfExpr|_|) x =
-        match x with
-        | Cons(Sym "if", Cons(condition, Cons(consequent, Cons(alternative, Empty)))) ->
-            Some(condition, consequent, alternative)
+
+    let (|IfExpr|_|) = function
+        | Expr [Sym "if"; condition; consequent; alternative] -> Some(condition, consequent, alternative)
         | _ -> None
-    let (|CondExpr|_|) x =
-        match x with
-        | Cons(Sym "cond", clauses) ->
-            Some(List.map Values.uncons (Values.toList clauses))
+
+    let (|CondExpr|_|) = function
+        | Expr(Sym "cond" :: clauses) -> Some(List.map uncons clauses)
         | _ -> None
-    let (|LetExpr|_|) x =
-        match x with
-        | Cons(Sym "let", Cons(Sym symbol, Cons(binding, Cons(body, Empty)))) ->
-            Some(symbol, binding, body)
+
+    let (|LetExpr|_|) = function
+        | Expr [Sym "let"; Sym symbol; binding; body] -> Some(symbol, binding, body)
         | _ -> None
-    let (|LambdaExpr|_|) x =
-        match x with
-        | Cons(Sym "lambda", Cons(Sym symbol, Cons(body, Empty))) ->
-            Some(symbol, body)
+
+    let (|LambdaExpr|_|) = function
+        | Expr [Sym "lambda"; Sym symbol; body] -> Some(symbol, body)
         | _ -> None
-    let (|FreezeExpr|_|) x =
-        match x with
-        | Cons(Sym "freeze", Cons(body, Empty)) ->
-            Some body
+
+    let (|FreezeExpr|_|) = function
+        | Expr [Sym "freeze"; body] -> Some body
         | _ -> None
-    let (|TrapExpr|_|) x =
-        match x with
-        | Cons(Sym "trap-error", Cons(body, Cons(handler, Empty))) ->
-            Some(body, handler)
+
+    let (|TrapExpr|_|) = function
+        | Expr [Sym "trap-error"; body; handler] -> Some(body, handler)
         | _ -> None
-    let (|AppExpr|_|) x =
-        match x with
-        | Cons(f, args) ->
-            Some(f, args)
+
+    let (|DefunExpr|_|) = function
+        | Expr [Sym "defun"; Sym name; Expr paramz; body] -> Some(name, List.map vsym paramz, body)
         | _ -> None
-    let (|DefunExpr|_|) x =
-        match x with
-        | Cons(Sym "defun", Cons(Sym name, Cons(paramz, Cons(body, Empty)))) ->
-            Some(name, List.map Values.vsym (Values.toList paramz), body)
+
+    let (|DoExpr|_|) = function
+        | Expr(Sym "do" :: exprs) -> Some exprs
+        | _ -> None
+
+    let (|AppExpr|_|) = function
+        | Expr(f :: args) -> Some(f, args)
         | _ -> None

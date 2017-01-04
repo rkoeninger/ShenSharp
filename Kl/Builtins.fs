@@ -73,7 +73,7 @@ module Builtins =
     let klValue globals args =
         match args with
         | [Sym s] ->
-            match globals.Symbols.GetMaybe(s) with
+            match globals.Symbols.GetMaybe s with
             | Some v -> v
             | None -> err(sprintf "Symbol \"%s\" is undefined" s)
         | [_] -> typeErr "value" ["symbol"]

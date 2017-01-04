@@ -40,12 +40,12 @@ and Locals = Map<string, Value>
 /// The different types of functions in KL.
 /// </summary>
 and [<ReferenceEquality>] Function =
-    | Native of string * int * (Globals -> Value list -> Value)
-    | Defun of string * string list * Value
-    | Lambda of string * Locals * Value
-    | Freeze of Locals * Value
+    | Native  of string * int * (Globals -> Value list -> Value)
+    | Defun   of string * string list * Value
+    | Lambda  of string * Locals * Value
+    | Freeze  of Locals * Value
     | Partial of Function * Value list
-    
+
 /// <summary>
 /// A value in KL.
 /// </summary>
