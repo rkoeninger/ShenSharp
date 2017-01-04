@@ -31,12 +31,10 @@ type TailRecursionTests() =
         testTailCall "(if (<= X 0) true (let F 1 (count-down (- X F))))"
 
     [<Test>]
-    [<Ignore("failing")>]
     member this.``optimizes self tail calls in a first cond consequent``() =
         testTailCall "(cond ((> X 0) (count-down (- X 1))) (true true))"
 
     [<Test>]
-    [<Ignore("failing")>]
     member this.``optimizes self tail calls in a last cond consequent``() =
         testTailCall "(cond ((<= X 0) true) (true (count-down (- X 1))))"
 

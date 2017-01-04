@@ -128,6 +128,11 @@ module Values =
         | Cons(x, y) -> x, y
         | _ -> failwith "not a Cons"
 
+    let list2tuple v =
+        match v with
+        | Cons(x, Cons(y, Empty)) -> (x, y)
+        | _ -> failwith "not a Cons list of length 2"
+
     let rec toCons list =
         match list with
         | [] -> Empty
@@ -170,7 +175,7 @@ module ExpressionPatterns =
         | _ -> None
 
     let (|CondExpr|_|) = function
-        | Expr(Sym "cond" :: clauses) -> Some(List.map uncons clauses)
+        | Expr(Sym "cond" :: clauses) -> Some(List.map list2tuple clauses)
         | _ -> None
 
     let (|LetExpr|_|) = function
