@@ -24,20 +24,7 @@ type ConsoleIn(stream: Stream) =
             currentPos <- currentPos + 1
             (int) ch
     member this.Close() = stream.Close()
-
-module Extensions =
-    let (|Greater|Equal|Lesser|) (x, y) =
-        if x > y
-            then Greater
-        elif x < y
-            then Lesser
-        else Equal
-    type Dictionary<'a, 'b> with
-        member this.GetMaybe(key: 'a) =
-            match this.TryGetValue(key) with
-            | true, x -> Some x
-            | false, _ -> None
-            
+   
 module Values =
     let truev = Bool true
     let falsev = Bool false
@@ -57,7 +44,7 @@ module Values =
         | Pending thunk -> go(thunk.Run())
         | Done result -> result
 
-    let isVar (s: string) = Char.IsUpper(s.Chars 0)
+    let isVar (s: string) = Char.IsUpper s.[0]
 
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv() = {Globals = newGlobals(); Locals = Map.empty}
@@ -109,7 +96,7 @@ module Values =
         | Dec n -> n.ToString()
         | Str s -> sprintf "\"%s\"" s
         | Sym s -> s
-        | Cons (head, tail) -> sprintf "(cons %s %s)" (toStr head) (toStr tail)
+        | Cons(head, tail) -> sprintf "(cons %s %s)" (toStr head) (toStr tail)
         | Vec array -> sprintf "(@v%s)" (join array)
         | Err message -> sprintf "(simple-error \"%s\")" message
         | Func(Defun(name, _, _)) -> name
@@ -119,6 +106,13 @@ module Values =
         | Func(Partial(f, args)) -> sprintf "<Partial %s%s>" (toStr (Func f)) (join args)
         | InStream s -> sprintf "<InStream %s>" (s.ToString())
         | OutStream s -> sprintf "<OutStream %s>" (s.ToString())
+
+    let cons x y = Cons(x, y)
+
+    let uncons v =
+        match v with
+        | Cons(x, y) -> x, y
+        | _ -> failwith "not a Cons"
 
     let rec toCons list =
         match list with
@@ -138,3 +132,66 @@ module Values =
         if types.IsEmpty
             then err(sprintf "%s expected no arguments" name)
             else err(sprintf "%s expected arguments of type(s): %s" name (String.Join(" ", types)))
+
+module Extensions =
+    type Dictionary<'a, 'b> with
+        member this.GetMaybe(key: 'a) =
+            match this.TryGetValue(key) with
+            | true, x -> Some x
+            | false, _ -> None
+    let (|Greater|Equal|Lesser|) (x, y) =
+        if x > y
+            then Greater
+        elif x < y
+            then Lesser
+        else Equal
+    let (|AndExpr|_|) x =
+        match x with
+        | Cons(Sym "and", Cons(left, Cons(right, Empty))) ->
+            Some(left, right)
+        | _ -> None
+    let (|OrExpr|_|) x =
+        match x with
+        | Cons(Sym "or", Cons(left, Cons(right, Empty))) ->
+            Some(left, right)
+        | _ -> None
+    let (|IfExpr|_|) x =
+        match x with
+        | Cons(Sym "if", Cons(condition, Cons(consequent, Cons(alternative, Empty)))) ->
+            Some(condition, consequent, alternative)
+        | _ -> None
+    let (|CondExpr|_|) x =
+        match x with
+        | Cons(Sym "cond", clauses) ->
+            Some(List.map Values.uncons (Values.toList clauses))
+        | _ -> None
+    let (|LetExpr|_|) x =
+        match x with
+        | Cons(Sym "let", Cons(Sym symbol, Cons(binding, Cons(body, Empty)))) ->
+            Some(symbol, binding, body)
+        | _ -> None
+    let (|LambdaExpr|_|) x =
+        match x with
+        | Cons(Sym "lambda", Cons(Sym symbol, Cons(body, Empty))) ->
+            Some(symbol, body)
+        | _ -> None
+    let (|FreezeExpr|_|) x =
+        match x with
+        | Cons(Sym "freeze", Cons(body, Empty)) ->
+            Some body
+        | _ -> None
+    let (|TrapExpr|_|) x =
+        match x with
+        | Cons(Sym "trap-error", Cons(body, Cons(handler, Empty))) ->
+            Some(body, handler)
+        | _ -> None
+    let (|AppExpr|_|) x =
+        match x with
+        | Cons(f, args) ->
+            Some(f, args)
+        | _ -> None
+    let (|DefunExpr|_|) x =
+        match x with
+        | Cons(Sym "defun", Cons(Sym name, Cons(paramz, Cons(body, Empty)))) ->
+            Some(name, List.map Values.vsym (Values.toList paramz), body)
+        | _ -> None

@@ -11,11 +11,7 @@ type ReaderTests() =
 
     [<Test>]
     member this.``tokenizer does not handle extra spaces inside of parens``() =
-        try
-            read "( 1 )" |> ignore // should be Cons(Int 1, Empty)
-            Assert.Fail "Expected tokenizer fail"
-        with
-            x -> ()
+        assertError "( 1 )"
 
     [<Test>]
     member this.``tokenizer handles extra space inbetween tokens``() =
@@ -34,13 +30,29 @@ type ReaderTests() =
 
     [<Test>]
     member this.``string literals can contain single quotes``() =
-        // NB: string literals in KL cannot contain double quotes as there is no way to escape them
+        // NOTE: string literals in KL cannot contain double quotes as there is no way to escape them
         assertEq (Str "'") (read "\"'\"")
 
     [<Test>]
     member this.``integers are parsable``() =
         assertEq (Int 45) (read "45")
+        assertEq (Int -1439) (read "-1439")
+        assertEq (Int 0) (read "0")
 
     [<Test>]
     member this.``decimals are parsable``() =
         assertEq (Dec 4.25m) (read "4.25")
+        assertEq (Dec -345256.6465m) (read "-345256.6465")
+        assertEq (Dec 0m) (read "-0.0e0")
+
+    [<Test>]
+    member this.``decimal parsing does not capture 'Inf' or similiar``() =
+        assertEq (Sym "Inf") (read "Inf")
+        assertEq (Sym "-Inf") (read "-Inf")
+        assertEq (Sym "+Inf") (read "+Inf")
+        assertEq (Sym "Infinity") (read "Infinity")
+        assertEq (Sym "-Infinity") (read "-Infinity")
+        assertEq (Sym "+Infinity") (read "+Infinity")
+        assertEq (Sym "NaN") (read "NaN")
+        assertEq (Sym "+NaN") (read "+NaN")
+        assertEq (Sym "-NaN") (read "-NaN")

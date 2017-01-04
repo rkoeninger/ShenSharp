@@ -154,7 +154,7 @@ module Evaluator =
         // When the first expression evaluates to false,
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
-        | Cons(Sym "and", Cons(left, Cons(right, Empty))) ->
+        | AndExpr(left, right) ->
             if vbool(eval env left)
                 then evalw pos env right
                 else falsew
@@ -163,7 +163,7 @@ module Evaluator =
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
-        | Cons(Sym "or", Cons(left, Cons(right, Empty))) ->
+        | OrExpr(left, right) ->
             if vbool(eval env left)
                 then truew
                 else evalw pos env right
@@ -172,7 +172,7 @@ module Evaluator =
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
-        | Cons(Sym "if", Cons(condition, Cons(consequent, Cons(alternative, Empty)))) ->
+        | IfExpr(condition, consequent, alternative) ->
             if vbool(eval env condition)
                 then evalw pos env consequent
                 else evalw pos env alternative
@@ -181,37 +181,36 @@ module Evaluator =
         // Condition expressions must evaluate to boolean values
         // Evaluation of clauses stops when one of their conditions
         // evaluates to true.
-        | Cons(Sym "cond", clauses) ->
+        | CondExpr clauses ->
             let rec evalClauses = function
-                | Empty -> err "No condition was true"
-                | Cons(Cons(condition, Cons(consequent, Empty)), rest) ->
+                | [] -> err "No condition was true"
+                | (condition, consequent) :: rest ->
                     if vbool(eval env condition)
                         then evalw pos env consequent
                         else evalClauses rest
-                | _ -> err "Unexpected value in cond"
             evalClauses clauses
 
         // (let ~symbol ~binding ~body)
         // Let expressions evaluate the symbol binding first and then evaluate the body
         // with the result of evaluating the binding bound to the symbol
-        | Cons(Sym "let", Cons(Sym symbol, Cons(binding, Cons(body, Empty)))) ->
+        | LetExpr(symbol, binding, body) ->
             let value = eval env binding
             evalw pos (appendLocals env [symbol, value]) body
 
         // (lambda ~param ~body)
         // Evaluating a lambda captures the local state, the lambda parameter name and the body expression
-        | Cons(Sym "lambda", Cons(Sym param, Cons(body, Empty))) ->
+        | LambdaExpr(param, body) ->
             Done(Func(Lambda(param, env.Locals, body)))
 
         // (freeze ~body)
         // Evaluating a freeze just captures the local state and the body expression
-        | Cons(Sym "freeze", Cons(body, Empty)) ->
+        | FreezeExpr body ->
             Done(Func(Freeze(env.Locals, body)))
 
         // (trap-error ~body ~handler)
         // Handler expression is not evaluated unless body results in an error
         // Handler expression must evaluate to a function
-        | Cons(Sym "trap-error", Cons(body, Cons(handler, Empty))) ->
+        | TrapExpr(body, handler) ->
             try
                 Done(eval env body)
             with
@@ -227,7 +226,7 @@ module Evaluator =
         // (~f ~@args)
         // Expression in operator position must eval to a function
         // or to a symbol which resolves to a function.
-        | Cons(f, args) ->
+        | AppExpr(f, args) ->
             match f with
             | Sym s ->
                 let operator = resolveFunction env s
@@ -267,8 +266,8 @@ module Evaluator =
     /// </summary>
     let rootEval globals expr =
         match expr with
-        | Cons(Sym "defun", Cons(Sym name, Cons(paramz, Cons(body, Empty)))) ->
-            let f = Defun(name, List.map vsym (toList paramz), body)
+        | DefunExpr(name, paramz, body) ->
+            let f = Defun(name, paramz, body)
             globals.Functions.[name] <- f
             Sym name
 
