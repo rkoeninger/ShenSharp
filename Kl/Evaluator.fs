@@ -204,12 +204,8 @@ module Evaluator =
                 Done(eval env body)
             with
             | :? SimpleError as e ->
-                match eval env handler with
-                | Func f -> apply pos env.Globals f [Err e.Message]
-                | Sym s ->
-                    let f = resolveFunction env s
-                    apply pos env.Globals f [Err e.Message]
-                | _ -> err "Trap handler did not evaluate to a function"
+                let operator = evalFunction env handler
+                apply pos env.Globals operator [Err e.Message]
             | _ -> reraise()
 
         // Evaluate all expressions, returns result of last expression.
@@ -228,18 +224,20 @@ module Evaluator =
         // Expression in operator position must eval to a function
         // or to a symbol which resolves to a function.
         | AppExpr(f, args) ->
-            let operator =
-                match f with
-                | Sym s -> resolveFunction env s
-                | expr ->
-                    match eval env expr with
-                    | Func operator -> operator
-                    | Sym s -> resolveFunction env s
-                    | _ -> err "Expression at head of application did not resolve to function"
+            let operator = evalFunction env f
             let operands = List.map (eval env) args
             apply pos env.Globals operator operands
 
         | _ -> err "Unexpected value type - cannot evaluate"
+
+    and evalFunction env expr =
+        match expr with
+        | Sym s -> resolveFunction env s
+        | _ ->
+            match eval env expr with
+            | Func f -> f
+            | Sym s -> resolveFunction env s
+            | _ -> err "Expression must resolve to a function"
 
     /// <summary>
     /// Evaluates an sub-expression into a value, running all deferred
