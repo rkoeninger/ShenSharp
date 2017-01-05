@@ -1,9 +1,9 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
-open TestCommon
 open Kl.Reader
 open Kl.ExpressionPatterns
+open TestCommon
 
 [<TestFixture>]
 type ExpressionRecognizerTests() =

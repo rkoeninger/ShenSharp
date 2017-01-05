@@ -219,6 +219,13 @@ module Evaluator =
                     doAll (evalw env expr) rest
             doAll (Done Empty) exprs
 
+        // Evaluating a defun just takes the name, param list and body
+        // and stores them in the global function scope.
+        | DefunExpr(name, paramz, body) ->
+            let f = Defun(name, paramz, body)
+            env.Globals.Functions.[name] <- f
+            Done(Sym name)
+
         // Expression in operator position must eval to a function
         // or to a symbol which resolves to a function.
         | AppExpr(f, args) ->
@@ -250,17 +257,11 @@ module Evaluator =
 
     /// <summary>
     /// Evaluates a root-level expression into a value, running all side
-    /// effects in the process.
+    /// effects in the process. Starts with a new, empty local scope.
     /// </summary>
-    let rootEval globals expr =
-        match expr with
-        | DefunExpr(name, paramz, body) ->
-            let f = Defun(name, paramz, body)
-            globals.Functions.[name] <- f
-            Sym name
+    let rootEval globals = eval {Globals = globals; Locals = Map.empty}
 
-        | expr ->
-            let env = {Globals = globals; Locals = Map.empty}
-            eval env expr
-
+    /// <summary>
+    /// Applies function to argument list in given global scope.
+    /// </summary>
     let apply globals f args = go(applyw globals f args)
