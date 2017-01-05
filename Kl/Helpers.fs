@@ -63,6 +63,11 @@ module Values =
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv() = {Globals = newGlobals(); Locals = Map.empty}
 
+    let truthy x =
+        match x with
+        | (Empty | Bool false) -> falsev
+        | _ -> truev
+
     let vbool v =
         match v with
         | Bool b -> b

@@ -148,23 +148,23 @@ module Evaluator =
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
-            if vbool(eval env left)
-                then evalw env right
+            if vbool(truthy(eval env left))
+                then Done(truthy(eval env right))
                 else falsew
 
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
-            if vbool(eval env left)
+            if vbool(truthy(eval env left))
                 then truew
-                else evalw env right
+                else Done(truthy(eval env right))
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
         | IfExpr(condition, consequent, alternative) ->
-            if vbool(eval env condition)
+            if vbool(truthy(eval env condition))
                 then evalw env consequent
                 else evalw env alternative
 
@@ -175,7 +175,7 @@ module Evaluator =
             let rec evalClauses = function
                 | [] -> err "No condition was true"
                 | (condition, consequent) :: rest ->
-                    if vbool(eval env condition)
+                    if vbool(truthy(eval env condition))
                         then evalw env consequent
                         else evalClauses rest
             evalClauses clauses
