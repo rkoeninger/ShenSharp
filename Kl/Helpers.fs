@@ -128,10 +128,25 @@ module Values =
         | Cons(x, y) -> x, y
         | _ -> failwith "not a Cons"
 
+    let value2sym v =
+        match v with
+        | Sym s -> Some s
+        | _ -> None
+
     let list2tuple v =
         match v with
-        | Cons(x, Cons(y, Empty)) -> (x, y)
-        | _ -> failwith "not a Cons list of length 2"
+        | Cons(x, Cons(y, Empty)) -> Some(x, y)
+        | _ -> None
+
+    let sequenceOption xs =
+        let combine x lst =
+            match x with
+            | None -> None
+            | Some v ->
+                match lst with
+                | None -> None
+                | Some vs -> Some(v :: vs)
+        List.foldBack combine xs (Some [])
 
     let rec toCons list =
         match list with
@@ -175,7 +190,7 @@ module ExpressionPatterns =
         | _ -> None
 
     let (|CondExpr|_|) = function
-        | Expr(Sym "cond" :: clauses) -> Some(List.map list2tuple clauses)
+        | Expr(Sym "cond" :: clauses) -> sequenceOption(List.map list2tuple clauses)
         | _ -> None
 
     let (|LetExpr|_|) = function
@@ -195,7 +210,8 @@ module ExpressionPatterns =
         | _ -> None
 
     let (|DefunExpr|_|) = function
-        | Expr [Sym "defun"; Sym name; Expr paramz; body] -> Some(name, List.map vsym paramz, body)
+        | Expr [Sym "defun"; Sym name; Expr paramz; body] ->
+            Option.map (fun ps -> name, ps, body) (sequenceOption(List.map value2sym paramz))
         | _ -> None
 
     let (|DoExpr|_|) = function

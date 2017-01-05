@@ -3,9 +3,6 @@
 open System
 open System.Collections.Generic
 
-// TODO: these just show up as "exception of type Kl.SimpleError raised"
-//       needs to show actual message
-
 /// <summary>
 /// Exception type that embodies KL errors.
 /// </summary>

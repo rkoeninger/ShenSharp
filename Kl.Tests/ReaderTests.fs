@@ -24,6 +24,10 @@ type ReaderTests() =
             (read "(A (B    C) (X  (Y  Z))  (U    V))")
 
     [<Test>]
+    member this.``empty parens should be parsed as Empty value``() =
+        assertEq Empty (read "()")
+
+    [<Test>]
     member this.``string literals including line breaks should be read as single token``() =
         let t = readAll "\"long copyright string\n\rwith line breaks\r\n\""
         assertEq 1 t.Length
