@@ -131,6 +131,12 @@ module Values =
         | Some cons -> cons
         | None -> err "Invalid value in Cons list"
 
+    let rec butLast xs =
+        match xs with
+        | [] -> failwith "butLast: empty list"
+        | [_] -> []
+        | h :: t -> h :: butLast t
+
     let rec eq a b =
         match a, b with
         | Empty,        Empty        -> true
@@ -181,6 +187,8 @@ open Values
 
 module ExpressionPatterns =
     let (|Expr|_|) = toListOption
+
+    let (|Last|_|) = List.tryLast
 
     let (|AndExpr|_|) = function
         | Expr [Sym "and"; left; right] -> Some(left, right)

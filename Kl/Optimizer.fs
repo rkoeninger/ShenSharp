@@ -1,5 +1,6 @@
 ﻿namespace Kl
 
+open Values
 open ExpressionPatterns
 
 module Optimizer =
@@ -8,5 +9,6 @@ module Optimizer =
         match expr with
 
         // Eta-reduction on lambda declaration
-        | LambdaExpr(param0, AppExpr(f, [Sym param1])) when param0 = param1 -> f
+        | LambdaExpr(param, AppExpr(f, [Sym arg])) when param = arg -> f
+        | LambdaExpr(param, AppExpr(f, (Last(Sym arg) as args))) when param = arg -> Cons(f, toCons(butLast args))
         | _ -> expr
