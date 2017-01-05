@@ -43,7 +43,7 @@ and [<ReferenceEquality>] Function =
         | Defun(name, paramz, _) -> sprintf "%s/%i" name paramz.Length
         | Lambda _               -> "<Lambda>"
         | Freeze _               -> "<Freeze>"
-        | Partial(f, args)       -> sprintf "<Partial %A/%i>" f args.Length
+        | Partial(f, args)       -> sprintf "<Partial (%O)/%i>" f args.Length
 
 /// <summary>
 /// A value in KL.

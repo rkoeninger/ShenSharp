@@ -89,12 +89,12 @@ let main args =
         for ast in readAll text do
             match ast with
             | Cons(command, Cons(symbol, _)) ->
-                printfn "%A %A" command symbol
+                printfn "%O %O" command symbol
                 rootEval env.Globals ast |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
-    printfn "Time: %A" <| stopwatch.Elapsed
+    printfn "Time: %O" <| stopwatch.Elapsed
     printfn ""
 
     let preprocessedFolder = Path.Combine(klFolder, "preprocessed")

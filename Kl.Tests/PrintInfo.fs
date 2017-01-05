@@ -17,25 +17,25 @@ type PrintInfo() =
     member this.``print platform information``() =
         let env = baseEnv()
         for pair in env.Globals.Symbols do
-            printfn "%s = %A" pair.Key pair.Value
+            printfn "%s = %O" pair.Key pair.Value
 
     [<Test>]
     member this.``demo ToString() for values``() =
-        printfn "%A" (Bool true)
-        printfn "%A" (Bool false)
-        printfn "%A" (Int 12)
-        printfn "%A" (Dec 34.12m)
-        printfn "%A" (Sym "hello")
-        printfn "%A" (Str "hello")
-        printfn "%A" Empty
-        printfn "%A" (Cons(Int 1, Empty))
-        printfn "%A" (Cons(Int 1, Cons(Int 2, Cons(Int 3, Empty))))
-        printfn "%A" (Vec(Array.create 10 Empty))
-        printfn "%A" (Err "Something went wrong")
-        printfn "%A" (Func(Native("+", 2, klAdd)))
-        printfn "%A" (Func(Defun("add", ["X"; "Y"], toCons [Sym "+"; Sym "X"; Sym "Y"])))
-        printfn "%A" (Func(Lambda("X", Map.empty, toCons [Sym "+"; Int 1; Sym "X"])))
-        printfn "%A" (Func(Freeze(Map.empty, Empty)))
-        printfn "%A" (Func(Partial(Native("+", 2, klAdd), [Int 1])))
-        printfn "%A" stinput
-        printfn "%A" stoutput
+        printfn "%O" (Bool true)
+        printfn "%O" (Bool false)
+        printfn "%O" (Int 12)
+        printfn "%O" (Dec 34.12m)
+        printfn "%O" (Sym "hello")
+        printfn "%O" (Str "hello")
+        printfn "%O" Empty
+        printfn "%O" (Cons(Int 1, Empty))
+        printfn "%O" (Cons(Int 1, Cons(Int 2, Cons(Int 3, Empty))))
+        printfn "%O" (Vec(Array.create 10 Empty))
+        printfn "%O" (Err "Something went wrong")
+        printfn "%O" (Func(Native("+", 2, klAdd)))
+        printfn "%O" (Func(Defun("add", ["X"; "Y"], toCons [Sym "+"; Sym "X"; Sym "Y"])))
+        printfn "%O" (Func(Lambda("X", Map.empty, toCons [Sym "+"; Int 1; Sym "X"])))
+        printfn "%O" (Func(Freeze(Map.empty, Empty)))
+        printfn "%O" (Func(Partial(Native("+", 2, klAdd), [Int 1])))
+        printfn "%O" stinput
+        printfn "%O" stoutput

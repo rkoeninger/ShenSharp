@@ -69,7 +69,7 @@ let main0 args =
         for ast in readAll text do
             match ast with
             | Cons(command, Cons(symbol, _)) ->
-                printfn "%A %A" command symbol
+                printfn "%O %O" command symbol
                 //match expr with
                 //| DefunExpr(name, _, _) -> defunList.Add(name)
                 //| _ -> ()
