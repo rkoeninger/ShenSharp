@@ -83,44 +83,6 @@ module Values =
         | Func f -> f
         | _ -> err "Function expected"
 
-    let rec eq a b =
-        match a, b with
-        | Empty,        Empty        -> true
-        | Bool x,       Bool y       -> x = y
-        | Int x,        Int y        -> x = y
-        | Dec x,        Dec y        -> x = y
-        | Int x,        Dec y        -> decimal x = y
-        | Dec x,        Int y        -> x = decimal y
-        | Str x,        Str y        -> x = y
-        | Sym x,        Sym y        -> x = y
-        | InStream x,   InStream y   -> x = y
-        | OutStream x,  OutStream y  -> x = y
-        | Func x,       Func y       -> x = y
-        | Err x,        Err y        -> x = y
-        | Cons(x1, x2), Cons(y1, y2) -> eq x1 y1 && eq x2 y2
-        | Vec xs,       Vec ys       -> xs.Length = ys.Length && Array.forall2 eq xs ys
-        | _, _ -> false
-
-    let rec toStr value =
-        let join values = (String.Join("", (Seq.map (fun s -> " " + toStr s) values)))
-        match value with
-        | Empty -> "()"
-        | Bool b -> if b then "true" else "false"
-        | Int n -> n.ToString()
-        | Dec n -> n.ToString()
-        | Str s -> sprintf "\"%s\"" s
-        | Sym s -> s
-        | Cons(head, tail) -> sprintf "(cons %s %s)" (toStr head) (toStr tail)
-        | Vec array -> sprintf "(@v%s)" (join array)
-        | Err message -> sprintf "(simple-error \"%s\")" message
-        | Func(Defun(name, _, _)) -> name
-        | Func(Native(name, _, _)) -> name
-        | Func(Lambda(param, _, _)) -> sprintf "<Lambda (%s)>" param
-        | Func(Freeze _) -> "<Freeze>"
-        | Func(Partial(f, args)) -> sprintf "<Partial %s%s>" (toStr (Func f)) (join args)
-        | InStream s -> sprintf "<InStream %s>" (s.ToString())
-        | OutStream s -> sprintf "<OutStream %s>" (s.ToString())
-
     let cons x y = Cons(x, y)
 
     let uncons v =
@@ -164,9 +126,47 @@ module Values =
         | Some cons -> cons
         | None -> err "Invalid value in Cons list"
 
+    let rec eq a b =
+        match a, b with
+        | Empty,        Empty        -> true
+        | Bool x,       Bool y       -> x = y
+        | Int x,        Int y        -> x = y
+        | Dec x,        Dec y        -> x = y
+        | Int x,        Dec y        -> decimal x = y
+        | Dec x,        Int y        -> x = decimal y
+        | Str x,        Str y        -> x = y
+        | Sym x,        Sym y        -> x = y
+        | InStream x,   InStream y   -> x = y
+        | OutStream x,  OutStream y  -> x = y
+        | Func x,       Func y       -> x = y
+        | Err x,        Err y        -> x = y
+        | Cons(x1, x2), Cons(y1, y2) -> eq x1 y1 && eq x2 y2
+        | Vec xs,       Vec ys       -> xs.Length = ys.Length && Array.forall2 eq xs ys
+        | _, _ -> false
+
+    let rec toStr value =
+        let join values = String.Join(" ", (Seq.map toStr values))
+        match value with
+        | Empty -> "()"
+        | Bool b -> if b then "true" else "false"
+        | Int n -> n.ToString()
+        | Dec n -> n.ToString()
+        | Str s -> sprintf "\"%s\"" s
+        | Sym s -> s
+        | Cons _ -> sprintf "(%s)" (join (toList value))
+        | Vec array -> sprintf "(@v%s)" (join array)
+        | Err message -> sprintf "(simple-error \"%s\")" message
+        | Func(Defun(name, _, _)) -> name
+        | Func(Native(name, _, _)) -> name
+        | Func(Lambda(param, _, _)) -> sprintf "<Lambda (%s)>" param
+        | Func(Freeze _) -> "<Freeze>"
+        | Func(Partial(f, args)) -> sprintf "<Partial %s%s>" (toStr (Func f)) (join args)
+        | InStream s -> sprintf "<InStream %s>" (s.ToString())
+        | OutStream s -> sprintf "<OutStream %s>" (s.ToString())
+
     let arityErr name expected (args: Value list) =
         err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
-    
+
     let typeErr name (types: string list) =
         if types.IsEmpty
             then err(sprintf "%s expected no arguments" name)
