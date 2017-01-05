@@ -24,6 +24,10 @@ type ReaderTests() =
             (read "(A (B    C) (X  (Y  Z))  (U    V))")
 
     [<Test>]
+    member this.``lists should be parsed as Cons chains``() =
+        assertEq (Cons(Int 0, Cons(Int 0, Cons(Int 0, Cons(Int 0, Empty))))) (read "(0 0 0 0)")
+
+    [<Test>]
     member this.``empty parens should be parsed as Empty value``() =
         assertEq Empty (read "()")
 

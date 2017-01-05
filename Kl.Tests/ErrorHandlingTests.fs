@@ -28,7 +28,6 @@ type ErrorHandlingTests() =
     [<Test>]
     member this.``trap-error should eval and apply second expression if eval of first results in uncaught error``() =
         let env = baseEnv()
-        runIn env "(defun do (X Y) Y)" |> ignore
         assertEq truev (runIn env "(trap-error (do (pos \"\" 0) false) (lambda E true))")
 
     [<Test>]

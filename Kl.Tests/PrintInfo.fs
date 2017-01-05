@@ -13,6 +13,8 @@ open TestCommon
 [<TestFixture>]
 type PrintInfo() =
 
+    // Prints environment info so we can confirm it on CI boxes
+
     [<Test>]
     member this.``print platform information``() =
         let env = baseEnv()

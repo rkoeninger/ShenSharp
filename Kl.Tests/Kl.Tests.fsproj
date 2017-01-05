@@ -59,6 +59,7 @@
     <Compile Include="MathTests.fs" />
     <Compile Include="EvaluationOrderTests.fs" />
     <Compile Include="ConditionalEvalutationTests.fs" />
+    <Compile Include="TruthinessTests.fs" />
     <Compile Include="SymbolEvaluationTests.fs" />
     <Compile Include="ErrorHandlingTests.fs" />
     <Compile Include="BuiltinsTests.fs" />
