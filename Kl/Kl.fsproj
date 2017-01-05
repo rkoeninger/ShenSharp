@@ -62,6 +62,7 @@
     <Compile Include="Evaluator.fs" />
     <Compile Include="Builtins.fs" />
     <Compile Include="Startup.fs" />
+    <Compile Include="Optimizer.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
