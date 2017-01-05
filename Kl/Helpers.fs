@@ -155,26 +155,6 @@ module Values =
         | Vec xs,       Vec ys       -> xs.Length = ys.Length && Array.forall2 eq xs ys
         | _, _ -> false
 
-    let rec toStr value =
-        let join values = String.Join(" ", (Seq.map toStr values))
-        match value with
-        | Empty -> "()"
-        | Bool b -> if b then "true" else "false"
-        | Int n -> n.ToString()
-        | Dec n -> n.ToString()
-        | Str s -> sprintf "\"%s\"" s
-        | Sym s -> s
-        | Cons _ -> sprintf "(%s)" (join (toList value))
-        | Vec array -> sprintf "(@v%s)" (join array)
-        | Err message -> sprintf "(simple-error \"%s\")" message
-        | Func(Defun(name, _, _)) -> name
-        | Func(Native(name, _, _)) -> name
-        | Func(Lambda(param, _, _)) -> sprintf "<Lambda (%s)>" param
-        | Func(Freeze _) -> "<Freeze>"
-        | Func(Partial(f, args)) -> sprintf "<Partial %s%s>" (toStr (Func f)) (join args)
-        | InStream s -> sprintf "<InStream %s>" (s.ToString())
-        | OutStream s -> sprintf "<OutStream %s>" (s.ToString())
-
     let arityErr name expected (args: Value list) =
         err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
 

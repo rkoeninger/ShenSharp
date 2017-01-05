@@ -41,7 +41,7 @@ module Builtins =
 
     let klToString _ args =
         match args with
-        | [x] -> Str(toStr x)
+        | [x] -> Str(string x)
         | _ -> arityErr "str" 1 args
 
     let klIsString _ args =
@@ -52,7 +52,7 @@ module Builtins =
 
     let klIntToString _ args =
         match args with
-        | [Int n] -> Str(string(char(int n)))
+        | [Int n] -> Str(string(char n))
         | [_] -> typeErr "n->string" ["int"]
         | _ -> arityErr "n->string" 1 args
 
@@ -183,11 +183,19 @@ module Builtins =
         match args with
         | [Str path; Sym "in"] ->
             try let stream = File.OpenRead(path)
-                InStream{Read = stream.ReadByte; Close = stream.Close}
+                InStream {
+                    Name = "File: " + path
+                    Read = stream.ReadByte
+                    Close = stream.Close
+                }
             with e -> err e.Message
         | [Str path; Sym "out"] ->
             try let stream = File.OpenWrite(path)
-                OutStream{Write = stream.WriteByte; Close = stream.Close}
+                OutStream {
+                    Name = "File: " + path
+                    Write = stream.WriteByte
+                    Close = stream.Close
+                }
             with e -> err e.Message
         | [Str _; Sym s] ->
             err(sprintf "open expects symbol 'in or 'out as 2nd argument, not '%s" s)
@@ -302,11 +310,19 @@ module Builtins =
 
     let stinput =
         let consoleIn = new ConsoleIn(Console.OpenStandardInput())
-        InStream {Read = consoleIn.Read; Close = consoleIn.Close}
+        InStream {
+            Name = "Console"
+            Read = consoleIn.Read
+            Close = consoleIn.Close
+        }
 
     let stoutput =
         let consoleOutStream = Console.OpenStandardOutput()
-        OutStream {Write = consoleOutStream.WriteByte; Close = consoleOutStream.Close}
+        OutStream {
+            Name = "Console"
+            Write = consoleOutStream.WriteByte
+            Close = consoleOutStream.Close
+        }
 
     let klIsBoolean _ args =
         match args with
@@ -322,7 +338,7 @@ module Builtins =
 
     let klPrint _ args =
         match args with
-        | [x] -> Console.Write(toStr x)
+        | [x] -> Console.Write(string x)
                  Empty
         | _ -> arityErr "print" 1 args
 

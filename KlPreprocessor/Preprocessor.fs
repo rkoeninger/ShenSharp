@@ -4,7 +4,7 @@ open Kl.Evaluator
 open System
 open System.IO
 
-let rec genExpr e = Values.toStr e
+let rec genExpr = string
 
 let rec genValue v =
     match v with
@@ -89,12 +89,12 @@ let main args =
         for ast in readAll text do
             match ast with
             | Cons(command, Cons(symbol, _)) ->
-                printfn "%s %s" (Values.toStr command) (Values.toStr symbol)
+                printfn "%A %A" command symbol
                 rootEval env.Globals ast |> ignore
             | _ -> () // ignore copyright block at top
     printfn ""
     printfn "Loading done"
-    printfn "Time: %s" <| stopwatch.Elapsed.ToString()
+    printfn "Time: %A" <| stopwatch.Elapsed
     printfn ""
 
     let preprocessedFolder = Path.Combine(klFolder, "preprocessed")

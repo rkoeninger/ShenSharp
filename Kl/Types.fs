@@ -9,8 +9,8 @@ open System.Collections.Generic
 type SimpleError(message) =
     inherit Exception(message)
 
-type [<ReferenceEquality>] Input = {Read: unit -> int; Close: unit -> unit}
-type [<ReferenceEquality>] Output = {Write: byte -> unit; Close: unit -> unit}
+type [<ReferenceEquality>] Input =  {Name: string; Read: unit -> int;   Close: unit -> unit}
+type [<ReferenceEquality>] Output = {Name: string; Write: byte -> unit; Close: unit -> unit}
 
 /// <summary>
 /// A mutable dictionary that maps symbols to values of some type <c>'a</c>.
@@ -37,6 +37,13 @@ and [<ReferenceEquality>] Function =
     | Lambda  of string * Locals * Value
     | Freeze  of Locals * Value
     | Partial of Function * Value list
+    override this.ToString() =
+        match this with
+        | Native(name, arity, _) -> sprintf "%s/%i" name arity
+        | Defun(name, paramz, _) -> sprintf "%s/%i" name paramz.Length
+        | Lambda _               -> "<Lambda>"
+        | Freeze _               -> "<Freeze>"
+        | Partial(f, args)       -> sprintf "<Partial %A/%i>" f args.Length
 
 /// <summary>
 /// A value in KL.
@@ -48,12 +55,29 @@ and Value =
     | Dec       of decimal
     | Str       of string
     | Sym       of string
-    | Func      of Function
-    | Vec       of Value array
     | Cons      of Value * Value
+    | Vec       of Value array
     | Err       of string
+    | Func      of Function
     | InStream  of Input
     | OutStream of Output
+    override this.ToString() =
+        let rec toList = function
+            | Cons(x, y) -> x :: toList y
+            | _ -> []
+        match this with
+        | Empty       -> "()"
+        | Bool b      -> if b then "true" else "false"
+        | Int i       -> string i
+        | Dec d       -> string d
+        | Str s       -> sprintf "\"%s\"" s
+        | Sym s       -> s
+        | Cons _      -> sprintf "(%s)" (String.Join(" ", toList this))
+        | Vec a       -> sprintf "<Vector/%i>" a.Length
+        | Err s       -> sprintf "<Error \"%s\">" s
+        | Func f      -> string f
+        | InStream  i -> sprintf "<InStream %s>" i.Name
+        | OutStream o -> sprintf "<OutStream %s>" o.Name
 
 /// <summary>
 /// A potentially deferred computation yielding a value of type <c>'a</c>.
