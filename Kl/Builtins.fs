@@ -414,3 +414,12 @@ module Builtins =
             path
         | [_] -> typeErr "cd" ["string"]
         | _ -> arityErr "cd" 1 args
+
+    let klHash _ args =
+        match args with
+        | [Str s; Int d] ->
+            match s.GetHashCode() % d with
+            | 0 -> Int 1
+            | h -> Int h
+        | [_; _] -> typeErr "hash" ["string"; "int"]
+        | _ -> arityErr "hash" 2 args

@@ -3,8 +3,10 @@
 open System
 open System.IO
 open Kl
+open Kl.Values
 open Kl.Reader
 open Kl.Evaluator
+open Kl.Builtins
 open Kl.Startup
 
 let klFolder = @"..\..\..\KLambda"
@@ -29,6 +31,11 @@ let load env path = eval env (Cons(Sym "load", Cons(Str path, Empty))) |> ignore
 [<EntryPoint>]
 let main argv =
     let env = baseEnv()
+    Overrides.overrides.["boolean?"] <- Native("boolean?", 1, klIsBoolean)
+    Overrides.overrides.["symbol?"] <- Native("symbol?", 1, klIsSymbol)
+    Overrides.overrides.["shen.fillvector"] <- Native("shen.fillvector", 1, klFillVector)
+    Overrides.overrides.["y-or-n?"] <- Native("y-or-n?", 0, fun _ _ -> truev)
+    Overrides.overrides.["hash"] <- Native("hash", 2, klHash)
     for file in files do
         printfn "Loading %s" file
         for ast in readAll(File.ReadAllText(Path.Combine(klFolder, file))) do

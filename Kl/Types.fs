@@ -98,3 +98,6 @@ and Thunk(cont: unit -> Work) =
 /// and local variable bindings.
 /// </summary>
 type Env = {Globals: Globals; Locals: Locals}
+
+module Overrides =
+    let overrides = new Defines<Function>()

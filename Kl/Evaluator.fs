@@ -199,7 +199,10 @@ module Evaluator =
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
         | DefunExpr(name, paramz, body) ->
-            let f = Defun(name, paramz, body)
+            let f =
+                match Overrides.overrides.GetMaybe name with
+                | Some f -> f
+                | None -> Defun(name, paramz, body)
             env.Globals.Functions.[name] <- f
             Done(Sym name)
 
