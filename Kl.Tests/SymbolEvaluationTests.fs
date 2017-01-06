@@ -18,9 +18,18 @@ type SymbolEvaluationTests() =
 
     [<Test>]
     member this.``symbols not starting with an uppercase letter and not at the head of an application are always idle``() =
-        assertEq (Sym "abc") (run "(let Id (lambda X X) abc)")
+        let env = baseEnv()
+        runIn env "(defun abc (X) (+ X 1))" |> ignore
+        assertEq (Sym "abc") (runIn env "(let Id (lambda X X) abc)")
         assertEq (Sym "if") (run "(let Id (lambda X X) if)")
         assertEq (Sym "+") (run "(let Id (lambda X X) +)")
+
+    [<Test>]
+    member this.``if a symbol originally idle ends up in application position, it will be resolved as a global function``() =
+        let env = baseEnv()
+        runIn env "(defun abc (X) (+ X 1))" |> ignore
+        assertEq (Sym "abc") (runIn env "(if false 0 abc)")
+        assertEq (Int 2) (runIn env "((if false 0 abc) 1)")
 
     [<Test>]
     member this.``symbols starting with an uppercase letter not at the head of an application are idle if not in local scope``() =
