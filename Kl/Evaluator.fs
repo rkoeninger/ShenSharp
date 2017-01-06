@@ -26,14 +26,10 @@ module Evaluator =
     // Those not starting with upper-case letter are resolved using the global function namespace.
     // Symbols in operator position are never idle.
     let private resolveFunction env id =
-        if isVar id then
-            match Map.tryFind id env.Locals with
-            | Some value ->
-                match value with
-                | Func f -> f
-                | _ -> err "Symbol does not represent a function"
-            | None -> err("Symbol not defined: " + id)
-        else
+        match Map.tryFind id env.Locals with
+        | Some(Func f) -> f
+        | Some _ -> err("Local symbol does not represent a function: " + id)
+        | _ ->
             match env.Globals.Functions.GetMaybe id with
             | Some f -> f
             | None -> err("Symbol not defined: " + id)
