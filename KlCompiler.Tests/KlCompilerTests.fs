@@ -41,7 +41,7 @@ let fff = match (match 0 with
           | x -> x
 """
         let parsedInput = Fantomas.CodeFormatter.Parse("./test.fs", text)
-        let reformatted = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
+        let reformatted = Fantomas.CodeFormatter.FormatAST(parsedInput, "./test.fs", None, formatConfig)
         let stopHere = ()
         let ast = FsFile.Of(
                       "ShenNs",
@@ -55,7 +55,7 @@ let fff = match (match 0 with
                                "Y", FsType.Of("Value")],
                               Compiler.build "test" (Set.ofList ["X"; "Y"]) (
                                 Cons(Sym "+", Cons(Sym "X", Cons(Sym "Y", Empty)))))])])
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(ast, "./test.fs", None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "ShenAsm", ["Kl.dll"], None)
@@ -71,7 +71,7 @@ let fff = match (match 0 with
         let kl = Values.toCons [Sym "and"; Bool true; Bool false]
         let syn = Compiler.build "test" Set.empty kl
         let ast = singleBinding [Compiler.globalsParam] syn
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(ast, "./test.fs", None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -90,7 +90,7 @@ let fff = match (match 0 with
         let kl = Values.toCons [Sym "freeze"; Values.toCons [Sym "number?"; Str "hi"]]
         let syn = Compiler.build "test" Set.empty kl
         let ast = singleBinding [Compiler.globalsParam] syn
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(ast, "./test.fs", None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -111,7 +111,7 @@ let fff = match (match 0 with
         let kl = read "(cond ((> X 0) \"positive\") ((< X 0) \"negative\") (true \"zero\"))"
         let syn = Compiler.build "test" (Set.singleton "X") kl
         let ast = singleBinding [Compiler.globalsParam; "X", FsType.Of("Value")] syn
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(ast, "./test.fs", None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -134,7 +134,7 @@ let fff = match (match 0 with
         let kl = read "(let X 5 (if (> X 0) \"positive\" \"non-positive\"))"
         let syn = Compiler.build "test" Set.empty kl
         let ast = singleBinding [Compiler.globalsParam] syn
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(ast, "./test.fs", None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -176,7 +176,7 @@ let fff = match (match 0 with
             //|> Seq.take 6
             |> Seq.toList
         let parsedInput = Compiler.buildModule exprs
-        let str = Fantomas.CodeFormatter.FormatAST(parsedInput, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(parsedInput, "./test.fs", None, formatConfig)
         System.Console.WriteLine(str)
 
     [<Test>]
@@ -232,7 +232,7 @@ let fff = match (match 0 with
         let expr = read "(cons A (cons B (cons C ())))"
         let syn = Compiler.build "test" Set.empty expr
         let ast = singleBinding [Compiler.globalsParam] syn
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(ast, "./test.fs", None, formatConfig)
         System.Console.WriteLine(str)
         let s = new SimpleSourceCodeServices()
         let (errors, i, asm) = s.CompileToDynamicAssembly([ast], "KlExprTest", ["Kl.dll"], None)
@@ -257,7 +257,7 @@ let fff = match (match 0 with
         (defun circle-area (R) (* (pi) (sq R)))
         """
         let ast = Compiler.buildModule kl
-        let str = Fantomas.CodeFormatter.FormatAST(ast, None, formatConfig)
+        let str = Fantomas.CodeFormatter.FormatAST(ast, "./test.fs", None, formatConfig)
         let srcPath = Path.Combine(Path.GetTempPath(), "klcompiler", Guid.NewGuid().ToString() + ".fs")
         if not(Directory.Exists(Path.GetDirectoryName(srcPath))) then
             Directory.CreateDirectory(Path.GetDirectoryName(srcPath)) |> ignore

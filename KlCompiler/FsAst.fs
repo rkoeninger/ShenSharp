@@ -25,7 +25,7 @@ type FsFile =
                 [],
                 [],
                 modules,
-                false))
+                (false, false)))
 
 type FsConst =
 
@@ -55,6 +55,7 @@ type FsModule =
     static member Of(name: string, members: SynModuleDecls) =
         SynModuleOrNamespace.SynModuleOrNamespace(
             [new Ident(name, FsAst.defaultRange)],
+            false,
             true,
             members,
             PreXmlDocEmpty,
