@@ -1,6 +1,7 @@
 ﻿namespace Kl
 
 open System
+open Values
 open Builtins
 
 module Startup =
@@ -80,4 +81,4 @@ module Startup =
         ]
         env
 
-    let baseEnv() = installBase(Values.newEnv())
+    let baseEnv() = installBase(emptyEnv())

@@ -49,28 +49,21 @@ module Evaluator =
     let rec private applyw globals f args =
         match f with
 
-        // Freezes always take 0 arguments and they retain local
-        // state that they capture when a freeze expression is evaluated.
-        // Freezes do not consider Head/Tail position as they cannot
-        // naturally be recursive.
+        // Freezes can only be applied to 0 arguments.
+        // They evaluate their body with local state captured when they were formed.
         | Freeze(locals, body) ->
-            let env = {Globals = globals; Locals = locals}
+            let env = newEnv globals locals
             match args with
             | [] -> evalw env body
-            | _ ->
-                match eval env body with
-                | Func f -> applyw globals f args
-                | Sym s ->
-                    let f = resolveFunction env s
-                    applyw globals f args
-                | _ -> err "Function expected/too many arguments provided to freeze"
+            | _ -> err(sprintf "Too many arguments (%i) provided to freeze" args.Length)
                 
-        // Lambdas always take 1 arguments and they retain local
-        // state that they capture when a lambda expression is evaluated.
-        // Lambdas do not consider Head/Tail position as they cannot
-        // naturally be recursive.
+        // Each lambda only takes 1 argument.
+        // Applying a lambda to 0 arguments returns the same lambda.
+        // Applying a lambda to more than 1 argument will apply the remaining
+        // arguments to the returned function.
+        // Lambdas evaluate their body with local state captured when they were formed.
         | Lambda(param, locals, body) as lambda ->
-            let env = {Globals = globals; Locals = locals}
+            let env = newEnv globals locals
             match args with
             | [] -> Done(Func lambda)
             | [arg0] -> evalw (appendLocals env [param, arg0]) body
@@ -80,12 +73,14 @@ module Evaluator =
                 | Sym s ->
                     let f = resolveFunction env s
                     applyw globals f args1
-                | _ -> err "Function expected/too many arguments provided to lambda"
+                | _ -> err(sprintf "Too many arguments (%i) provided to lambda" args.Length)
 
-        // Defuns take any number of arguments and do not retain any local state.
-        // Evaluation is deferred if the application is in tail position.
+        // Defuns can be applied to anywhere between 0 and the their full parameter list.
+        // An error is raised if a Defun is applied to more arguments than it takes.
+        // If applied to fewer arguments than the full parameter list, a Partial is returned.
+        // They do not retain local state and are usually evaluated at the root level.
         | Defun(name, paramz, body) as defun ->
-            let env = {Globals = globals; Locals = Map.empty}
+            let env = newEnv globals Map.empty
             match args.Length, paramz.Length with
             | Lesser ->
                 match args with
@@ -95,36 +90,22 @@ module Evaluator =
                 let env = appendLocals env (List.zip paramz args)
                 thunkw(fun () -> evalw env body)
             | Greater ->
-                let args0 = List.take paramz.Length args
-                let args1 = List.skip paramz.Length args
-                match eval (appendLocals env (List.zip paramz args0)) body with
-                | Func f -> applyw globals f args1
-                | Sym s ->
-                    let f = resolveFunction env s
-                    applyw globals f args1
-                | _ -> err "Function expected/too many arguments provided to defun"
+                err(sprintf "Too many arguments (%i) provided to defun \"%s\"" args.Length name)
 
-        // Primitives take and number of arguments and do not retain any local state.
-        // Head/Tail position is also not considered.
+        // Natives have the same rules as Defuns.
         | Native(name, arity, f) as native ->
             match args.Length, arity with
             | Lesser ->
                 match args with
                 | [] -> Done(Func native)
                 | _ -> Done(Func(Partial(native, args)))
-            | Equal -> Done(f globals args)
+            | Equal ->
+                Done(f globals args)
             | Greater ->
-                let (args0, args1) = List.splitAt arity args
-                match f globals args0 with
-                | Func f -> applyw globals f args1
-                | Sym s ->
-                    let env = {Globals = globals; Locals = Map.empty}
-                    let f = resolveFunction env s
-                    applyw globals f args1
-                | _ -> err "Function expected/too many arguments provided to native"
+                err(sprintf "Too many arguments (%i) provided to native \"%s\"" args.Length name)
 
-        // Applying a partial is just applying  the original function
-        // with the previous and current argument lists appended.
+        // Applying a partial applies the original function
+        // to the previous and current argument lists appended.
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
@@ -255,7 +236,7 @@ module Evaluator =
     /// Evaluates a root-level expression into a value, running all side
     /// effects in the process. Starts with a new, empty local scope.
     /// </summary>
-    let rootEval globals = eval {Globals = globals; Locals = Map.empty}
+    let rootEval globals = eval (newEnv globals Map.empty)
 
     /// <summary>
     /// Applies function to argument list in given global scope.

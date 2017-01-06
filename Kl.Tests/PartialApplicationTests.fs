@@ -91,21 +91,20 @@ type PartialApplicationTests() =
         assertEq (Int 3) (run "(let F (lambda X (lambda Y (+ X Y))) (F 1 2))")
 
     [<Test>]
-    member this.``arguments can be applied to freezes granted freeze eval's to an argument that accepts them``() =
-        assertEq (Int 3) (run "(let F (freeze (lambda X (lambda Y (+ X Y)))) (F 1 2))")
+    member this.``excessive arguments applied by freeze will not get passed on to returned function``() =
+        assertError "(let F (freeze (lambda X (lambda Y (+ X Y)))) (F 1 2))"
 
     [<Test>]
-    member this.``application of excessive arguments to defuns then get applied to returned function``() =
+    member this.``excessive arguments applied by defuns will not get passed on to returned function``() =
         let env = baseEnv()
         runIn env "(defun add (X) (lambda Y (+ X Y)))" |> ignore
-        assertEq (Int 3) (runIn env "(add 1 2)")
         assertEq (Int 3) (runIn env "((add 1) 2)")
+        assertErrorInEnv env "(add 1 2)"
         
     [<Test>]
     member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from freeze``() =
-        assertEq (Int 3) (run "((freeze +) 1 2)")
-        assertEq (Int 3) (run "(((freeze +) 1) 2)")
-        assertEq (Int 3) (run "(((freeze +) 1) 2)")
+        assertEq (Int 3) (run "(((freeze +)) 1 2)")
+        assertError "((freeze +) 1 2)"
         
     [<Test>]
     member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from lambda``() =
@@ -119,9 +118,9 @@ type PartialApplicationTests() =
         let env = baseEnv()
         runIn env "(defun f () +)" |> ignore
         assertEq (Int 3) (runIn env "((f) 1 2)")
-        assertEq (Int 3) (runIn env "(f 1 2)")
+        assertErrorInEnv env "(f 1 2)"
 
     [<Test>]
     member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from native``() =
         assertEq (Int 3) (run "((intern \"+\") 1 2)")
-        assertEq (Int 3) (run "(intern \"+\" 1 2)")
+        assertError "(intern \"+\" 1 2)"

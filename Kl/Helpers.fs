@@ -61,7 +61,8 @@ module Values =
     let isVar (s: string) = Char.IsUpper s.[0]
 
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv() = {Globals = newGlobals(); Locals = Map.empty}
+    let newEnv globals locals = {Globals = globals; Locals = locals}
+    let emptyEnv() = newEnv (newGlobals()) Map.empty
 
     let truthy x =
         match x with
