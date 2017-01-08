@@ -189,9 +189,10 @@ module ExpressionPatterns =
         | Expr [Sym "trap-error"; body; handler] -> Some(body, handler)
         | _ -> None
 
+    let (|ParamList|_|) = toListOption >> Option.bind (List.map value2sym >> sequenceOption)
+
     let (|DefunExpr|_|) = function
-        | Expr [Sym "defun"; Sym name; Expr paramz; body] ->
-            Option.map (fun ps -> name, ps, body) (sequenceOption(List.map value2sym paramz))
+        | Expr [Sym "defun"; Sym name; ParamList paramz; body] -> Some(name, paramz, body)
         | _ -> None
 
     let (|DoExpr|_|) = function
