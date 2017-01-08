@@ -117,6 +117,9 @@ module Evaluator =
         // Atomic values besides symbols are self-evaluating
         | (Empty | Bool _ | Int _ | Dec _ | Str _) as x -> Done x
 
+        | Sym "true" -> truew
+        | Sym "false" -> falsew
+
         // Should only get here in the case of symbols not in operator position
         // In this case, symbols always evaluate without error.
         | Sym s -> Done(resolveSymbol env s)
@@ -125,23 +128,23 @@ module Evaluator =
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
-            if vbool(truthy(eval env left))
-                then Done(truthy(eval env right))
+            if vbool(eval env left)
+                then Done(Bool(vbool(eval env right)))
                 else falsew
 
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
-            if vbool(truthy(eval env left))
+            if vbool(eval env left)
                 then truew
-                else Done(truthy(eval env right))
+                else Done(Bool(vbool(eval env right)))
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
         // The condition must evaluate to a boolean value
         | IfExpr(condition, consequent, alternative) ->
-            if vbool(truthy(eval env condition))
+            if vbool(eval env condition)
                 then evalw env consequent
                 else evalw env alternative
 
@@ -152,7 +155,7 @@ module Evaluator =
             let rec evalClauses = function
                 | [] -> err "No condition was true"
                 | (condition, consequent) :: rest ->
-                    if vbool(truthy(eval env condition))
+                    if vbool(eval env condition)
                         then evalw env consequent
                         else evalClauses rest
             evalClauses clauses

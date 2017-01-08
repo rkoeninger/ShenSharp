@@ -6,6 +6,7 @@ open Kl.Values
 open TestCommon
 
 [<TestFixture>]
+[<Ignore("removed truthiness")>]
 type TruthinessTests() =
 
     [<Test>]

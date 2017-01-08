@@ -39,7 +39,7 @@ module TestCommon =
             | _ -> ()
     let assertEffect eff syntax =
         let env = baseEnv()
-        runIn env "(defun effect () (set *effect* true))" |> ignore
+        runIn env "(defun effect (X) (do (set *effect* true) X))" |> ignore
         runIn env syntax |> ignore
         match env.Globals.Symbols.GetMaybe "*effect*" with
         | None -> if eff then Assert.Fail "Effect did not occurr" else ()
