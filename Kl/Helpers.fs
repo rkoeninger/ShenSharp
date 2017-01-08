@@ -64,11 +64,6 @@ module Values =
     let newEnv globals locals = {Globals = globals; Locals = locals}
     let emptyEnv() = newEnv (newGlobals()) Map.empty
 
-    let truthy x =
-        match x with
-        | (Empty | Bool false) -> falsev
-        | _ -> truev
-
     let vbool v =
         match v with
         | Bool b -> b
