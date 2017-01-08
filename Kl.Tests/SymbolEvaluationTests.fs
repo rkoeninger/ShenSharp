@@ -13,16 +13,18 @@ type SymbolEvaluationTests() =
     member this.``symbols support full range of characters``() =
         let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ=-*/+_?$!@~.><&%'#`;:{}"
         for ch in chars do
-            let s = ch.ToString()
+            let s = string ch
             assertEq (Sym s) (read s)
 
     [<Test>]
-    member this.``symbols not starting with an uppercase letter and not at the head of an application are always idle``() =
+    member this.``symbols not at head of application should be resolved using local scope or be idle``() =
         let env = baseEnv()
-        runIn env "(defun abc (X) (+ X 1))" |> ignore
-        assertEq (Sym "abc") (runIn env "(let Id (lambda X X) abc)")
-        assertEq (Sym "if") (run "(let Id (lambda X X) if)")
-        assertEq (Sym "+") (run "(let Id (lambda X X) +)")
+        runIn env "(defun inc (x) (+ x 1))" |> ignore
+        runIn env "(defun inc' (X) (+ X 1))" |> ignore
+        runIn env "(defun hi-sym () hi)" |> ignore
+        assertEq (Int 5) (runIn env "(inc 4)")
+        assertEq (Int 3) (runIn env "(inc' 2)")
+        assertEq (Sym "hi") (runIn env "(hi-sym)")
 
     [<Test>]
     member this.``if a symbol originally idle ends up in application position, it will be resolved as a global function``() =
@@ -30,10 +32,6 @@ type SymbolEvaluationTests() =
         runIn env "(defun abc (X) (+ X 1))" |> ignore
         assertEq (Sym "abc") (runIn env "(if false 0 abc)")
         assertEq (Int 2) (runIn env "((if false 0 abc) 1)")
-
-    [<Test>]
-    member this.``symbols starting with an uppercase letter not at the head of an application are idle if not in local scope``() =
-        assertEq (Sym "ABC") (run "(let Id (lambda X X) ABC)")
 
     [<Test>]
     member this.``result of interning a string is equal to symbol with name that is equal to that string``() =

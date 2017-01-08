@@ -139,7 +139,6 @@ module Compiler =
                 let builtOp =
                     match Map.tryFind op primitiveNames with
                     | Some(pop) -> FsExpr.LongId ["Builtins"; pop]
-                    | _ when Values.isVar op -> FsExpr.Id op
                     | _ -> FsExpr.Id op
                 FsExpr.App(builtOp, [FsExpr.Id (fst globalsParam); FsExpr.List(builtArgs)])
             | e -> FsExpr.App(build context defs e, [FsExpr.Id (fst globalsParam); FsExpr.List(builtArgs)])

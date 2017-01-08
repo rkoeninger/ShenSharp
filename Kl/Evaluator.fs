@@ -14,12 +14,9 @@ module Evaluator =
     // Those starting with upper-case letter are idle if not defined.
     // Those not starting with upper-case letter are always idle.
     let private resolveSymbol env id =
-        if isVar id then
-            match Map.tryFind id env.Locals with
-            | Some value -> value
-            | None -> Sym id
-        else
-            Sym id
+        match Map.tryFind id env.Locals with
+        | Some value -> value
+        | None -> Sym id
 
     // For symbols in operator position:
     // Those starting with upper-case letter are resolved using the local stack.

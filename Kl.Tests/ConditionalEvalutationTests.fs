@@ -2,9 +2,37 @@
 
 open NUnit.Framework
 open TestCommon
+open Kl
+open Kl.Values
 
 [<TestFixture>]
 type ConditionalEvalutationTests() =
+
+    [<Test>]
+    member this.``and expression``() =
+        assertEq truev (run "(and true true)")
+        assertEq falsev (run "(and true false)")
+        assertEq falsev (run "(and false true)")
+        assertEq falsev (run "(and false false)")
+
+    [<Test>]
+    member this.``or expression``() =
+        assertEq truev (run "(or true true)")
+        assertEq truev (run "(or true false)")
+        assertEq truev (run "(or false true)")
+        assertEq falsev (run "(or false false)")
+
+    [<Test>]
+    member this.``if expression``() =
+        assertEq (Int 1) (run "(if true 1 2)")
+        assertEq (Int 2) (run "(if false 1 2)")
+
+    [<Test>]
+    member this.``cond expression``() =
+        assertEq (Int 1) (run "(cond (true 1) (true 2) (false 3))")
+        assertEq (Int 2) (run "(cond (false 1) (true 2) (false 3))")
+        assertEq (Int 3) (run "(cond (false 1) (false 2) (true 3))")
+        assertError "(cond (false 1) (false 2) (false 3))"
 
     [<Test>]
     member this.``and expression should only eval second conditional if first eval'd to true``() =

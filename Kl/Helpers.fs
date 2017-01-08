@@ -58,8 +58,6 @@ module Values =
         | Pending thunk -> go(thunk.Run())
         | Done result -> result
 
-    let isVar (s: string) = Char.IsUpper s.[0]
-
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv globals locals = {Globals = globals; Locals = locals}
     let emptyEnv() = newEnv (newGlobals()) Map.empty
@@ -83,13 +81,6 @@ module Values =
         match v with
         | Func f -> f
         | _ -> err "Function expected"
-
-    let cons x y = Cons(x, y)
-
-    let uncons v =
-        match v with
-        | Cons(x, y) -> x, y
-        | _ -> failwith "not a Cons"
 
     let value2sym v =
         match v with

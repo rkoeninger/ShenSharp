@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open Kl
+open Kl.Values
 open Kl.Evaluator
 open Kl.Startup
 open TestCommon
@@ -53,7 +54,7 @@ type BuiltinsTests() =
         assertEq (Sym "abc") (run "(eval-kl abc)")
 
     [<Test>]
-    member this.``eval-kl should have the same effect as straight KL that ``() =
+    member this.``eval-kl should have the same effect as straight KL that does the same thing``() =
         assertEq
             (run "(+ 1 2)")
             (run "(eval-kl (cons + (cons 1 (cons 2 ()))))")
@@ -64,7 +65,7 @@ type BuiltinsTests() =
     [<Test>]
     member this.``append should preserve the original order``() =
         assertEq
-            (Cons(Int 1, Cons(Int 2, Cons(Int 3, Cons(Int 4, Cons(Int 5, Cons(Int 6, Empty)))))))
-            (Builtins.klAppend (Values.newGlobals()) [
-                Cons(Int 1, Cons(Int 2, Cons(Int 3, Empty)))
-                Cons(Int 4, Cons(Int 5, Cons(Int 6, Empty)))])
+            (toCons [Int 1; Int 2; Int 3; Int 4; Int 5; Int 6])
+            (Builtins.klAppend (newGlobals()) [
+                toCons [Int 1; Int 2; Int 3]
+                toCons [Int 4; Int 5; Int 6]])
