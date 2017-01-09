@@ -25,6 +25,10 @@ module Evaluator =
     let private resolveFunction env id =
         match Map.tryFind id env.Locals with
         | Some(Func f) -> f
+        | Some(Sym id) ->
+            match env.Globals.Functions.GetMaybe id with
+            | Some f -> f
+            | None -> err("Symbol not defined: " + id)
         | Some _ -> err("Local symbol does not represent a function: " + id)
         | _ ->
             match env.Globals.Functions.GetMaybe id with
@@ -125,17 +129,13 @@ module Evaluator =
         // false is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | AndExpr(left, right) ->
-            if vbool(eval env left)
-                then Done(Bool(vbool(eval env right)))
-                else falsew
+            Done(Bool(vbool(eval env left) && vbool(eval env right)))
 
         // When the first expression evaluates to true,
         // true is the result without evaluating the second expression
         // The first expression must evaluate to a boolean value
         | OrExpr(left, right) ->
-            if vbool(eval env left)
-                then truew
-                else Done(Bool(vbool(eval env right)))
+            Done(Bool(vbool(eval env left) || vbool(eval env right)))
 
         // If expressions selectively evaluate depending on the result
         // of evaluating the condition expression
