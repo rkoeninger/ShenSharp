@@ -79,19 +79,15 @@ type PartialApplicationTests() =
         assertEq (Int 4) (run "((lambda X X) 4)")
 
     [<Test>]
-    member this.``applying a lambda to 0 arguments results in the same lambda``() =
-        match run "((lambda X X))" with
-        | Func(Lambda("X", _, _)) -> ()
-        | _ -> Assert.Fail "Lambda expected"
-
-        assertEq (Int 3) (run "(((lambda X X)) 3)")
+    member this.``applying a lambda to 0 arguments results in error``() =
+        assertError "((lambda X X))"
 
     [<Test>]
     member this.``application of multiple arguments should work over curried lambdas``() =
         assertEq (Int 3) (run "(let F (lambda X (lambda Y (+ X Y))) (F 1 2))")
 
     [<Test>]
-    member this.``excessive arguments applied by freeze will not get passed on to returned function``() =
+    member this.``excessive arguments applied by freeze results in error``() =
         assertError "(let F (freeze (lambda X (lambda Y (+ X Y)))) (F 1 2))"
 
     [<Test>]

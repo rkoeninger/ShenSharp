@@ -8,7 +8,7 @@ open TestCommon
 [<TestFixture>]
 type ExpressionRecognizerTests() =
 
-    let rec check recognizer strings =
+    let check recognizer strings =
         let checkSample () (some, s) =
             let expect = if some then Option.isSome else Option.isNone
             Assert.IsTrue(expect (recognizer (read s)), s)

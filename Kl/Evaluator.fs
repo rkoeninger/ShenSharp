@@ -10,54 +10,43 @@ module Evaluator =
         let locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs
         {env with Locals = locals}
 
-    // For symbols not in operator position:
-    // Those starting with upper-case letter are idle if not defined.
-    // Those not starting with upper-case letter are always idle.
+    // Symbols not in operator position are either defined locally or they are idle.
     let private resolveSymbol env id =
         match Map.tryFind id env.Locals with
         | Some value -> value
         | None -> Sym id
 
-    // For symbols in operator position:
-    // Those starting with upper-case letter are resolved using the local stack.
-    // Those not starting with upper-case letter are resolved using the global function namespace.
+    let private resolveGlobalFunction env id =
+        match env.Globals.Functions.GetMaybe id with
+        | Some f -> f
+        | None -> err("Symbol not defined: " + id)
+
+    // Symbols in operator position are either:
+    //   * A local variable whose value is a function.
+    //   * A local variable whose value is a symbol that resolves to a global function.
+    //   * Resolves to a global function.
     // Symbols in operator position are never idle.
     let private resolveFunction env id =
         match Map.tryFind id env.Locals with
         | Some(Func f) -> f
-        | Some(Sym id) ->
-            match env.Globals.Functions.GetMaybe id with
-            | Some f -> f
-            | None -> err("Symbol not defined: " + id)
+        | Some(Sym id) -> resolveGlobalFunction env id
         | Some _ -> err("Local symbol does not represent a function: " + id)
-        | _ ->
-            match env.Globals.Functions.GetMaybe id with
-            | Some f -> f
-            | None -> err("Symbol not defined: " + id)
+        | _ -> resolveGlobalFunction env id
 
     /// <summary>
-    /// Applies a function to a set of arguments and a global
-    /// environment, considering whether to defer evaluation
-    /// based on the Head/Tail position of the application.
+    /// Applies a function to a set of arguments in a given global
+    /// environment, conditionally returning a partial or pending Work.
     /// </summary>
-    /// <remarks>
-    /// Applying a function to fewer arguments than it takes
-    /// results in a partial. Applying a function to more arguments
-    /// than it takes causes the function to get applied to only
-    /// the first N arguments and the result must resolve to
-    /// a function which is then applied to the remaining arguments.
-    /// </remarks>
     let rec private applyw globals f args =
         match f with
 
         // Freezes can only be applied to 0 arguments.
-        // They evaluate their body with local state captured when they were formed.
+        // They evaluate their body with local state captured where they were formed.
         | Freeze(locals, body) ->
-            let env = newEnv globals locals
             match args with
-            | [] -> evalw env body
+            | [] -> evalw (newEnv globals locals) body
             | _ -> err(sprintf "Too many arguments (%i) provided to freeze" args.Length)
-                
+
         // Each lambda only takes 1 argument.
         // Applying a lambda to 0 arguments returns the same lambda.
         // Applying a lambda to more than 1 argument will apply the remaining
@@ -66,7 +55,7 @@ module Evaluator =
         | Lambda(param, locals, body) as lambda ->
             let env = newEnv globals locals
             match args with
-            | [] -> Done(Func lambda)
+            | [] -> err "Zero arguments provided to lambda"
             | [arg0] -> evalw (appendLocals env [param, arg0]) body
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
