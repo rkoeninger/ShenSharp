@@ -59,27 +59,19 @@ module Values =
     let newEnv globals locals = {Globals = globals; Locals = locals}
     let emptyEnv() = newEnv (newGlobals()) Map.empty
 
-    let vbool v =
-        match v with
-        | Bool b -> b
-        | _ -> err "Boolean expected"
+    let rec toCons list =
+        match list with
+        | [] -> Empty
+        | x :: xs -> Cons(x, toCons xs)
 
-    let vstr v =
-        match v with
-        | Str s -> s
-        | _ -> err "String expected"
+    let rec butLast xs =
+        match xs with
+        | [] -> failwith "butLast: empty list"
+        | [_] -> []
+        | h :: t -> h :: butLast t
 
-    let value2sym v =
-        match v with
-        | Sym s -> Some s
-        | _ -> None
-
-    let list2tuple v =
-        match v with
-        | Cons(x, Cons(y, Empty)) -> Some(x, y)
-        | _ -> None
-
-    let sequenceOption xs =
+module ExpressionPatterns =
+    let private sequenceOption xs =
         let combine x lst =
             match x with
             | None -> None
@@ -89,27 +81,13 @@ module Values =
                 | Some vs -> Some(v :: vs)
         List.foldBack combine xs (Some [])
 
-    let rec toCons list =
-        match list with
-        | [] -> Empty
-        | x :: xs -> Cons(x, toCons xs)
-
-    let rec toListOption cons =
+    let rec private toListOption cons =
         match cons with
         | Empty -> Some []
         | Cons(x, y) -> Option.map (fun xs -> List.Cons(x, xs)) (toListOption y)
         | _ -> None
 
-    let rec butLast xs =
-        match xs with
-        | [] -> failwith "butLast: empty list"
-        | [_] -> []
-        | h :: t -> h :: butLast t
-
-open Values
-
-module ExpressionPatterns =
-    let (|Expr|_|) = toListOption
+    let private (|Expr|_|) = toListOption
 
     let (|Last|_|) = List.tryLast
 
@@ -125,8 +103,14 @@ module ExpressionPatterns =
         | Expr [Sym "if"; condition; consequent; alternative] -> Some(condition, consequent, alternative)
         | _ -> None
 
+    let private condClause = function
+        | Expr [x; y] -> Some(x, y)
+        | _ -> None
+
+    let private (|CondClauses|_|) = List.map condClause >> sequenceOption
+
     let (|CondExpr|_|) = function
-        | Expr(Sym "cond" :: clauses) -> sequenceOption(List.map list2tuple clauses)
+        | Expr(Sym "cond" :: CondClauses clauses) -> Some clauses
         | _ -> None
 
     let (|LetExpr|_|) = function
@@ -145,7 +129,11 @@ module ExpressionPatterns =
         | Expr [Sym "trap-error"; body; handler] -> Some(body, handler)
         | _ -> None
 
-    let (|ParamList|_|) = toListOption >> Option.bind (List.map value2sym >> sequenceOption)
+    let private param = function
+        | Sym s -> Some s
+        | _ -> None
+
+    let private (|ParamList|_|) = toListOption >> Option.bind (List.map param >> sequenceOption)
 
     let (|DefunExpr|_|) = function
         | Expr [Sym "defun"; Sym name; ParamList paramz; body] -> Some(name, paramz, body)

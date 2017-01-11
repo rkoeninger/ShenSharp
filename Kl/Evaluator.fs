@@ -98,6 +98,11 @@ module Evaluator =
             | _ -> applyw globals f (List.append previousArgs args)
 
     and private evalw env expr =
+
+        let vbool = function
+            | Bool b -> b
+            | _ -> err "Conditional must evaluate to boolean"
+
         match expr with
 
         // Atomic values besides Symbols are self-evaluating

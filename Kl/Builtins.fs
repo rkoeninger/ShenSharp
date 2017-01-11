@@ -414,15 +414,6 @@ module Builtins =
         | [_; _] -> typeErr "append" ["list"; "list"]
         | _ -> arityErr "append" 2 args
 
-    let klCd (globals: Globals) args =
-        match args with
-        | [Str s] ->
-            let path = Str(Path.Combine(vstr(globals.Symbols.["*home-directory*"]), s))
-            globals.Symbols.["*home-directory*"] <- path
-            path
-        | [_] -> typeErr "cd" ["string"]
-        | _ -> arityErr "cd" 1 args
-
     let klHash _ args =
         match args with
         | [x; Int d] ->
