@@ -54,6 +54,7 @@
     <None Include="packages.config" />
     <Compile Include="TestCommon.fs" />
     <Compile Include="PrintInfo.fs" />
+    <Compile Include="ValuesTests.fs" />
     <Compile Include="ReaderTests.fs" />
     <Compile Include="ExpressionRecognizerTests.fs" />
     <Compile Include="MathTests.fs" />

@@ -19,7 +19,7 @@ module Evaluator =
     let private resolveGlobalFunction env id =
         match env.Globals.Functions.GetMaybe id with
         | Some f -> f
-        | None -> err("Symbol not defined: " + id)
+        | None -> err("Function not defined: " + id)
 
     // Symbols in operator position are either:
     //   * A local variable whose value is a function.
@@ -30,13 +30,9 @@ module Evaluator =
         match Map.tryFind id env.Locals with
         | Some(Func f) -> f
         | Some(Sym id) -> resolveGlobalFunction env id
-        | Some _ -> err("Local symbol does not represent a function: " + id)
+        | Some _ -> err("Function not defined: " + id)
         | _ -> resolveGlobalFunction env id
 
-    /// <summary>
-    /// Applies a function to a set of arguments in a given global
-    /// environment, conditionally returning a partial or pending Work.
-    /// </summary>
     let rec private applyw globals f args =
         match f with
 
@@ -104,39 +100,32 @@ module Evaluator =
     and private evalw env expr =
         match expr with
 
-        // Atomic values besides symbols are self-evaluating
-        | (Empty | Bool _ | Int _ | Dec _ | Str _) as x -> Done x
+        // Atomic values besides Symbols are self-evaluating
+        | (Empty | Bool _ | Int _ | Dec _ | Str _) -> Done expr
 
-        | Sym "true" -> truew
-        | Sym "false" -> falsew
+        // When Shen code is translated to KL, `true` and `false` come through as Symbols.
+        | Sym "true" -> Done truev
+        | Sym "false" -> Done falsev
 
-        // Should only get here in the case of symbols not in operator position
-        // In this case, symbols always evaluate without error.
+        // Should only get here in the case of Symbols not in operator position.
+        // In this case, Symbols always evaluate without error.
         | Sym s -> Done(resolveSymbol env s)
 
-        // When the first expression evaluates to false,
-        // false is the result without evaluating the second expression
-        // The first expression must evaluate to a boolean value
+        // Short-circuit evaluation. Both left and right must eval to Bool.
         | AndExpr(left, right) ->
             Done(Bool(vbool(eval env left) && vbool(eval env right)))
 
-        // When the first expression evaluates to true,
-        // true is the result without evaluating the second expression
-        // The first expression must evaluate to a boolean value
+        // Short-circuit evaluation. Both left and right must eval to Bool.
         | OrExpr(left, right) ->
             Done(Bool(vbool(eval env left) || vbool(eval env right)))
 
-        // If expressions selectively evaluate depending on the result
-        // of evaluating the condition expression
-        // The condition must evaluate to a boolean value
+        // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->
             if vbool(eval env condition)
                 then evalw env consequent
                 else evalw env alternative
 
-        // Condition expressions must evaluate to boolean values
-        // Evaluation of clauses stops when one of their conditions
-        // evaluates to true.
+        // Conditions must evaluate to Bool. Consequents are in tail position.
         | CondExpr clauses ->
             let rec evalClauses = function
                 | [] -> err "No condition was true"
@@ -146,23 +135,21 @@ module Evaluator =
                         else evalClauses rest
             evalClauses clauses
 
-        // Let expressions evaluate the symbol binding first and then evaluate the body
-        // with the result of evaluating the binding bound to the symbol
+        // Body expression is in tail position.
         | LetExpr(symbol, binding, body) ->
             let value = eval env binding
             evalw (appendLocals env [symbol, value]) body
 
-        // Evaluating a lambda captures the local state,
-        // the lambda parameter name and the body expression
+        // Lambdas capture local scope.
         | LambdaExpr(param, body) ->
             Done(Func(Lambda(param, env.Locals, body)))
 
-        // Evaluating a freeze just captures the local state and the body expression
+        // Freezes capture local scope.
         | FreezeExpr body ->
             Done(Func(Freeze(env.Locals, body)))
 
-        // Handler expression is not evaluated unless body results in an error
-        // Handler expression must evaluate to a function
+        // Handler expression only evaluated unless body results in an error.
+        // Handler expression must evaluate to a Function.
         | TrapExpr(body, handler) ->
             try
                 Done(eval env body)
@@ -195,8 +182,7 @@ module Evaluator =
             env.Globals.Functions.[name] <- f
             Done(Sym name)
 
-        // Expression in operator position must eval to a function
-        // or to a symbol which resolves to a function.
+        // Expression in operator position must evaluate to a Function.
         | AppExpr(f, args) ->
             let operator = evalFunction env f
             let operands = List.map (eval env) args
@@ -209,7 +195,7 @@ module Evaluator =
     //   * expr can eval to function
     //   * expr can be a symbol that resolves to a function
     //   * expr can eval to a symbol that evals to a function
-    and evalFunction env expr =
+    and private evalFunction env expr =
         match expr with
         | Sym s -> resolveFunction env s
         | _ ->
@@ -219,8 +205,7 @@ module Evaluator =
             | _ -> err "Expression must resolve to a function"
 
     /// <summary>
-    /// Evaluates an sub-expression into a value, running all deferred
-    /// computations in the process.
+    /// Evaluates an expression into a value.
     /// </summary>
     and eval env expr = go(evalw env expr)
 
@@ -229,8 +214,3 @@ module Evaluator =
     /// effects in the process. Starts with a new, empty local scope.
     /// </summary>
     let rootEval globals = eval (newEnv globals Map.empty)
-
-    /// <summary>
-    /// Applies function to argument list in given global scope.
-    /// </summary>
-    let apply globals f args = go(applyw globals f args)

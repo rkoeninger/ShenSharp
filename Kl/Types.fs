@@ -4,7 +4,7 @@ open System
 open System.Collections.Generic
 
 /// <summary>
-/// Exception type that embodies KL errors.
+/// Exception type that represents KL errors raised by (simple-error).
 /// </summary>
 type SimpleError(message) =
     inherit Exception(message)
@@ -24,7 +24,7 @@ type Defines<'a> = Dictionary<string, 'a>
 type Globals = {Symbols: Defines<Value>; Functions: Defines<Function>}
 
 /// <summary>
-/// A map of local variable definitions.
+/// An immutable map of local variable definitions.
 /// </summary>
 and Locals = Map<string, Value>
 
@@ -39,16 +39,16 @@ and [<ReferenceEquality>] Function =
     | Partial of Function * Value list
     override this.ToString() =
         match this with
-        | Native(name, arity, _) -> sprintf "%s/%i" name arity
-        | Defun(name, paramz, _) -> sprintf "%s/%i" name paramz.Length
+        | Native(name, arity, _) -> sprintf "%s" name
+        | Defun(name, paramz, _) -> sprintf "%s" name
         | Lambda _               -> "<Lambda>"
         | Freeze _               -> "<Freeze>"
-        | Partial(f, args)       -> sprintf "<Partial (%O)/%i>" f args.Length
+        | Partial(f, args)       -> sprintf "<Partial %O [%i]>" f args.Length
 
 /// <summary>
 /// A value in KL.
 /// </summary>
-and Value =
+and [<CustomEquality; NoComparison>] Value =
     | Empty
     | Bool      of bool
     | Int       of int
@@ -61,6 +61,40 @@ and Value =
     | Func      of Function
     | InStream  of Input
     | OutStream of Output
+    override this.Equals(that: obj) =
+        match that with
+        | :? Value as that ->
+            match this, that with
+            | Empty, Empty               -> true
+            | Bool x, Bool y             -> x = y
+            | Int x, Int y               -> x = y
+            | Int x, Dec y               -> decimal x = y
+            | Dec x, Int y               -> x = decimal y
+            | Dec x, Dec y               -> x = y
+            | Str x, Str y               -> x = y
+            | Sym x, Sym y               -> x = y
+            | Cons(x1, x2), Cons(y1, y2) -> x1 = y1 && x2 = y2
+            | Vec xs, Vec ys             -> xs.Length = ys.Length && Array.forall2 (=) xs ys
+            | Err x, Err y               -> x = y
+            | Func x, Func y             -> x = y
+            | InStream x, InStream y     -> x = y
+            | OutStream x, OutStream y   -> x = y
+            | _, _ -> false
+        | _ -> false
+    override this.GetHashCode() =
+        match this with
+        | Empty        -> 1
+        | Bool b       -> if b then 2 else 4
+        | Int i        -> hash i
+        | Dec d        -> hash d
+        | Str s        -> hash s
+        | Sym s        -> hash s
+        | Cons(x1, x2) -> hash x1 ^^^ hash x2
+        | Vec xs       -> hash xs
+        | Err x        -> hash x
+        | Func x       -> hash x
+        | InStream x   -> hash x
+        | OutStream x  -> hash x
     override this.ToString() =
         let rec toList = function
             | Cons(x, y) -> x :: toList y
@@ -73,22 +107,21 @@ and Value =
         | Str s       -> sprintf "\"%s\"" s
         | Sym s       -> s
         | Cons _      -> sprintf "(%s)" (String.Join(" ", toList this))
-        | Vec a       -> sprintf "<Vector/%i>" a.Length
-        | Err s       -> sprintf "<Error \"%s\">" s
+        | Vec a       -> sprintf "<Vector [%i]>" a.Length
+        | Err s       -> sprintf "<Error [%s]>" s
         | Func f      -> string f
-        | InStream  i -> sprintf "<InStream %s>" i.Name
-        | OutStream o -> sprintf "<OutStream %s>" o.Name
+        | InStream  i -> sprintf "<InStream [%s]>" i.Name
+        | OutStream o -> sprintf "<OutStream [%s]>" o.Name
 
 /// <summary>
-/// A potentially deferred computation yielding a value of type <c>'a</c>.
+/// Work that may be deferred. Used as trampolines for tail-call optimization.
 /// </summary>
 type Work =
     | Done    of Value
     | Pending of Thunk
 
 /// <summary>
-/// A deferred computation. Thunks are used to defer the evaluation
-/// of tail calls.
+/// A deferred computation. Thunks are used to defer the evaluation of tail calls.
 /// </summary>
 and Thunk(cont: unit -> Work) =
     member this.Run = cont

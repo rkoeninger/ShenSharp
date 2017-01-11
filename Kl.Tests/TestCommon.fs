@@ -11,7 +11,8 @@ module TestCommon =
     
     let runIn env syntax = rootEval env.Globals (read syntax)
     let run = runIn (baseEnv())
-    let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
+    let assertEq expected actual = Assert.IsTrue((expected = actual))
+    let assertNotEq expected actual = Assert.IsTrue((expected <> actual))
     let assertTrue = assertEq Values.truev
     let assertFalse = assertEq Values.falsev
     let assertDec value =

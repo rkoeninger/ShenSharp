@@ -42,17 +42,14 @@ module Extensions =
 module Values =
     let truev = Bool true
     let falsev = Bool false
-    let truew = Done truev
-    let falsew = Done falsev
 
     let err s = raise(SimpleError s)
 
-    let trap f handler =
-        try f()
-        with :? SimpleError as e -> handler(Err e.Message)
-
     let thunkw f = Pending(new Thunk(f))
 
+    /// <summary>
+    /// Runs Work repeated until a final Value is returned.
+    /// </summary>
     let rec go work =
         match work with
         | Pending thunk -> go(thunk.Run())
@@ -67,20 +64,10 @@ module Values =
         | Bool b -> b
         | _ -> err "Boolean expected"
 
-    let vsym v =
-        match v with
-        | Sym s -> s
-        | _ -> err "Symbol expected"
-
     let vstr v =
         match v with
         | Str s -> s
         | _ -> err "String expected"
-
-    let vfunc v =
-        match v with
-        | Func f -> f
-        | _ -> err "Function expected"
 
     let value2sym v =
         match v with
@@ -113,42 +100,11 @@ module Values =
         | Cons(x, y) -> Option.map (fun xs -> List.Cons(x, xs)) (toListOption y)
         | _ -> None
 
-    let toList value =
-        match toListOption value with
-        | Some cons -> cons
-        | None -> err "Invalid value in Cons list"
-
     let rec butLast xs =
         match xs with
         | [] -> failwith "butLast: empty list"
         | [_] -> []
         | h :: t -> h :: butLast t
-
-    let rec eq a b =
-        match a, b with
-        | Empty,        Empty        -> true
-        | Bool x,       Bool y       -> x = y
-        | Int x,        Int y        -> x = y
-        | Dec x,        Dec y        -> x = y
-        | Int x,        Dec y        -> decimal x = y
-        | Dec x,        Int y        -> x = decimal y
-        | Str x,        Str y        -> x = y
-        | Sym x,        Sym y        -> x = y
-        | InStream x,   InStream y   -> x = y
-        | OutStream x,  OutStream y  -> x = y
-        | Func x,       Func y       -> x = y
-        | Err x,        Err y        -> x = y
-        | Cons(x1, x2), Cons(y1, y2) -> eq x1 y1 && eq x2 y2
-        | Vec xs,       Vec ys       -> xs.Length = ys.Length && Array.forall2 eq xs ys
-        | _, _ -> false
-
-    let arityErr name expected (args: Value list) =
-        err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
-
-    let typeErr name (types: string list) =
-        if types.IsEmpty
-            then err(sprintf "%s expected no arguments" name)
-            else err(sprintf "%s expected arguments of type(s): %s" name (String.Join(" ", types)))
 
 open Values
 

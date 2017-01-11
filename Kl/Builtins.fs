@@ -9,6 +9,14 @@ open Kl.Evaluator
 
 module Builtins =
 
+    let private arityErr name expected (args: Value list) =
+        err(sprintf "%s expected %i arguments, but given %i" name expected args.Length)
+
+    let private typeErr name (types: string list) =
+        if types.IsEmpty
+            then err(sprintf "%s expected no arguments" name)
+            else err(sprintf "%s expected arguments of type(s): %s" name (String.Join(" ", types)))
+
     let klIntern _ args =
         match args with
         | [Str s] -> Sym s
@@ -116,7 +124,7 @@ module Builtins =
 
     let klEquals _ args =
         match args with
-        | [x; y] -> Bool(eq x y)
+        | [x; y] -> Bool(x = y)
         | _ -> arityErr "=" 2 args
 
     let klEval globals args =
@@ -353,7 +361,7 @@ module Builtins =
     let rec klElement globals args =
         match args with
         | [_; Empty] -> falsev
-        | [key; Cons(head, _)] when eq key head -> truev
+        | [key; Cons(head, _)] when key = head -> truev
         | [key; Cons(_, tail)] -> klElement globals [key; tail]
         | [_; _] -> typeErr "element?" ["value"; "list"]
         | _ -> arityErr "element?" 2 args
