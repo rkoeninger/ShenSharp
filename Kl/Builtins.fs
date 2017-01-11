@@ -425,9 +425,9 @@ module Builtins =
 
     let klHash _ args =
         match args with
-        | [Str s; Int d] ->
-            match s.GetHashCode() % d with
+        | [x; Int d] ->
+            match hash x % d with
             | 0 -> Int 1
             | h -> Int h
-        | [_; _] -> typeErr "hash" ["string"; "int"]
+        | [_; _] -> typeErr "hash" ["value"; "int"]
         | _ -> arityErr "hash" 2 args

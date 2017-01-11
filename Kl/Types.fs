@@ -2,6 +2,7 @@
 
 open System
 open System.Collections.Generic
+open System.Diagnostics
 
 /// <summary>
 /// Exception type that represents KL errors raised by (simple-error).
@@ -48,7 +49,7 @@ and [<ReferenceEquality>] Function =
 /// <summary>
 /// A value in KL.
 /// </summary>
-and [<CustomEquality; NoComparison>] Value =
+and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
     | Empty
     | Bool      of bool
     | Int       of int

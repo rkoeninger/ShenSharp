@@ -22,7 +22,7 @@ let main0 args =
                     "types.kl"
                     "t-star.kl"
                 ]
-    let klFolder = @"..\..\..\KLambda"
+    let klFolder = @"..\..\..\Kl.Source"
     let env = Startup.baseEnv()
     env.Globals.Symbols.["shen-*installing-kl*"] <- Bool true
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
