@@ -31,7 +31,7 @@ module Evaluator =
         | Some(Func f) -> f
         | Some(Sym id) -> resolveGlobalFunction env id
         | Some _ -> err("Function not defined: " + id)
-        | _ -> resolveGlobalFunction env id
+        | None -> resolveGlobalFunction env id
 
     let rec private applyw globals f args =
         match f with
@@ -155,6 +155,7 @@ module Evaluator =
 
         // Handler expression only evaluated unless body results in an error.
         // Handler expression must evaluate to a Function.
+        // Handler expression is in tail position.
         | TrapExpr(body, handler) ->
             try
                 Done(eval env body)
@@ -166,7 +167,7 @@ module Evaluator =
 
         // Evaluate all expressions, returns result of last expression.
         // All but the last expression are evaluated in Head position.
-        // Last expression is evaluated in Tail position.
+        // Last expression is in tail position.
         // Default result is Empty.
         | DoExpr exprs ->
             let rec doAll result exprs =
