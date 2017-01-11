@@ -5,16 +5,8 @@ open Values
 open Builtins
 
 module Startup =
-    
-    // TODO: find a way to eliminate extra stack frames:
-    //       klIntern
-    //       installBase@SomeNumber
-    //       apply
-    //       evalw
-    //       ...
 
-    let rec install (functions: Defines<'a>) defs =
-        match defs with
+    let rec private install (functions: Defines<'a>) = function
         | [] -> ()
         | (name, value) :: rest ->
             functions.[name] <- value
