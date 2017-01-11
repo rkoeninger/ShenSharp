@@ -317,19 +317,17 @@ module Builtins =
         | _ -> arityErr "number?" 1 args
 
     let stinput =
-        let consoleIn = new ConsoleIn(Console.OpenStandardInput())
         InStream {
             Name = "Console"
-            Read = consoleIn.Read
-            Close = consoleIn.Close
+            Read = (new ConsoleReader()).ReadByte
+            Close = fun () -> ()
         }
 
     let stoutput =
-        let consoleOutStream = Console.OpenStandardOutput()
         OutStream {
             Name = "Console"
-            Write = consoleOutStream.WriteByte
-            Close = consoleOutStream.Close
+            Write = (new ConsoleWriter()).WriteByte
+            Close = fun () -> ()
         }
 
     let klIsBoolean _ args =

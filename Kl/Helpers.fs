@@ -3,27 +3,24 @@
 open System
 open System.IO
 open System.Collections.Generic
+open System.Text
 
-type ConsoleIn(stream: Stream) =
-    let reader = new StreamReader(stream)
-    let mutable currentLine = ""
-    let mutable currentPos = 0
-    member this.Read() = 
-        if currentPos >= currentLine.Length then
-            currentLine <- reader.ReadLine()
-            if Object.ReferenceEquals(currentLine, null) then
-                -1
-            else
-                currentLine <- currentLine + "\n"
-                currentPos <- 0
-                let ch = currentLine.[currentPos]
-                currentPos <- currentPos + 1
-                (int) ch
+type ConsoleReader() =
+    let mutable line: byte[] = [||]
+    let mutable index = 0
+    member this.ReadByte() =
+        if index >= line.Length then
+            line <- Encoding.ASCII.GetBytes(Console.In.ReadLine() + Environment.NewLine)
+            index <- 0
+        if line.Length = 0 then
+            -1
         else
-            let ch = currentLine.[currentPos]
-            currentPos <- currentPos + 1
-            (int) ch
-    member this.Close() = stream.Close()
+            index <- index + 1
+            int (line.[index - 1])
+
+type ConsoleWriter() =
+    let stream = Console.OpenStandardOutput()
+    member this.WriteByte = stream.WriteByte
 
 module Extensions =
     type Dictionary<'a, 'b> with
