@@ -22,16 +22,6 @@ module Values =
 
     let err s = raise(SimpleError s)
 
-    let thunkw f = Pending(new Thunk(f))
-
-    /// <summary>
-    /// Runs Work repeated until a final Value is returned.
-    /// </summary>
-    let rec go work =
-        match work with
-        | Pending thunk -> go(thunk.Run())
-        | Done result -> result
-
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv globals locals = {Globals = globals; Locals = locals}
     let emptyEnv() = newEnv (newGlobals()) Map.empty
@@ -61,7 +51,7 @@ module ExpressionPatterns =
     let rec private toListOption cons =
         match cons with
         | Empty -> Some []
-        | Cons(x, y) -> Option.map (fun xs -> List.Cons(x, xs)) (toListOption y)
+        | Cons(x, y) -> Option.map (fun xs -> x :: xs) (toListOption y)
         | _ -> None
 
     let private (|Expr|_|) = toListOption

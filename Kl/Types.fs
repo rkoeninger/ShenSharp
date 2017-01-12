@@ -134,19 +134,6 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
         | OutStream o -> sprintf "<OutStream [%s]>" o.Name
 
 /// <summary>
-/// Work that may be deferred. Used as trampolines for tail-call optimization.
-/// </summary>
-type Work =
-    | Done    of Value
-    | Pending of Thunk
-
-/// <summary>
-/// A deferred computation. Thunks are used to defer the evaluation of tail calls.
-/// </summary>
-and Thunk(cont: unit -> Work) =
-    member this.Run = cont
-
-/// <summary>
 /// A KL environment state, with a reference to global definitions
 /// and local variable bindings.
 /// </summary>

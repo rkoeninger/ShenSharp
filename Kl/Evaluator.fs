@@ -6,6 +6,11 @@ open ExpressionPatterns
 
 module Evaluator =
 
+    // Work that may be deferred. Used as trampolines for tail-call optimization.
+    type private Work =
+        | Done    of Value
+        | Pending of Env * Value
+
     let private appendLocals env defs =
         let locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs
         {env with Locals = locals}
@@ -73,8 +78,7 @@ module Evaluator =
                 | [] -> Done(Func defun)
                 | _ -> Done(Func(Partial(defun, args)))
             | Equal ->
-                let env = appendLocals env (List.zip paramz args)
-                thunkw(fun () -> evalw env body)
+                Pending(appendLocals env (List.zip paramz args), body)
             | Greater ->
                 err(sprintf "Too many arguments (%i) provided to defun \"%s\"" args.Length name)
 
@@ -208,7 +212,11 @@ module Evaluator =
             match eval env expr with
             | Func f -> f
             | Sym s -> resolveFunction env s
-            | _ -> err "Expression must resolve to a function"
+            | _ -> err "Operator expression must resolve to a function"
+
+    and private go = function
+        | Done value -> value
+        | Pending(env, value) -> go(evalw env value)
 
     /// <summary>
     /// Evaluates an expression into a value.

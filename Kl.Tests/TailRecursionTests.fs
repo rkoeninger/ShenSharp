@@ -58,3 +58,17 @@ type TailRecursionTests() =
         runIn env "(defun odd? (X) (if (= 1 X) true (even? (- X 1))))" |> ignore
         runIn env "(defun even? (X) (if (= 1 X) false (odd? (- X 1))))" |> ignore
         assertEq falsev (runIn env "(odd? 20000)")
+
+    [<Test>]
+    member this.``trampolines optimize through freeze calls``() =
+        attempt "(if (<= X 0) true ((freeze (count-down (- X 1)))))"
+
+    [<Test>]
+    member this.``trampolines optimize through lambda calls``() =
+        attempt "(if (<= X 0) true ((lambda Y (count-down (- X Y))) 1))"
+
+    [<Test>]
+    member this.``trampolines optimize through recursive lambdas``() =
+        let env = baseEnv()
+        runIn env "(defun recur (F) (F F 20000))" |> ignore
+        runIn env "(recur (lambda F (lambda X (if (<= X 0) true (F (- X 1))))))" |> ignore
