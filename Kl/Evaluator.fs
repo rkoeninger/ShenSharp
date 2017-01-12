@@ -169,18 +169,10 @@ module Evaluator =
                 applyw env.Globals operator [Err e.Message]
             | _ -> reraise()
 
-        // Evaluate all expressions, returns result of last expression.
-        // All but the last expression are evaluated in Head position.
-        // Last expression is in tail position.
-        // Default result is Empty.
-        | DoExpr exprs ->
-            let rec doAll result exprs =
-                match exprs with
-                | [] -> result
-                | expr :: rest ->
-                    go result |> ignore
-                    doAll (evalw env expr) rest
-            doAll (Done Empty) exprs
+        // Second expression is in tail position.
+        | DoExpr(first, second) ->
+            eval env first |> ignore
+            evalw env second
 
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.

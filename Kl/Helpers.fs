@@ -107,7 +107,7 @@ module ExpressionPatterns =
         | _ -> None
 
     let (|DoExpr|_|) = function
-        | Expr(Sym "do" :: exprs) -> Some exprs
+        | Expr [Sym "do"; first; second] -> Some(first, second)
         | _ -> None
 
     let (|AppExpr|_|) = function
