@@ -6,15 +6,12 @@ open Builtins
 
 module Startup =
 
-    let rec private install (functions: Defines<'a>) = function
-        | [] -> ()
-        | (name, value) :: rest ->
-            functions.[name] <- value
-            install functions rest
+    let private install (functions: Defines<'a>) =
+        List.fold (fun () -> functions.Add) ()
 
     let private fn name arity f = name, Native(name, arity, f)
 
-    let installBase env =
+    let private installBase env =
         install env.Globals.Functions [
             fn "intern"          1 klIntern
             fn "pos"             2 klStringPos
