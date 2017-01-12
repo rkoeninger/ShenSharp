@@ -23,8 +23,8 @@ module Values =
     let err s = raise(SimpleError s)
 
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv globals locals = {Globals = globals; Locals = locals}
-    let emptyEnv() = newEnv (newGlobals()) Map.empty
+    let newEnv globals locals stack = {Globals = globals; Locals = locals; Stack = stack}
+    let emptyEnv() = newEnv (newGlobals()) Map.empty []
 
     let rec toCons list =
         match list with

@@ -137,7 +137,7 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
 /// A KL environment state, with a reference to global definitions
 /// and local variable bindings.
 /// </summary>
-type Env = {Globals: Globals; Locals: Locals}
+type Env = {Globals: Globals; Locals: Locals; Stack: string list}
 
 module Overrides =
     let overrides = new Defines<Function>()

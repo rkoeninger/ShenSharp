@@ -11,6 +11,9 @@ module Evaluator =
         | Done    of Value
         | Pending of Env * Value
 
+    let private push frame env = {env with Stack = frame :: env.Stack}
+    let private pop env = {env with Stack = env.Stack.Tail}
+
     let private appendLocals env defs =
         let locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs
         {env with Locals = locals}
@@ -38,14 +41,14 @@ module Evaluator =
         | Some _ -> err("Function not defined: " + id)
         | None -> resolveGlobalFunction env id
 
-    let rec private applyw globals f args =
+    let rec private applyw env f args =
         match f with
 
         // Freezes can only be applied to 0 arguments.
         // They evaluate their body with local state captured where they were formed.
         | Freeze(locals, body) ->
             match args with
-            | [] -> evalw (newEnv globals locals) body
+            | [] -> evalw {env with Locals = locals} body
             | _ -> err(sprintf "Too many arguments (%i) provided to freeze" args.Length)
 
         // Each lambda only takes 1 argument.
@@ -54,16 +57,16 @@ module Evaluator =
         // arguments to the returned function.
         // Lambdas evaluate their body with local state captured when they were formed.
         | Lambda(param, locals, body) as lambda ->
-            let env = newEnv globals locals
+            let env = {env with Locals = locals}
             match args with
             | [] -> err "Zero arguments provided to lambda"
             | [arg0] -> evalw (appendLocals env [param, arg0]) body
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
-                | Func f -> applyw globals f args1
+                | Func f -> applyw env f args1
                 | Sym s ->
                     let f = resolveFunction env s
-                    applyw globals f args1
+                    applyw env f args1
                 | _ -> err(sprintf "Too many arguments (%i) provided to lambda" args.Length)
 
         // Defuns can be applied to anywhere between 0 and the their full parameter list.
@@ -71,7 +74,7 @@ module Evaluator =
         // If applied to fewer arguments than the full parameter list, a Partial is returned.
         // They do not retain local state and are usually evaluated at the root level.
         | Defun(name, paramz, body) as defun ->
-            let env = newEnv globals Map.empty
+            let env = {env with Locals = Map.empty}
             match args.Length, paramz.Length with
             | Lesser ->
                 match args with
@@ -90,7 +93,7 @@ module Evaluator =
                 | [] -> Done(Func native)
                 | _ -> Done(Func(Partial(native, args)))
             | Equal ->
-                Done(f globals args)
+                Done(f env.Globals args)
             | Greater ->
                 err(sprintf "Too many arguments (%i) provided to native \"%s\"" args.Length name)
 
@@ -99,7 +102,7 @@ module Evaluator =
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> applyw globals f (List.append previousArgs args)
+            | _ -> applyw env f (List.append previousArgs args)
 
     and private evalw env expr =
 
@@ -163,7 +166,7 @@ module Evaluator =
             with
             | :? SimpleError as e ->
                 let operator = evalFunction env handler
-                applyw env.Globals operator [Err e.Message]
+                applyw env operator [Err e.Message]
             | _ -> reraise()
 
         // Second expression is in tail position.
@@ -185,7 +188,7 @@ module Evaluator =
         | AppExpr(f, args) ->
             let operator = evalFunction env f
             let operands = List.map (eval env) args
-            applyw env.Globals operator operands
+            applyw env operator operands
 
         // All other expressions/values are self-evaluating.
         | _ -> Done expr
@@ -208,13 +211,27 @@ module Evaluator =
     /// Evaluates an expression into a value.
     /// </summary>
     and eval env expr =
+    
+        let env =
+            match expr with
+            | LetExpr(x, _, _) -> push ("let " + x) env
+            | Cons(x, _) -> push (string x) env
+            | _ -> env
+
+        if env.Stack.Length > 1024 then
+            printfn ""
+            printfn "STACK OVERFLOW"
+            printfn ""
+            for frame in env.Stack do
+                printfn "%O" frame
+            failwith "stack overflow"
 
         // Must be tail recursive. This is where tail call optimization happens.
         match evalw env expr with
         | Done value -> value
-        | Pending(env, expr) -> eval env expr
+        | Pending(env, expr) -> eval (pop env) expr
 
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    let rootEval globals = eval (newEnv globals Map.empty)
+    let rootEval globals = eval (newEnv globals Map.empty [])

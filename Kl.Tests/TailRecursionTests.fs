@@ -72,3 +72,18 @@ type TailRecursionTests() =
         let env = baseEnv()
         runIn env "(defun recur (F) (F F 20000))" |> ignore
         runIn env "(recur (lambda F (lambda X (if (<= X 0) true (F (- X 1))))))" |> ignore
+
+    [<Test>]
+    member this.``non-optmized blows KL stack``() =
+        let env = baseEnv()
+        runIn env "(defun f (X) (+ 1 (g X)))" |> ignore
+        runIn env "(defun g (X) (+ 1 (h X)))" |> ignore
+        runIn env "(defun h (X) (+ 1 (i X)))" |> ignore
+        runIn env "(defun i (X) (+ 1 (j X)))" |> ignore
+        runIn env "(defun j (X) (+ 1 (k X)))" |> ignore
+        runIn env "(defun k (X) (+ 1 (l X)))" |> ignore
+        runIn env "(defun l (X) (+ 1 (m X)))" |> ignore
+        runIn env "(defun m (X) (+ 1 (n X)))" |> ignore
+        runIn env "(defun n (X) (+ 1 (o X)))" |> ignore
+        runIn env "(defun o (X) (+ 1 X))" |> ignore
+        runIn env "(f 0)" |> ignore
