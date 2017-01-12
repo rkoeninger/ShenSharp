@@ -1,29 +1,9 @@
 ﻿namespace Kl
 
-open System
-open System.IO
 open System.Collections.Generic
-open System.Text
-
-type ConsoleReader() =
-    let mutable line: byte[] = [||]
-    let mutable index = 0
-    member this.ReadByte() =
-        if index >= line.Length then
-            line <- Encoding.ASCII.GetBytes(Console.In.ReadLine() + Environment.NewLine)
-            index <- 0
-        if line.Length = 0 then
-            -1
-        else
-            index <- index + 1
-            int (line.[index - 1])
-
-type ConsoleWriter() =
-    let stream = Console.OpenStandardOutput()
-    member this.WriteByte = stream.WriteByte
 
 module Extensions =
-    type Dictionary<'a, 'b> with
+    type IDictionary<'a, 'b> with
         member this.GetMaybe(key: 'a) =
             match this.TryGetValue(key) with
             | true, x -> Some x

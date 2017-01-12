@@ -3,12 +3,31 @@
 open System
 open System.Collections.Generic
 open System.Diagnostics
+open System.IO
+open System.Text
 
 /// <summary>
 /// Exception type that represents KL errors raised by (simple-error).
 /// </summary>
 type SimpleError(message) =
     inherit Exception(message)
+    
+type ConsoleReader() =
+    let reader = new StreamReader(Console.OpenStandardInput())
+    let mutable line: byte[] = [||]
+    let mutable index = 0
+    member this.ReadByte() =
+        if index >= line.Length then
+            line <- Encoding.ASCII.GetBytes(reader.ReadLine() + Environment.NewLine)
+            index <- 0
+        index <- index + 1
+        int (line.[index - 1])
+    member this.Close = reader.Close
+
+type ConsoleWriter() =
+    let stream = Console.OpenStandardOutput()
+    member this.WriteByte = stream.WriteByte
+    member this.Close = stream.Close
 
 type [<ReferenceEquality>] Input =  {Name: string; Read: unit -> int;   Close: unit -> unit}
 type [<ReferenceEquality>] Output = {Name: string; Write: byte -> unit; Close: unit -> unit}
