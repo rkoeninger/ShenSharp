@@ -171,18 +171,6 @@ module Evaluator =
             eval env first |> ignore
             evalw env second
 
-        // Must be tail recursive.
-        | LoopExpr(paramz, initials, body) ->
-            let rec toList = function
-                | Cons(x, xs) -> x :: toList xs
-                | _ -> []
-            let rec loop env =
-                match eval env body with
-                | Cons(Bool true, next) -> loop (appendLocals env (List.zip paramz (toList next)))
-                | Cons(Bool false, result) -> Done result
-                | _ -> err "Body of loop expression returned malformed result"
-            loop (appendLocals env (List.zip paramz (List.map (eval env) initials)))
-
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
         | DefunExpr(name, paramz, body) ->
