@@ -59,7 +59,7 @@ module Startup =
         // TODO: identify CoreCLR?
         let ver = Environment.Version
         install env.Globals.Symbols [
-            "*language*",       Str "F# 3.1"
+            "*language*",       Str "F# 4.0"
             "*implementation*", Str(sprintf "CLR/%s" clrImpl)
             "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
             "*port*",           Str "0.1"
