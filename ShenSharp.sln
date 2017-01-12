@@ -92,6 +92,26 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chap13", "Chap13", "{AF801D
 		Shen.Tests.Source\Chap13\problems.txt = Shen.Tests.Source\Chap13\problems.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shen.Source", "Shen.Source", "{95D60277-F1CE-43BB-B62C-FCB8BBE3F8E9}"
+	ProjectSection(SolutionItems) = preProject
+		Shen.Source\backend.shen = Shen.Source\backend.shen
+		Shen.Source\core.shen = Shen.Source\core.shen
+		Shen.Source\declarations.shen = Shen.Source\declarations.shen
+		Shen.Source\load.shen = Shen.Source\load.shen
+		Shen.Source\macros.shen = Shen.Source\macros.shen
+		Shen.Source\make.shen = Shen.Source\make.shen
+		Shen.Source\prolog.shen = Shen.Source\prolog.shen
+		Shen.Source\reader.shen = Shen.Source\reader.shen
+		Shen.Source\sequent.shen = Shen.Source\sequent.shen
+		Shen.Source\sys.shen = Shen.Source\sys.shen
+		Shen.Source\t-star.shen = Shen.Source\t-star.shen
+		Shen.Source\toplevel.shen = Shen.Source\toplevel.shen
+		Shen.Source\track.shen = Shen.Source\track.shen
+		Shen.Source\types.shen = Shen.Source\types.shen
+		Shen.Source\writer.shen = Shen.Source\writer.shen
+		Shen.Source\yacc.shen = Shen.Source\yacc.shen
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
