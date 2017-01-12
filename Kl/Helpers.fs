@@ -110,6 +110,10 @@ module ExpressionPatterns =
         | Expr [Sym "do"; first; second] -> Some(first, second)
         | _ -> None
 
+    let (|LoopExpr|_|) = function
+        | Expr [Sym "loop"; ParamList paramz; Expr initials; body] -> Some(paramz, initials, body)
+        | _ -> None
+
     let (|AppExpr|_|) = function
         | Expr(f :: args) -> Some(f, args)
         | _ -> None

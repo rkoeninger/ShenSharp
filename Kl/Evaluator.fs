@@ -171,6 +171,18 @@ module Evaluator =
             eval env first |> ignore
             evalw env second
 
+        // Must be tail recursive.
+        | LoopExpr(paramz, initials, body) ->
+            let rec toList = function
+                | Cons(x, xs) -> x :: toList xs
+                | _ -> []
+            let rec loop env =
+                match eval env body with
+                | Cons(Bool true, next) -> loop (appendLocals env (List.zip paramz (toList next)))
+                | Cons(Bool false, result) -> Done result
+                | _ -> err "Body of loop expression returned malformed result"
+            loop (appendLocals env (List.zip paramz (List.map (eval env) initials)))
+
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
         | DefunExpr(name, paramz, body) ->
@@ -192,8 +204,8 @@ module Evaluator =
 
     // Does a full eval of expr, looking to get a Function.
     // 3 ways this can work:
-    //   * expr can eval to function.
     //   * expr can be a symbol that resolves to a function.
+    //   * expr can eval to function.
     //   * expr can eval to a symbol that resolves to a function.
     and private evalFunction env expr =
         match expr with
@@ -204,18 +216,17 @@ module Evaluator =
             | Sym s -> resolveFunction env s
             | _ -> err "Operator expression must resolve to a function"
 
-    // Must be tail-recursive. This is where tail call optimization happens.
-    and private go = function
-        | Done value -> value
-        | Pending(env, value) -> go(evalw env value)
-
     /// <summary>
     /// Evaluates an expression into a value.
     /// </summary>
-    and eval env expr = go(evalw env expr)
+    and eval env expr =
+
+        // Must be tail recursive. This is where tail call optimization happens.
+        match evalw env expr with
+        | Done value -> value
+        | Pending(env, expr) -> eval env expr
 
     /// <summary>
-    /// Evaluates a root-level expression into a value, running all side
-    /// effects in the process. Starts with a new, empty local scope.
+    /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
     let rootEval globals = eval (newEnv globals Map.empty)
