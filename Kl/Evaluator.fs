@@ -29,7 +29,7 @@ module Evaluator =
     // Symbols in operator position are either:
     //   * A local variable whose value is a function.
     //   * A local variable whose value is a symbol that resolves to a global function.
-    //   * Resolves to a global function.
+    //   * A symbol that resolves to a global function.
     // Symbols in operator position are never idle.
     let private resolveFunction env id =
         match Map.tryFind id env.Locals with
@@ -109,9 +109,6 @@ module Evaluator =
 
         match expr with
 
-        // Atomic values besides Symbols are self-evaluating
-        | (Empty | Bool _ | Int _ | Dec _ | Str _) -> Done expr
-
         // When Shen code is translated to KL, `true` and `false` come through as Symbols.
         | Sym "true" -> Done truev
         | Sym "false" -> Done falsev
@@ -157,7 +154,7 @@ module Evaluator =
         | FreezeExpr body ->
             Done(Func(Freeze(env.Locals, body)))
 
-        // Handler expression only evaluated unless body results in an error.
+        // Handler expression only evaluated if body results in an error.
         // Handler expression must evaluate to a Function.
         // Handler expression is in tail position.
         | TrapExpr(body, handler) ->
@@ -190,13 +187,14 @@ module Evaluator =
             let operands = List.map (eval env) args
             applyw env.Globals operator operands
 
-        | _ -> err "Unexpected value type - cannot evaluate"
+        // All other expressions/values are self-evaluating.
+        | _ -> Done expr
 
     // Does a full eval of expr, looking to get a Function.
     // 3 ways this can work:
-    //   * expr can eval to function
-    //   * expr can be a symbol that resolves to a function
-    //   * expr can eval to a symbol that evals to a function
+    //   * expr can eval to function.
+    //   * expr can be a symbol that resolves to a function.
+    //   * expr can eval to a symbol that resolves to a function.
     and private evalFunction env expr =
         match expr with
         | Sym s -> resolveFunction env s
@@ -206,6 +204,7 @@ module Evaluator =
             | Sym s -> resolveFunction env s
             | _ -> err "Operator expression must resolve to a function"
 
+    // Must be tail-recursive. This is where tail call optimization happens.
     and private go = function
         | Done value -> value
         | Pending(env, value) -> go(evalw env value)
