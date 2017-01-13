@@ -57,8 +57,8 @@
     <None Include="App.config" />
     <Content Include="packages.config" />
     <Compile Include="Types.fs" />
-    <Compile Include="Helpers.fs" />
     <Compile Include="Reader.fs" />
+    <Compile Include="Expressions.fs" />
     <Compile Include="Evaluator.fs" />
     <Compile Include="Builtins.fs" />
     <Compile Include="Startup.fs" />

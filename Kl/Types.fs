@@ -11,23 +11,6 @@ open System.Text
 /// </summary>
 type SimpleError(message) =
     inherit Exception(message)
-    
-type ConsoleReader() =
-    let reader = new StreamReader(Console.OpenStandardInput())
-    let mutable line: byte[] = [||]
-    let mutable index = 0
-    member this.ReadByte() =
-        if index >= line.Length then
-            line <- Encoding.ASCII.GetBytes(reader.ReadLine() + Environment.NewLine)
-            index <- 0
-        index <- index + 1
-        int (line.[index - 1])
-    member this.Close = reader.Close
-
-type ConsoleWriter() =
-    let stream = Console.OpenStandardOutput()
-    member this.WriteByte = stream.WriteByte
-    member this.Close = stream.Close
 
 type [<ReferenceEquality>] Input =  {Name: string; Read: unit -> int;   Close: unit -> unit}
 type [<ReferenceEquality>] Output = {Name: string; Write: byte -> unit; Close: unit -> unit}
@@ -138,6 +121,53 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
 /// and local variable bindings.
 /// </summary>
 type Env = {Globals: Globals; Locals: Locals; Stack: string list}
+
+type ConsoleReader() =
+    let reader = new StreamReader(Console.OpenStandardInput())
+    let mutable line: byte[] = [||]
+    let mutable index = 0
+    member this.ReadByte() =
+        if index >= line.Length then
+            line <- Encoding.ASCII.GetBytes(reader.ReadLine() + Environment.NewLine)
+            index <- 0
+        index <- index + 1
+        int (line.[index - 1])
+    member this.Close = reader.Close
+
+type ConsoleWriter() =
+    let stream = Console.OpenStandardOutput()
+    member this.WriteByte = stream.WriteByte
+    member this.Close = stream.Close
+
+module Extensions =
+    type IDictionary<'a, 'b> with
+        member this.GetMaybe(key: 'a) =
+            match this.TryGetValue(key) with
+            | true, x -> Some x
+            | false, _ -> None
+
+    let (|Greater|Equal|Lesser|) (x, y) =
+        if x > y
+            then Greater
+        elif x < y
+            then Lesser
+        else Equal
+
+module Values =
+    let truev = Bool true
+    let falsev = Bool false
+    let err s = raise(SimpleError s)
+    let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
+    let newEnv globals locals stack = {Globals = globals; Locals = locals; Stack = stack}
+    let emptyEnv() = newEnv (newGlobals()) Map.empty []
+    let rec toCons = function
+        | [] -> Empty
+        | x :: xs -> Cons(x, toCons xs)
+    let rec each f = function
+        | [] -> ()
+        | x :: xs ->
+            f x |> ignore
+            each f xs
 
 module Overrides =
     let overrides = new Defines<Function>()

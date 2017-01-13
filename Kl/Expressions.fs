@@ -1,43 +1,6 @@
 ﻿namespace Kl
 
-open System.Collections.Generic
-
-module Extensions =
-    type IDictionary<'a, 'b> with
-        member this.GetMaybe(key: 'a) =
-            match this.TryGetValue(key) with
-            | true, x -> Some x
-            | false, _ -> None
-
-    let (|Greater|Equal|Lesser|) (x, y) =
-        if x > y
-            then Greater
-        elif x < y
-            then Lesser
-        else Equal
-
-module Values =
-    let truev = Bool true
-    let falsev = Bool false
-
-    let err s = raise(SimpleError s)
-
-    let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv globals locals stack = {Globals = globals; Locals = locals; Stack = stack}
-    let emptyEnv() = newEnv (newGlobals()) Map.empty []
-
-    let rec toCons list =
-        match list with
-        | [] -> Empty
-        | x :: xs -> Cons(x, toCons xs)
-
-    let rec butLast xs =
-        match xs with
-        | [] -> failwith "butLast: empty list"
-        | [_] -> []
-        | h :: t -> h :: butLast t
-
-module ExpressionPatterns =
+module Expressions =
     let private sequenceOption xs =
         let combine x lst =
             match x with

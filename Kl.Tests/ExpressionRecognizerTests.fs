@@ -1,18 +1,19 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
+open Kl.Values
 open Kl.Reader
-open Kl.ExpressionPatterns
+open Kl.Expressions
 open TestCommon
 
 [<TestFixture>]
 type ExpressionRecognizerTests() =
 
     let check recognizer strings =
-        let checkSample () (some, s) =
+        let checkSample (some, s) =
             let expect = if some then Option.isSome else Option.isNone
-            Assert.IsTrue(expect (recognizer (read s)), s)
-        List.fold checkSample () strings
+            Assert.True(s |> read |> recognizer |> expect, s)
+        each checkSample strings
 
     [<Test>]
     member this.``if expression starts with 'if and has 4 forms total``() =
