@@ -18,20 +18,20 @@ type SymbolEvaluationTests() =
 
     [<Test>]
     member this.``symbols not at head of application should be resolved using local scope or be idle``() =
-        let env = baseEnv()
-        runIn env "(defun inc (x) (+ x 1))" |> ignore
-        runIn env "(defun inc' (X) (+ X 1))" |> ignore
-        runIn env "(defun hi-sym () hi)" |> ignore
-        assertEq (Int 5) (runIn env "(inc 4)")
-        assertEq (Int 3) (runIn env "(inc' 2)")
-        assertEq (Sym "hi") (runIn env "(hi-sym)")
+        assertEach [
+            (Sym "inc"),    "(defun inc (x) (+ x 1))"
+            (Sym "inc'"),   "(defun inc' (X) (+ X 1))"
+            (Sym "hi-sym"), "(defun hi-sym () hi)"
+            (Int 5),        "(inc 4)"
+            (Int 3),        "(inc' 2)"
+            (Sym "hi"),     "(hi-sym)"]
 
     [<Test>]
     member this.``if a symbol originally idle ends up in application position, it will be resolved as a global function``() =
-        let env = baseEnv()
-        runIn env "(defun abc (X) (+ X 1))" |> ignore
-        assertEq (Sym "abc") (runIn env "(if false 0 abc)")
-        assertEq (Int 2) (runIn env "((if false 0 abc) 1)")
+        assertEach [
+            (Sym "abc"), "(defun abc (X) (+ X 1))"
+            (Sym "abc"), "(if false 0 abc)"
+            (Int 2),     "((if false 0 abc) 1)"]
 
     [<Test>]
     member this.``result of interning a string is equal to symbol with name that is equal to that string``() =

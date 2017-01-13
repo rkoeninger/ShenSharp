@@ -43,11 +43,3 @@ type ScopeCaptureTests() =
         assertEq (Int 0) (runIn env "((<-address (value foo) 0))")
         assertEq (Int 1) (runIn env "((<-address (value foo) 1))")
         assertEq (Int 2) (runIn env "((<-address (value foo) 2))")
-
-    [<Test>]
-    member this.``supports functions with zero arguments``() =
-        let env = baseEnv()
-        runIn env "(set foo (absvector 3))" |> ignore
-        runIn env "(set counter 0)" |> ignore
-        runIn env "(defun count-down () (if (= 20000 (set counter (+ (value counter) 1))) true (count-down)))" |> ignore
-        assertTrue (runIn env "(count-down)")

@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open Kl
+open Kl.Values
 open Kl.Extensions
 open Kl.Evaluator
 open Kl.Reader
@@ -11,6 +12,12 @@ module TestCommon =
     
     let runIn env syntax = rootEval env.Globals (read syntax)
     let run = runIn (baseEnv())
+    let runAll syntax =
+        let env = baseEnv()
+        List.fold (fun _ -> rootEval env.Globals) Empty (readAll syntax)
+    let runEach syntax =
+        let env = baseEnv()
+        List.map (rootEval env.Globals) (readAll syntax)
     let assertEq expected actual = Assert.IsTrue((expected = actual))
     let assertNotEq expected actual = Assert.IsTrue((expected <> actual))
     let assertTrue = assertEq Values.truev
@@ -23,6 +30,9 @@ module TestCommon =
         match value with
         | Int _ -> ()
         | _ -> Assert.Fail "Int expected"
+    let assertEach pairs =
+        let env = baseEnv()
+        each (fun (expected, syntax) -> assertEq expected (runIn env syntax)) pairs
     let assertNoError syntax = run syntax |> ignore
     let assertError syntax =
         try
