@@ -48,7 +48,7 @@ module Evaluator =
         // They evaluate their body with local state captured where they were formed.
         | Freeze(locals, body) ->
             match args with
-            | [] -> evalw {env with Locals = locals} body
+            | [] -> Pending({env with Locals = locals}, body)
             | _ -> err(sprintf "Too many arguments (%i) provided to freeze" args.Length)
 
         // Each lambda only takes 1 argument.
@@ -60,7 +60,7 @@ module Evaluator =
             let env = {env with Locals = locals}
             match args with
             | [] -> err "Zero arguments provided to lambda"
-            | [arg0] -> evalw (appendLocals env [param, arg0]) body
+            | [arg0] -> Pending(appendLocals env [param, arg0], body)
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
                 | Func f -> applyw env f args1

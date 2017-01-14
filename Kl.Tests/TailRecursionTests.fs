@@ -1,6 +1,7 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
+open Kl
 open Kl.Values
 open Kl.Reader
 open Kl.Startup
@@ -45,13 +46,6 @@ type TailRecursionTests() =
         attempt "(trap-error (if (> X 0) (simple-error \"recur\") true) (lambda E (count-down (- X 1))))"
 
     [<Test>]
-    member this.``trampolines optimize mutually-recursive functions``() =
-        assertEq falsev <| runAll
-            "(defun odd? (X) (if (= 0 X) false (even? (- X 1))))
-             (defun even? (X) (if (= 0 X) true (odd? (- X 1))))
-             (odd? 20000)"
-
-    [<Test>]
     member this.``trampolines optimize through freeze calls``() =
         attempt "(if (<= X 0) true ((freeze (count-down (- X 1)))))"
 
@@ -61,16 +55,31 @@ type TailRecursionTests() =
 
     [<Test>]
     member this.``trampolines optimize through recursive lambdas``() =
-        runAll "(defun recur (F) (F F 20000))
-                (recur (lambda F (lambda X (if (<= X 0) true (F (- X 1))))))" |> ignore
+        assertTrue <| run
+            "(let F (lambda F (lambda X (if (<= X 0) true ((F F) (- X 1))))) ((F F) 20000))"
+
+    [<Test>]
+    member this.``trampolines optimize through recursive freezes``() =
+        assertTrue <| runAll
+            "(set counter 20000)
+             (defun decrement () (set counter (- (value counter) 1)))
+             (set count-down (freeze (if (= 0 (decrement)) true ((value count-down)))))
+             ((value count-down))"
 
     [<Test>]
     member this.``trampolines optimize through zero-arg defuns``() =
-        let env = baseEnv()
-        runIn env "(set foo (absvector 3))" |> ignore
-        runIn env "(set counter 20000)" |> ignore
-        runIn env "(defun count-down () (if (= 0 (set counter (- (value counter) 1))) true (count-down)))" |> ignore
-        assertTrue (runIn env "(count-down)")
+        assertEach [
+            Int 20000,        "(set counter 20000)"
+            Sym "decrement",  "(defun decrement () (set counter (- (value counter) 1)))"
+            Sym "count-down", "(defun count-down () (if (= 0 (decrement)) true (count-down)))"
+            Bool true,        "(count-down)"]
+
+    [<Test>]
+    member this.``trampolines optimize mutually-recursive functions``() =
+        assertFalse <| runAll
+            "(defun odd? (X) (if (= 0 X) false (even? (- X 1))))
+             (defun even? (X) (if (= 0 X) true (odd? (- X 1))))
+             (odd? 20000)"
 
     [<Test>]
     member this.``non-optmized blows KL stack``() =
