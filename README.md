@@ -1,7 +1,7 @@
 [![Build Status](https://api.travis-ci.org/rkoeninger/ShenSharp.svg?branch=master)](https://travis-ci.org/rkoeninger/ShenSharp)
 [![Build status](https://ci.appveyor.com/api/projects/status/dy12w63pi5kqlhyr/branch/master?svg=true)](https://ci.appveyor.com/project/rkoeninger/shensharp/branch/master)
 
-# 神&#35;
+# ![神&#35;](ShenSharp.svg)
 
 Making a second attempt at implementing a certified Shen implementation. This time using F# to learn F# and functional idioms.
 
