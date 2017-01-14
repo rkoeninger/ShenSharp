@@ -3,7 +3,7 @@
 
 # ShenSharp
 
-![神&#35;](https://github.com/rkoeninger/ShenSharp/ShenSharp.svg)
+![神#](https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/ShenSharp.png)
 
 Making a second attempt at implementing a certified Shen implementation. This time using F# to learn F# and functional idioms.
 
