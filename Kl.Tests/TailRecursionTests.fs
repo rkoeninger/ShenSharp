@@ -68,11 +68,11 @@ type TailRecursionTests() =
 
     [<Test>]
     member this.``trampolines optimize through zero-arg defuns``() =
-        assertEach [
-            Int 20000,        "(set counter 20000)"
-            Sym "decrement",  "(defun decrement () (set counter (- (value counter) 1)))"
-            Sym "count-down", "(defun count-down () (if (= 0 (decrement)) true (count-down)))"
-            Bool true,        "(count-down)"]
+        assertTrue <| runAll
+            "(set counter 20000)
+             (defun decrement () (set counter (- (value counter) 1)))
+             (defun count-down () (if (= 0 (decrement)) true (count-down)))
+             (count-down)"
 
     [<Test>]
     member this.``trampolines optimize mutually-recursive functions``() =
@@ -80,17 +80,3 @@ type TailRecursionTests() =
             "(defun odd? (X) (if (= 0 X) false (even? (- X 1))))
              (defun even? (X) (if (= 0 X) true (odd? (- X 1))))
              (odd? 20000)"
-
-    [<Test>]
-    member this.``non-optmized blows KL stack``() =
-        runAll "(defun f (X) (+ 1 (g X)))
-                (defun g (X) (+ 1 (h X)))
-                (defun h (X) (+ 1 (i X)))
-                (defun i (X) (+ 1 (j X)))
-                (defun j (X) (+ 1 (k X)))
-                (defun k (X) (+ 1 (l X)))
-                (defun l (X) (+ 1 (m X)))
-                (defun m (X) (+ 1 (n X)))
-                (defun n (X) (+ 1 (o X)))
-                (defun o (X) (+ 1 X))
-                (f 0)" |> ignore
