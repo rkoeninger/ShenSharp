@@ -131,8 +131,8 @@ module Evaluator =
         // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->
             if vbool(eval env condition)
-                then evalw env consequent
-                else evalw env alternative
+                then Pending(env, consequent)
+                else Pending(env, alternative)
 
         // Conditions must evaluate to Bool. Consequents are in tail position.
         | CondExpr clauses ->
@@ -140,14 +140,14 @@ module Evaluator =
                 | [] -> err "No condition was true"
                 | (condition, consequent) :: rest ->
                     if vbool(eval env condition)
-                        then evalw env consequent
+                        then Pending(env, consequent)
                         else evalClauses rest
             evalClauses clauses
 
         // Body expression is in tail position.
         | LetExpr(symbol, binding, body) ->
             let value = eval env binding
-            evalw (appendLocals env [symbol, value]) body
+            Pending(appendLocals env [symbol, value], body)
 
         // Lambdas capture local scope.
         | LambdaExpr(param, body) ->
@@ -172,7 +172,7 @@ module Evaluator =
         // Second expression is in tail position.
         | DoExpr(first, second) ->
             eval env first |> ignore
-            evalw env second
+            Pending(env, second)
 
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
@@ -211,7 +211,7 @@ module Evaluator =
     /// Evaluates an expression into a value.
     /// </summary>
     and eval env expr =
-    
+
         let env =
             match expr with
             | LetExpr(x, _, _) -> push ("let " + x) env
