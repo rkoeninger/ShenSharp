@@ -11,13 +11,14 @@ open TestCommon
 type BuiltinsTests() =
 
     [<Test>]
-    member this.``string index out of bounds should cause uncaught error``() =
+    member this.``string index out of bounds should raise error``() =
         assertError """(pos "" 0)"""
         assertError """(pos "hello" 5)"""
 
     [<Test>]
-    member this.``vector index out of bounds should cause uncaught error``() =
+    member this.``vector index out of bounds should raise error``() =
         assertError "(<-address (absvector 0) 0)"
+        assertError "(<-address (absvector 3) 5)"
 
     [<Test>]
     member this.``concatenation with empty string should produce same string``() =
@@ -29,12 +30,13 @@ type BuiltinsTests() =
         assertEq (Str "Hello") (run """(cn (n->string (string->n "Hello")) (tlstr "Hello"))""")
         
     [<Test>]
-    member this.``vectors should be pre-filled with the symbol 'fail!``() =
-        assertEq (Vec [|Sym "fail!"|]) (run "(absvector 1)")
+    member this.``vectors should be pre-filled with Empty``() =
+        assertEq (Vec [|Empty; Empty; Empty|]) (run "(absvector 3)")
 
     [<Test>]
     member this.``empty values don't count as conses``() =
         assertFalse(run "(cons? ())")
+        assertEq Empty (run "()")
 
     [<Test>]
     member this.``calling hd or tl on anything but a cons should fail``() =

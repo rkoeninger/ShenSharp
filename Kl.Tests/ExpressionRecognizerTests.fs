@@ -91,9 +91,9 @@ type ExpressionRecognizerTests() =
     [<Test>]
     member this.``do expression starts with 'do and has 1+ forms total``() =
         check (|DoExpr|_|) [
-            true,   "(do x y)"
-            false,  "(do)"
-            false,  "(do x y z)"
+            true,  "(do x y)"
+            false, "(do)"
+            false, "(do x y z)"
             false, "()"]
 
     [<Test>]

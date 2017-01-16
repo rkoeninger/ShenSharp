@@ -157,6 +157,7 @@ module Values =
     let truev = Bool true
     let falsev = Bool false
     let err s = raise(SimpleError s)
+    let errf format = Printf.ksprintf err format
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
     let newEnv globals locals stack = {Globals = globals; Locals = locals; Stack = stack}
     let emptyEnv() = newEnv (newGlobals()) Map.empty []

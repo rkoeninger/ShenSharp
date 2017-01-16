@@ -58,6 +58,12 @@ type MathTests() =
         assertDec(run "(/ 1.1 2.4)")
 
     [<Test>]
+    member this.``division by decimal/integer zero raises an error``() =
+        assertError "(/ 1 0)"
+        assertError "(/ 1 0.0)"
+        assertError "(/ 10 (5 - 5.0))"
+
+    [<Test>]
     member this.``dividing two integers does not truncate decimal``() =
         match run "(/ 3 2)" with
         | Dec d -> assertEq 1.5m d

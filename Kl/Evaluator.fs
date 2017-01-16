@@ -11,6 +11,8 @@ module Evaluator =
         | Done    of Value
         | Pending of Env * Value
 
+    let private defer env expr = Pending(env, expr)
+
     let private push frame env = {env with Stack = frame :: env.Stack}
     let private pop env = {env with Stack = env.Stack.Tail}
 
@@ -27,7 +29,7 @@ module Evaluator =
     let private resolveGlobalFunction env id =
         match env.Globals.Functions.GetMaybe id with
         | Some f -> f
-        | None -> err("Function not defined: " + id)
+        | None -> errf "Function not defined: %s" id
 
     // Symbols in operator position are either:
     //   * A local variable whose value is a function.
@@ -38,7 +40,7 @@ module Evaluator =
         match Map.tryFind id env.Locals with
         | Some(Func f) -> f
         | Some(Sym id) -> resolveGlobalFunction env id
-        | Some _ -> err("Function not defined: " + id)
+        | Some _ -> errf "Function not defined: %s" id
         | None -> resolveGlobalFunction env id
 
     let rec private applyw env f args =
@@ -48,8 +50,8 @@ module Evaluator =
         // They evaluate their body with local state captured where they were formed.
         | Freeze(locals, body) ->
             match args with
-            | [] -> Pending({env with Locals = locals}, body)
-            | _ -> err(sprintf "Too many arguments (%i) provided to freeze" args.Length)
+            | [] -> defer {env with Locals = locals} body
+            | _ -> errf "Too many arguments (%i) provided to freeze" args.Length
 
         // Each lambda only takes 1 argument.
         // Applying a lambda to 0 arguments returns the same lambda.
@@ -60,14 +62,14 @@ module Evaluator =
             let env = {env with Locals = locals}
             match args with
             | [] -> err "Zero arguments provided to lambda"
-            | [arg0] -> Pending(appendLocals env [param, arg0], body)
+            | [arg0] -> defer (appendLocals env [param, arg0]) body
             | arg0 :: args1 ->
                 match eval (appendLocals env [param, arg0]) body with
                 | Func f -> applyw env f args1
                 | Sym s ->
                     let f = resolveFunction env s
                     applyw env f args1
-                | _ -> err(sprintf "Too many arguments (%i) provided to lambda" args.Length)
+                | _ -> errf "Too many arguments (%i) provided to lambda" args.Length
 
         // Defuns can be applied to anywhere between 0 and the their full parameter list.
         // An error is raised if a Defun is applied to more arguments than it takes.
@@ -81,9 +83,9 @@ module Evaluator =
                 | [] -> Done(Func defun)
                 | _ -> Done(Func(Partial(defun, args)))
             | Equal ->
-                Pending(appendLocals env (List.zip paramz args), body)
+                defer (appendLocals env (List.zip paramz args)) body
             | Greater ->
-                err(sprintf "Too many arguments (%i) provided to defun \"%s\"" args.Length name)
+                errf "Too many arguments (%i) provided to defun \"%s\"" args.Length name
 
         // Natives have the same rules as Defuns.
         | Native(name, arity, f) as native ->
@@ -95,7 +97,7 @@ module Evaluator =
             | Equal ->
                 Done(f env.Globals args)
             | Greater ->
-                err(sprintf "Too many arguments (%i) provided to native \"%s\"" args.Length name)
+                errf "Too many arguments (%i) provided to native \"%s\"" args.Length name
 
         // Applying a partial applies the original function
         // to the previous and current argument lists appended.
@@ -131,8 +133,8 @@ module Evaluator =
         // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->
             if vbool(eval env condition)
-                then Pending(env, consequent)
-                else Pending(env, alternative)
+                then defer env consequent
+                else defer env alternative
 
         // Conditions must evaluate to Bool. Consequents are in tail position.
         | CondExpr clauses ->
@@ -140,14 +142,14 @@ module Evaluator =
                 | [] -> err "No condition was true"
                 | (condition, consequent) :: rest ->
                     if vbool(eval env condition)
-                        then Pending(env, consequent)
+                        then defer env consequent
                         else evalClauses rest
             evalClauses clauses
 
         // Body expression is in tail position.
         | LetExpr(symbol, binding, body) ->
             let value = eval env binding
-            Pending(appendLocals env [symbol, value], body)
+            defer (appendLocals env [symbol, value]) body
 
         // Lambdas capture local scope.
         | LambdaExpr(param, body) ->
@@ -172,7 +174,7 @@ module Evaluator =
         // Second expression is in tail position.
         | DoExpr(first, second) ->
             eval env first |> ignore
-            Pending(env, second)
+            defer env second
 
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
