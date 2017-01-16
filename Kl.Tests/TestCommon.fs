@@ -20,16 +20,8 @@ module TestCommon =
         List.map (rootEval env.Globals) (readAll syntax)
     let assertEq expected actual = Assert.IsTrue((expected = actual))
     let assertNotEq expected actual = Assert.IsTrue((expected <> actual))
-    let assertTrue = assertEq Values.truev
-    let assertFalse = assertEq Values.falsev
-    let assertDec value =
-        match value with
-        | Dec _ -> ()
-        | _ -> Assert.Fail "Decimal expected"
-    let assertInt value =
-        match value with
-        | Int _ -> ()
-        | _ -> Assert.Fail "Int expected"
+    let assertTrue syntax = assertEq truev (runAll syntax)
+    let assertFalse syntax = assertEq falsev (runAll syntax)
     let assertEach pairs =
         let env = baseEnv()
         each (fun (expected, syntax) -> assertEq expected (runIn env syntax)) pairs
@@ -48,10 +40,3 @@ module TestCommon =
         with
             | :? AssertionException as e -> raise e
             | _ -> ()
-    let assertEffect eff syntax =
-        let env = baseEnv()
-        runIn env "(defun effect (X) (do (set *effect* true) X))" |> ignore
-        runIn env syntax |> ignore
-        match env.Globals.Symbols.GetMaybe "*effect*" with
-        | None -> if eff then Assert.Fail "Effect did not occurr" else ()
-        | _ -> if not eff then Assert.Fail "Effect should not have occurred" else ()

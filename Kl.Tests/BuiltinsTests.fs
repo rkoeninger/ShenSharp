@@ -35,7 +35,7 @@ type BuiltinsTests() =
 
     [<Test>]
     member this.``empty values don't count as conses``() =
-        assertFalse(run "(cons? ())")
+        assertFalse "(cons? ())"
         assertEq Empty (run "()")
 
     [<Test>]

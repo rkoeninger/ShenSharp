@@ -11,7 +11,7 @@ open TestCommon
 type TailRecursionTests() =
 
     let attempt body =
-        assertTrue (runAll (sprintf "(defun count-down (X) %s) (count-down 20000)" body))
+        assertTrue (sprintf "(defun count-down (X) %s) (count-down 20000)" body)
 
     [<Test>]
     member this.``trampolines optimize tail recursive calls in an if consequent expression``() =
@@ -55,12 +55,11 @@ type TailRecursionTests() =
 
     [<Test>]
     member this.``trampolines optimize through recursive lambdas``() =
-        assertTrue <| run
-            "(let F (lambda F (lambda X (if (<= X 0) true ((F F) (- X 1))))) ((F F) 20000))"
+        assertTrue "(let F (lambda F (lambda X (if (<= X 0) true ((F F) (- X 1))))) ((F F) 20000))"
 
     [<Test>]
     member this.``trampolines optimize through recursive freezes``() =
-        assertTrue <| runAll
+        assertTrue
             "(set counter 20000)
              (defun decrement () (set counter (- (value counter) 1)))
              (set count-down (freeze (if (= 0 (decrement)) true ((value count-down)))))
@@ -68,7 +67,7 @@ type TailRecursionTests() =
 
     [<Test>]
     member this.``trampolines optimize through zero-arg defuns``() =
-        assertTrue <| runAll
+        assertTrue
             "(set counter 20000)
              (defun decrement () (set counter (- (value counter) 1)))
              (defun count-down () (if (= 0 (decrement)) true (count-down)))
@@ -76,7 +75,7 @@ type TailRecursionTests() =
 
     [<Test>]
     member this.``trampolines optimize mutually-recursive functions``() =
-        assertFalse <| runAll
+        assertFalse
             "(defun odd? (X) (if (= 0 X) false (even? (- X 1))))
              (defun even? (X) (if (= 0 X) true (odd? (- X 1))))
              (odd? 20000)"
