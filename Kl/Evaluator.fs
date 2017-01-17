@@ -188,6 +188,8 @@ module Evaluator =
 
         // Expression in operator position must evaluate to a Function.
         | AppExpr(f, args) ->
+            if f = Sym "shen.t*-rules" then
+                ()
             let operator = evalFunction env f
             let operands = List.map (eval env) args
             applyw env operator operands
@@ -220,7 +222,7 @@ module Evaluator =
             | Cons(x, _) -> push (string x) env
             | _ -> env
 
-        if env.Stack.Length > 1024 then
+        if env.Stack.Length > 512 then
             printfn ""
             printfn "STACK OVERFLOW"
             printfn ""

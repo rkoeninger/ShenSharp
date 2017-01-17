@@ -45,7 +45,7 @@ type ConditionalEvalutationTests() =
     [<Test>]
     member this.``or expression requires conditionals eval to boolean granted they are evaluated``() =
         assertError "(or false ())"
-        assertTrue "(or true ())"
+        assertNoError "(or true ())"
 
     [<Test>]
     member this.``or expression should only eval second conditional if first eval'd to false``() =
@@ -90,7 +90,7 @@ type ConditionalEvalutationTests() =
     [<Test>]
     member this.``cond expression requires conditionals eval to boolean granted they are evaluates``() =
         assertError "(cond (0 1) (true 2))"
-        assertEq (Int 1) (run "(cond (true 1) (() 2))")
+        assertNoError "(cond (true 1) (() 2))"
 
     [<Test>]
     member this.``cond expressions should only eval consequent in clause where condition was true``() =

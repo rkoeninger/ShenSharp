@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open Kl
+open Kl.Values
 open Kl.Reader
 open Kl.Startup
 open TestCommon
@@ -42,21 +43,19 @@ type SymbolEvaluationTests() =
         assertEq (Sym "@!#$") (run "(intern \"@!#$\")")
         assertEq (Sym "(),[];{}") (run "(intern \"(),[];{}\")")
         assertEq (Sym "   ") (run "(intern \"   \")") // space space space
-        
+
     [<Test>]
     member this.``both symbols starting with or with-out an uppercase letter or non-letter can be idle``() =
         assertEq
-            (Cons(Sym "A", Cons(Sym "-->", Cons(Sym "boolean", Empty))))
+            (toCons [Sym "A"; Sym "-->"; Sym "boolean"])
             (run "(cons A (cons --> (cons boolean ())))")
 
     [<Test>]
     member this.``a lambda set on a global symbol will not be resolved in an application``() =
-        let env = baseEnv()
-        runIn env "(set inc (lambda X (+ X 1)))" |> ignore
-        assertErrorInEnv env "(inc 5)"
+        assertError
+            "(set inc (lambda X (+ X 1)))
+             (inc 5)"
 
     [<Test>]
     member this.``evaluating a defun results in the defun name as a symbol``() =
-        match run "(defun inc (X) (+ 1 X))" with
-        | Sym s -> assertEq s "inc"
-        | _ -> Assert.Fail "Symbol expected"
+        assertEq (Sym "inc") (run "(defun inc (X) (+ 1 X))")

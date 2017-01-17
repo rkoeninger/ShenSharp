@@ -27,8 +27,7 @@ type ErrorHandlingTests() =
 
     [<Test>]
     member this.``trap-error should eval and apply second expression if eval of first results in uncaught error``() =
-        let env = baseEnv()
-        assertEq truev (runIn env "(trap-error (do (pos \"\" 0) false) (lambda E true))")
+        assertEq truev (run "(trap-error (do (pos \"\" 0) false) (lambda E true))")
 
     [<Test>]
     member this.``error message should be preserved when error is caught and handled``() =
