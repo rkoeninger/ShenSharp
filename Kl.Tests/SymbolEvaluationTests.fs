@@ -11,13 +11,6 @@ open TestCommon
 type SymbolEvaluationTests() =
 
     [<Test>]
-    member this.``symbols support full range of characters``() =
-        let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ=-*/+_?$!@~.><&%'#`;:{}"
-        for ch in chars do
-            let s = string ch
-            assertEq (Sym s) (read s)
-
-    [<Test>]
     member this.``symbols not at head of application should be resolved using local scope or be idle``() =
         assertEach [
             (Sym "inc"),    "(defun inc (x) (+ x 1))"

@@ -24,6 +24,14 @@ type ReaderTests() =
             (read "(A (B    C) (X  (Y  Z))  (U    V))")
 
     [<Test>]
+    member this.``symbols support full range of characters``() =
+        let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ=-*/+_?$!@~.><&%'#`;:{}"
+        for ch in chars do
+            let s = string ch
+            assertEq (Sym s) (read s)
+        assertEq [Sym chars] (readAll chars)
+
+    [<Test>]
     member this.``lists should be parsed as Cons chains``() =
         assertEq (Cons(Int 0, Cons(Int 0, Cons(Int 0, Cons(Int 0, Empty))))) (read "(0 0 0 0)")
 
@@ -33,8 +41,13 @@ type ReaderTests() =
 
     [<Test>]
     member this.``string literals including line breaks should be read as single token``() =
-        let t = readAll "\"long copyright string\n\rwith line breaks\r\n\""
-        assertEq 1 t.Length
+        let testString = "\"long copyright string\nwith line breaks\n\""
+        assertEq [Str "long copyright string\nwith line breaks\n"] (readAll testString)
+
+    [<Test>]
+    member this.``newline sequences in strings get normalized to \n by reader``() =
+        let testString = "\"long copyright string\n\rwith line breaks\r\n\""
+        assertEq (Str "long copyright string\n\nwith line breaks\n") (read testString)
 
     [<Test>]
     member this.``string literals can contain single quotes``() =
