@@ -84,8 +84,9 @@ type ConditionalEvalutationTests() =
         assertEq (Int 3) (run "(cond (false 1) (false 2) (true 3))")
 
     [<Test>]
-    member this.``cond expression requires at least one condition to evaluate to true``() =
-        assertError "(cond (false 1) (false 2) (false 3))"
+    member this.``cond expression evaluates to Empty when no conditions are true``() =
+        assertEq Empty (run "(cond (false 1) (false 2) (false 3))")
+        assertEq Empty (run "(cond)")
 
     [<Test>]
     member this.``cond expression requires conditionals eval to boolean granted they are evaluates``() =

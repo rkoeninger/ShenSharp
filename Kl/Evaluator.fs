@@ -139,7 +139,7 @@ module Evaluator =
         // Conditions must evaluate to Bool. Consequents are in tail position.
         | CondExpr clauses ->
             let rec evalClauses = function
-                | [] -> err "No condition was true"
+                | [] -> Done Empty
                 | (condition, consequent) :: rest ->
                     if vbool(eval env condition)
                         then defer env consequent
