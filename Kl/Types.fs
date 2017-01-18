@@ -44,9 +44,9 @@ and [<ReferenceEquality>] Function =
         match this with
         | Native(name, arity, _) -> sprintf "%s" name
         | Defun(name, paramz, _) -> sprintf "%s" name
-        | Lambda _               -> "<Lambda>"
-        | Freeze _               -> "<Freeze>"
-        | Partial(f, args)       -> sprintf "<Partial %O [%i]>" f args.Length
+        | Lambda(param, _, body) -> sprintf "<Lambda (%s) %O>" param body
+        | Freeze(_, body)        -> sprintf "<Freeze %O>" body
+        | Partial(f, args)       -> sprintf "<Partial %O (%i)>" f args.Length
 
 /// <summary>
 /// A value in KL.
@@ -110,11 +110,11 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
         | Str s       -> sprintf "\"%s\"" s
         | Sym s       -> s
         | Cons _      -> sprintf "(%s)" (String.Join(" ", toList this))
-        | Vec a       -> sprintf "<Vector [%i]>" a.Length
-        | Err s       -> sprintf "<Error [%s]>" s
+        | Vec a       -> sprintf "<Vector (%i)>" a.Length
+        | Err s       -> sprintf "<Error (%s)>" s
         | Func f      -> string f
-        | InStream  i -> sprintf "<InStream [%s]>" i.Name
-        | OutStream o -> sprintf "<OutStream [%s]>" o.Name
+        | InStream  i -> sprintf "<InStream (%s)>" i.Name
+        | OutStream o -> sprintf "<OutStream (%s)>" o.Name
 
 /// <summary>
 /// A KL environment state, with a reference to global definitions

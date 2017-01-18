@@ -35,7 +35,7 @@ type PrintInfo() =
         printfn "%O" (Func(Native("+", 2, klAdd)))
         printfn "%O" (Func(Defun("add", ["X"; "Y"], toCons [Sym "+"; Sym "X"; Sym "Y"])))
         printfn "%O" (Func(Lambda("X", Map.empty, toCons [Sym "+"; Int 1; Sym "X"])))
-        printfn "%O" (Func(Freeze(Map.empty, Empty)))
+        printfn "%O" (Func(Freeze(Map.empty, toCons [Sym "get-time"; Sym "run"])))
         printfn "%O" (Func(Partial(Native("+", 2, klAdd), [Int 1])))
         printfn "%O" stinput
         printfn "%O" stoutput
