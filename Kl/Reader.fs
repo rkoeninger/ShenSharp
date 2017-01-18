@@ -8,14 +8,13 @@ open Values
 module Reader =
 
     let private pValue, pValueRef = createParserForwardedToRef<Value, unit>()
-    let private pBool = (stringReturn "true" (Bool true)) <|> (stringReturn "false" (Bool false))
     let private number (n: string) = if (n.Contains(".")) then Dec(decimal n) else Int(int n)
     let private pNum = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> number
     let private pStr = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"')) |>> Str
     let private pSym = regex "[^\\s\\x28\\x29]+" |>> Sym
     let private pList = between (pchar '(') (pchar ')') (sepBy pValue spaces1) |>> toCons
     let private pValues = spaces >>. (many (pValue .>> spaces))
-    do pValueRef := choice [pBool; pNum; pStr; pSym; pList]
+    do pValueRef := choice [pNum; pStr; pSym; pList]
     
     let private runParser p s =
         match run p s with

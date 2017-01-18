@@ -14,12 +14,6 @@ type ValuesTests() =
         assertEq Empty Empty
 
     [<Test>]
-    member this.``Bools are comparable for equality``() =
-        assertEq (Bool true) (Bool true)
-        assertEq (Bool false) (Bool false)
-        assertNotEq (Bool true) (Bool false)
-
-    [<Test>]
     member this.``Ints and Decs can be compared for equality``() =
         assertEq (Int 5) (Int 5)
         assertEq (Int -2) (Int -2)
@@ -74,7 +68,6 @@ type ValuesTests() =
     [<Test>]
     member this.``Hash codes can be generated for all value types``() =
         assertEq (hash Empty) (hash Empty)
-        assertEq (hash (Bool false)) (hash (Bool false))
         assertEq (hash (Int 46)) (hash (Int 46))
         assertEq (hash (Dec -4.3m)) (hash (Dec -4.3m))
         assertEq (hash (Sym "abc")) (hash (Sym "abc"))

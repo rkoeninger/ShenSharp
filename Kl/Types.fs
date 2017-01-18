@@ -53,7 +53,6 @@ and [<ReferenceEquality>] Function =
 /// </summary>
 and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
     | Empty
-    | Bool      of bool
     | Int       of int
     | Dec       of decimal
     | Str       of string
@@ -69,7 +68,6 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
         | :? Value as that ->
             match this, that with
             | Empty, Empty               -> true
-            | Bool x, Bool y             -> x = y
             | Int x, Int y               -> x = y
             | Int x, Dec y               -> decimal x = y
             | Dec x, Int y               -> x = decimal y
@@ -87,7 +85,6 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
     override this.GetHashCode() =
         match this with
         | Empty        -> 1
-        | Bool b       -> if b then 2 else 4
         | Int i        -> hash i
         | Dec d        -> hash d
         | Str s        -> hash s
@@ -104,7 +101,6 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
             | _ -> []
         match this with
         | Empty       -> "()"
-        | Bool b      -> if b then "true" else "false"
         | Int i       -> string i
         | Dec d       -> string d
         | Str s       -> sprintf "\"%s\"" s
@@ -154,8 +150,9 @@ module Extensions =
         else Equal
 
 module Values =
-    let truev = Bool true
-    let falsev = Bool false
+    let truev = Sym "true"
+    let falsev = Sym "false"
+    let boolv b = if b then truev else falsev
     let err s = raise(SimpleError s)
     let errf format = Printf.ksprintf err format
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}

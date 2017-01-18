@@ -107,16 +107,14 @@ module Evaluator =
             | _ -> applyw env f (List.append previousArgs args)
 
     and private evalw env expr =
-
+    
+        // Bools are just these two particular symbols.
         let isTrue = function
-            | Bool b -> b
+            | Sym "true" -> true
+            | Sym "false" -> false
             | _ -> err "Conditional must evaluate to boolean"
 
         match expr with
-
-        // When Shen code is translated to KL, `true` and `false` come through as Symbols.
-        | Sym "true" -> Done truev
-        | Sym "false" -> Done falsev
 
         // Should only get here in the case of Symbols not in operator position.
         // In this case, Symbols always evaluate without error.
@@ -124,11 +122,11 @@ module Evaluator =
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | AndExpr(left, right) ->
-            Done(Bool(isTrue(eval env left) && isTrue(eval env right)))
+            Done(boolv(isTrue(eval env left) && isTrue(eval env right)))
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | OrExpr(left, right) ->
-            Done(Bool(isTrue(eval env left) || isTrue(eval env right)))
+            Done(boolv(isTrue(eval env left) || isTrue(eval env right)))
 
         // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->

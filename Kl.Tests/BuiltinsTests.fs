@@ -51,7 +51,7 @@ type BuiltinsTests() =
     member this.``eval-kl evaluating a constant should equal that constant``() =
         assertEq (Int 5) (run "(eval-kl 5)")
         assertEq (Str "abc") (run """(eval-kl "abc")""")
-        assertEq (Bool true) (run "(eval-kl true)")
+        assertTrue "(eval-kl true)"
         assertEq Empty (run "(eval-kl ())")
         assertEq (Sym "abc") (run "(eval-kl abc)")
 

@@ -92,7 +92,7 @@ module Builtins =
         | args -> argsErr "cons?" ["value"] args
 
     let klEquals _ = function
-        | [x; y] -> Bool(x = y)
+        | [x; y] -> boolv(x = y)
         | args -> argsErr "=" ["value"; "value"] args
 
     let klEval globals = function
@@ -213,31 +213,31 @@ module Builtins =
         | args -> argsErr "/" ["number"; "number"] args
 
     let klGreaterThan _ = function
-        | [Int x; Int y] -> Bool(x > y)
-        | [Int x; Dec y] -> Bool(decimal x > y)
-        | [Dec x; Int y] -> Bool(x > decimal y)
-        | [Dec x; Dec y] -> Bool(x > y)
+        | [Int x; Int y] -> boolv(x > y)
+        | [Int x; Dec y] -> boolv(decimal x > y)
+        | [Dec x; Int y] -> boolv(x > decimal y)
+        | [Dec x; Dec y] -> boolv(x > y)
         | args -> argsErr ">" ["number"; "number"] args
 
     let klLessThan _ = function
-        | [Int x; Int y] -> Bool(x < y)
-        | [Int x; Dec y] -> Bool(decimal x < y)
-        | [Dec x; Int y] -> Bool(x < decimal y)
-        | [Dec x; Dec y] -> Bool(x < y)
+        | [Int x; Int y] -> boolv(x < y)
+        | [Int x; Dec y] -> boolv(decimal x < y)
+        | [Dec x; Int y] -> boolv(x < decimal y)
+        | [Dec x; Dec y] -> boolv(x < y)
         | args -> argsErr "<" ["number"; "number"] args
 
     let klGreaterThanEqual _ = function
-        | [Int x; Int y] -> Bool(x >= y)
-        | [Int x; Dec y] -> Bool(decimal x >= y)
-        | [Dec x; Int y] -> Bool(x >= decimal y)
-        | [Dec x; Dec y] -> Bool(x >= y)
+        | [Int x; Int y] -> boolv(x >= y)
+        | [Int x; Dec y] -> boolv(decimal x >= y)
+        | [Dec x; Int y] -> boolv(x >= decimal y)
+        | [Dec x; Dec y] -> boolv(x >= y)
         | args -> argsErr ">=" ["number"; "number"] args
 
     let klLessThanEqual _ = function
-        | [Int x; Int y] -> Bool(x <= y)
-        | [Int x; Dec y] -> Bool(decimal x <= y)
-        | [Dec x; Int y] -> Bool(x <= decimal y)
-        | [Dec x; Dec y] -> Bool(x <= y)
+        | [Int x; Int y] -> boolv(x <= y)
+        | [Int x; Dec y] -> boolv(decimal x <= y)
+        | [Dec x; Int y] -> boolv(x <= decimal y)
+        | [Dec x; Dec y] -> boolv(x <= y)
         | args -> argsErr "<=" ["number"; "number"] args
 
     let klIsNumber _ = function
@@ -260,7 +260,7 @@ module Builtins =
         }
 
     let klIsBoolean _ = function
-        | [Bool _] -> truev
+        | [Sym "true"] | [Sym "false"] -> truev
         | [_] -> falsev
         | args -> argsErr "boolean?" ["value"] args
 
@@ -308,14 +308,14 @@ module Builtins =
         | [Str s] ->
             if s.Length <> 1
                 then err "String must be 1 character long"
-                else Bool(('A' <= s.[0] && s.[0] <= 'Z') || ('a' <= s.[0] && 'z' <= s.[0]))
+                else boolv(('A' <= s.[0] && s.[0] <= 'Z') || ('a' <= s.[0] && 'z' <= s.[0]))
         | args -> argsErr "shen.alpha?" ["string"] args
 
     let klIsDigit _ = function
         | [Str s] ->
             if s.Length <> 1
                 then err "String must be 1 character long"
-                else Bool('0' <= s.[0] && s.[0] <= '9')
+                else boolv('0' <= s.[0] && s.[0] <= '9')
         | args -> argsErr "shen.digit?" ["string"] args
 
     let rec klAppend globals = function

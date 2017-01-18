@@ -1,4 +1,5 @@
 ﻿open Kl
+open Kl.Values
 open Kl.Reader
 open Kl.Evaluator
 open System
@@ -24,7 +25,7 @@ let main0 args =
                 ]
     let klFolder = @"..\..\..\Kl.Source"
     let env = Startup.baseEnv()
-    env.Globals.Symbols.["shen-*installing-kl*"] <- Bool true
+    env.Globals.Symbols.["shen-*installing-kl*"] <- truev
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
@@ -39,7 +40,7 @@ let main0 args =
                 if (command = Sym "set") && (symbol = Sym "shen.*symbol-table*") then
                     ()
             | _ -> () // ignore copyright block at top
-    env.Globals.Symbols.["shen-*installing-kl*"] <- Bool false
+    env.Globals.Symbols.["shen-*installing-kl*"] <- falsev
     env.Globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
     printfn ""
     printfn "Loading done"
