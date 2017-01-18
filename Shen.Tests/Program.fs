@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.Threading
 open Kl
 open Kl.Values
 open Kl.Reader
@@ -9,6 +10,7 @@ open Kl.Evaluator
 open Kl.Builtins
 open Kl.Startup
 
+let stackSize = 16777216
 let testFolder = @"..\..\..\Shen.Tests.Source"
 let klFolder = @"..\..\..\Kl.Source"
 let files = [
@@ -27,10 +29,9 @@ let files = [
     "types.kl"
     "t-star.kl"
 ]
-let load env path = eval env (Cons(Sym "load", Cons(Str path, Empty))) |> ignore
+let load env path = eval env (toCons [Sym "load"; Str path]) |> ignore
 
-[<EntryPoint>]
-let main argv =
+let main0 () =
     let env = baseEnv()
     Overrides.overrides.["y-or-n?"] <- Native("y-or-n?", 1, fun _ _ -> truev)
     for file in files do
@@ -44,3 +45,11 @@ let main argv =
     printfn "Press any key to exit..."
     Console.ReadKey() |> ignore
     0
+
+[<EntryPoint>]
+let main args =
+    let mutable returnCode = 0
+    let thread = new Thread((fun () -> returnCode <- main0 ()), stackSize)
+    thread.Start()
+    thread.Join()
+    returnCode
