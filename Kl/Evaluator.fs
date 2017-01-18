@@ -108,7 +108,7 @@ module Evaluator =
 
     and private evalw env expr =
 
-        let vbool = function
+        let isTrue = function
             | Bool b -> b
             | _ -> err "Conditional must evaluate to boolean"
 
@@ -124,15 +124,15 @@ module Evaluator =
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | AndExpr(left, right) ->
-            Done(Bool(vbool(eval env left) && vbool(eval env right)))
+            Done(Bool(isTrue(eval env left) && isTrue(eval env right)))
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | OrExpr(left, right) ->
-            Done(Bool(vbool(eval env left) || vbool(eval env right)))
+            Done(Bool(isTrue(eval env left) || isTrue(eval env right)))
 
         // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->
-            if vbool(eval env condition)
+            if isTrue(eval env condition)
                 then defer env consequent
                 else defer env alternative
 
@@ -141,7 +141,7 @@ module Evaluator =
             let rec evalClauses = function
                 | [] -> Done Empty
                 | (condition, consequent) :: rest ->
-                    if vbool(eval env condition)
+                    if isTrue(eval env condition)
                         then defer env consequent
                         else evalClauses rest
             evalClauses clauses
