@@ -158,7 +158,7 @@ module Evaluator =
                 Done(evalv env body)
             with
             | :? SimpleError as e ->
-                let operator = evalFunction env handler
+                let operator = evalf env handler
                 applyw globals operator [Err e.Message]
             | _ -> reraise()
 
@@ -175,7 +175,7 @@ module Evaluator =
 
         // Expression in operator position must evaluate to a Function.
         | AppExpr(f, args) ->
-            let operator = evalFunction env f
+            let operator = evalf env f
             let operands = List.map (evalv env) args
             applyw globals operator operands
 
@@ -187,7 +187,7 @@ module Evaluator =
     //   * expr can be a symbol that resolves to a function.
     //   * expr can eval to function.
     //   * expr can eval to a symbol that resolves to a function.
-    and private evalFunction env expr =
+    and private evalf env expr =
         match expr with
         | Sym s -> resolveFunction env s
         | _ ->
