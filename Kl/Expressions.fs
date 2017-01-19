@@ -2,13 +2,7 @@
 
 module Expressions =
     let private sequenceOption xs =
-        let combine x lst =
-            match x with
-            | None -> None
-            | Some v ->
-                match lst with
-                | None -> None
-                | Some vs -> Some(v :: vs)
+        let combine x xs = Option.bind (fun v -> Option.map (fun vs -> v :: vs) xs) x
         List.foldBack combine xs (Some [])
 
     let rec private toListOption cons =
@@ -18,8 +12,6 @@ module Expressions =
         | _ -> None
 
     let private (|Expr|_|) = toListOption
-
-    let (|Last|_|) = List.tryLast
 
     let (|AndExpr|_|) = function
         | Expr [Sym "and"; left; right] -> Some(left, right)
