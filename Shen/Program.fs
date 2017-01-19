@@ -46,7 +46,31 @@ let main0 args =
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
-    eval env (Cons(Sym "shen.shen", Empty)) |> ignore
+    let rec valToStr expr =
+        match expr with
+        | Empty -> "Empty"
+        | Int x -> sprintf "Int %A" x
+        | Dec x -> sprintf "Dec %Am" x
+        | Sym s -> sprintf "Sym \"%s\"" s
+        | Str s -> sprintf "Str \"%s\"" s
+        | Cons(x, y) -> sprintf "Cons(%s, %s)" (valToStr x) (valToStr y)
+        | Vec xs -> sprintf "Vec [|%s|]" (String.Join("; ", Array.map valToStr xs))
+        | Err s -> sprintf "Err \"%s\"" s
+        | Func _ -> string expr
+        | InStream _ -> string expr
+        | OutStream _ -> string expr
+    for kv in env.Globals.Symbols do
+        printfn "globals.Symbols.[\"%s\"] <- %O" kv.Key (valToStr kv.Value)
+    for kv in env.Globals.Functions do
+        match kv.Value with
+        | Defun(name, args, body) ->
+            printfn "globals.Functions.[\"%s\"] <- Defun(\"%s\", [%s], %O)"
+                kv.Key
+                name
+                (String.Join(", ", List.map (fun x -> "\"" + x + "\"") args))
+                (valToStr body)
+        | _ -> ()
+//    eval env (Cons(Sym "shen.shen", Empty)) |> ignore
     0
 
 [<EntryPoint>]
