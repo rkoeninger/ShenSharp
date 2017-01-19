@@ -10,18 +10,18 @@ open Kl.Startup
 
 module TestCommon =
     
-    let runIn globals syntax = rootEval globals (read syntax)
+    let runIn globals syntax = eval globals (read syntax)
     let run = runIn (baseGlobals())
     let runAll syntax =
         let globals = baseGlobals()
-        List.fold (fun _ -> rootEval globals) Empty (readAll syntax)
+        List.fold (fun _ -> eval globals) Empty (readAll syntax)
     let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
     let assertNotEq (expected: 'a) (actual: 'a) = Assert.AreNotEqual(expected, actual)
     let assertTrue syntax = assertEq truev (runAll syntax)
     let assertFalse syntax = assertEq falsev (runAll syntax)
     let assertEach pairs =
         let globals = baseGlobals()
-        each (fun (expected, syntax) -> assertEq expected (runIn globals syntax)) pairs
+        List.iter (fun (expected, syntax) -> assertEq expected (runIn globals syntax)) pairs
     let assertNoError syntax = runAll syntax |> ignore
     let assertError syntax =
         try

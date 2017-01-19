@@ -112,12 +112,6 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
         | InStream  i -> sprintf "<InStream (%s)>" i.Name
         | OutStream o -> sprintf "<OutStream (%s)>" o.Name
 
-/// <summary>
-/// A KL environment state, with a reference to global definitions
-/// and local variable bindings.
-/// </summary>
-type Env = {Globals: Globals; Locals: Locals}
-
 type ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())
     let mutable line: byte[] = [||]
@@ -159,8 +153,3 @@ module Values =
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
-    let rec each f = function
-        | [] -> ()
-        | x :: xs ->
-            f x |> ignore
-            each f xs

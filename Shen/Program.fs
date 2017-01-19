@@ -37,7 +37,7 @@ let main0 args =
             match ast with
             | Cons(command, Cons(symbol, _)) ->
                 printfn "%O %O" command symbol
-                rootEval globals ast |> ignore
+                eval globals ast |> ignore
                 if (command = Sym "set") && (symbol = Sym "shen.*symbol-table*") then
                     ()
             | _ -> () // ignore copyright block at top
@@ -72,7 +72,7 @@ let main0 args =
                 (String.Join(", ", List.map (fun x -> "\"" + x + "\"") args))
                 (valToStr body)
         | _ -> ()
-    rootEval globals (Cons(Sym "shen.shen", Empty)) |> ignore
+    eval globals (Cons(Sym "shen.shen", Empty)) |> ignore
     0
 
 [<EntryPoint>]

@@ -13,7 +13,7 @@ type ExpressionRecognizerTests() =
         let checkSample (some, s) =
             let expect = if some then Option.isSome else Option.isNone
             Assert.True(s |> read |> recognizer |> expect, s)
-        each checkSample strings
+        List.iter checkSample strings
 
     [<Test>]
     member this.``if expression starts with 'if and has 4 forms total``() =

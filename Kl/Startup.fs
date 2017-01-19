@@ -6,7 +6,7 @@ open Builtins
 
 module Startup =
 
-    let private install (functions: Defines<'a>) = each functions.Add
+    let private install (functions: Defines<'a>) = List.iter functions.Add
 
     let private fn name arity f = name, Native(name, arity, f)
 

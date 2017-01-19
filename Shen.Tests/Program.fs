@@ -29,14 +29,14 @@ let files = [
     "types.kl"
     "t-star.kl"
 ]
-let load globals path = rootEval globals (toCons [Sym "load"; Str path]) |> ignore
+let load globals path = eval globals (toCons [Sym "load"; Str path]) |> ignore
 
 let main0 () =
     let globals = baseGlobals()
     for file in files do
         printfn "Loading %s" file
         for ast in readAll(File.ReadAllText(Path.Combine(klFolder, file))) do
-            rootEval globals ast |> ignore
+            eval globals ast |> ignore
     globals.Functions.["y-or-n?"] <- Native("y-or-n?", 1, fun _ _ -> truev)
     Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, testFolder)
     load globals "README.shen"

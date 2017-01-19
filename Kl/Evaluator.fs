@@ -15,7 +15,7 @@ module Evaluator =
 
     let private appendLocals = List.fold (fun m (k, v) -> Map.add k v m)
 
-    // Symbols not in operator position are either defined locally or they are idle.
+    // Symbols in operand position are either defined locally or they are idle.
     let private resolveSymbol locals id =
         match Map.tryFind id locals with
         | Some value -> value
@@ -30,8 +30,7 @@ module Evaluator =
     //   * A local variable whose value is a function.
     //   * A local variable whose value is a symbol that resolves to a global function.
     //   * A symbol that resolves to a global function.
-    // Symbols in operator position are never idle.
-    let private resolveFunction ({Globals = globals; Locals = locals} as env) id =
+    let private resolveFunction (globals, locals) id =
         match Map.tryFind id locals with
         | Some(Func f) -> f
         | Some(Sym id) -> resolveGlobalFunction globals id
@@ -42,27 +41,27 @@ module Evaluator =
         match f with
 
         // Freezes can only be applied to 0 arguments.
-        // They evaluate their body with local state captured where they were formed.
+        // They evaluate their body with local scope captured where they were formed.
         | Freeze(locals, body) ->
             match args with
             | [] -> defer locals body
             | _ -> errf "Too many arguments (%i) provided to freeze" args.Length
 
-        // Each lambda only takes 1 argument.
-        // Applying a lambda to 0 arguments returns the same lambda.
+        // Each lambda only takes exactly 1 argument.
+        // Applying a lambda to 0 arguments is an error.
         // Applying a lambda to more than 1 argument will apply the remaining
-        // arguments to the returned function.
-        // Lambdas evaluate their body with local state captured when they were formed.
-        | Lambda(param, locals, body) as lambda ->
+        // arguments to the returned function. If lambda does not return another
+        // function, this is an error.
+        // Lambdas evaluate their body with local scope captured when they were formed.
+        | Lambda(param, locals, body) ->
             match args with
             | [] -> err "Zero arguments provided to lambda"
             | [arg0] -> defer (appendLocals locals [param, arg0]) body
             | arg0 :: args1 ->
-                let env = {Globals = globals; Locals = appendLocals locals [param, arg0]}
-                match eval env body with
+                match evalv (globals, appendLocals locals [param, arg0]) body with
                 | Func f -> applyw globals f args1
                 | Sym s ->
-                    let f = resolveFunction {Globals = globals; Locals = locals} s
+                    let f = resolveFunction (globals, locals) s
                     applyw globals f args1
                 | _ -> errf "Too many arguments (%i) provided to lambda" args.Length
 
@@ -100,8 +99,8 @@ module Evaluator =
             | [] -> Done(Func(partial))
             | _ -> applyw globals f (List.append previousArgs args)
 
-    and private evalw ({Globals = globals; Locals = locals} as env) expr =
-    
+    and private evalw ((globals, locals) as env) expr =
+
         // Booleans are just these two particular symbols.
         let isTrue = function
             | Sym "true" -> true
@@ -116,15 +115,15 @@ module Evaluator =
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | AndExpr(left, right) ->
-            Done(boolv(isTrue(eval env left) && isTrue(eval env right)))
+            Done(boolv(isTrue(evalv env left) && isTrue(evalv env right)))
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | OrExpr(left, right) ->
-            Done(boolv(isTrue(eval env left) || isTrue(eval env right)))
+            Done(boolv(isTrue(evalv env left) || isTrue(evalv env right)))
 
         // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->
-            if isTrue(eval env condition)
+            if isTrue(evalv env condition)
                 then defer locals consequent
                 else defer locals alternative
 
@@ -133,14 +132,14 @@ module Evaluator =
             let rec evalClauses = function
                 | [] -> Done Empty
                 | (condition, consequent) :: rest ->
-                    if isTrue(eval env condition)
+                    if isTrue(evalv env condition)
                         then defer locals consequent
                         else evalClauses rest
             evalClauses clauses
 
         // Body expression is in tail position.
         | LetExpr(symbol, binding, body) ->
-            let value = eval env binding
+            let value = evalv env binding
             defer (appendLocals locals [symbol, value]) body
 
         // Lambdas capture local scope.
@@ -156,7 +155,7 @@ module Evaluator =
         // Handler expression is in tail position.
         | TrapExpr(body, handler) ->
             try
-                Done(eval env body)
+                Done(evalv env body)
             with
             | :? SimpleError as e ->
                 let operator = evalFunction env handler
@@ -165,7 +164,7 @@ module Evaluator =
 
         // Second expression is in tail position.
         | DoExpr(first, second) ->
-            eval env first |> ignore
+            evalv env first |> ignore
             defer locals second
 
         // Evaluating a defun just takes the name, param list and body
@@ -177,7 +176,7 @@ module Evaluator =
         // Expression in operator position must evaluate to a Function.
         | AppExpr(f, args) ->
             let operator = evalFunction env f
-            let operands = List.map (eval env) args
+            let operands = List.map (evalv env) args
             applyw globals operator operands
 
         // All other expressions/values are self-evaluating.
@@ -192,7 +191,7 @@ module Evaluator =
         match expr with
         | Sym s -> resolveFunction env s
         | _ ->
-            match eval env expr with
+            match evalv env expr with
             | Func f -> f
             | Sym s -> resolveFunction env s
             | _ -> err "Operator expression must resolve to a function"
@@ -200,14 +199,14 @@ module Evaluator =
     /// <summary>
     /// Evaluates an expression into a value.
     /// </summary>
-    and eval env expr =
+    and private evalv ((globals, _) as env) expr =
 
         // Must be tail recursive. This is where tail call optimization happens.
         match evalw env expr with
         | Done value -> value
-        | Pending(locals, expr) -> eval {env with Locals = locals} expr
+        | Pending(locals, expr) -> evalv (globals, locals) expr
 
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    let rootEval globals = eval {Globals = globals; Locals = Map.empty}
+    let eval globals = evalv (globals, Map.empty)

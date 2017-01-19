@@ -96,7 +96,7 @@ module Builtins =
         | args -> argsErr "=" ["value"; "value"] args
 
     let klEval globals = function
-        | [v] -> rootEval globals v
+        | [x] -> eval globals x
         | args -> argsErr "eval-kl" ["value"] args
 
     let klType _ = function
@@ -259,43 +259,16 @@ module Builtins =
             Close = fun () -> ()
         }
 
-    let klIsBoolean _ = function
-        | [Sym "true"] | [Sym "false"] -> truev
-        | [_] -> falsev
-        | args -> argsErr "boolean?" ["value"] args
-
     let klIsSymbol _ = function
         | [Sym _] -> truev
         | [_] -> falsev
         | args -> argsErr "symbol?" ["value"] args
-
-    let klPrint _ = function
-        | [x] -> Console.Write(string x)
-                 Empty
-        | args -> argsErr "print" ["value"] args
 
     let klFillVector _ = function
         | [Vec array as vector; Int start; Int stop; fillValue] ->
             Array.fill array start (stop - start) fillValue
             vector
         | args -> argsErr "shen.fillvector" ["vector"; "integer"; "integer"; "value"] args
-
-    let rec klElement globals = function
-        | [_; Empty] -> falsev
-        | [key; Cons(head, _)] when key = head -> truev
-        | [key; Cons(_, tail)] -> klElement globals [key; tail]
-        | args -> argsErr "element?" ["value"; "list"] args
-
-    let klReverse _ args =
-        let rec reverseHelp v r =
-            match v with
-            | Cons(head, tail) -> reverseHelp tail (Cons(head, r))
-            | x -> x
-
-        match args with
-        | [Empty] -> Empty
-        | [Cons _ as v] -> reverseHelp v Empty
-        | args -> argsErr "reverse" ["list"] args
 
     let klModulus _ = function
         | [Int x; Int y] -> Int(x % y)
