@@ -116,7 +116,7 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
 /// A KL environment state, with a reference to global definitions
 /// and local variable bindings.
 /// </summary>
-type Env = {Globals: Globals; Locals: Locals; Stack: string list}
+type Env = {Globals: Globals; Locals: Locals}
 
 type ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())
@@ -156,8 +156,8 @@ module Values =
     let err s = raise(SimpleError s)
     let errf format = Printf.ksprintf err format
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv globals locals stack = {Globals = globals; Locals = locals; Stack = stack}
-    let emptyEnv() = newEnv (newGlobals()) Map.empty []
+    let newEnv globals locals = {Globals = globals; Locals = locals}
+    let emptyEnv() = newEnv (newGlobals()) Map.empty
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)

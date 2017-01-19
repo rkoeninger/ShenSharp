@@ -13,9 +13,6 @@ module Evaluator =
 
     let private defer env expr = Pending(env, expr)
 
-    let private push frame env = {env with Stack = frame :: env.Stack}
-    let private pop env = {env with Stack = env.Stack.Tail}
-
     let private appendLocals env defs =
         let locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs
         {env with Locals = locals}
@@ -214,26 +211,12 @@ module Evaluator =
     /// </summary>
     and eval env expr =
 
-        let env =
-            match expr with
-            | LetExpr(x, _, _) -> push ("let " + x) env
-            | Cons(x, _) -> push (string x) env
-            | _ -> env
-
-        if env.Stack.Length > 512 then
-            printfn ""
-            printfn "STACK OVERFLOW"
-            printfn ""
-            for frame in env.Stack do
-                printfn "%O" frame
-            failwith "stack overflow"
-
         // Must be tail recursive. This is where tail call optimization happens.
         match evalw env expr with
         | Done value -> value
-        | Pending(env, expr) -> eval (pop env) expr
+        | Pending(env, expr) -> eval env expr
 
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    let rootEval globals = eval (newEnv globals Map.empty [])
+    let rootEval globals = eval(newEnv globals Map.empty)
