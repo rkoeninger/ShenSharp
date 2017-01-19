@@ -2,6 +2,7 @@
 open Kl.Values
 open Kl.Reader
 open Kl.Evaluator
+open Kl.Startup
 open System
 open System.IO
 
@@ -24,8 +25,8 @@ let main0 args =
                     "t-star.kl"
                 ]
     let klFolder = @"..\..\..\Kl.Source"
-    let env = Startup.baseEnv()
-    env.Globals.Symbols.["shen-*installing-kl*"] <- truev
+    let globals = baseGlobals()
+    globals.Symbols.["shen-*installing-kl*"] <- truev
     for file in (List.map (fun f -> Path.Combine(klFolder, f)) files) do
         printfn ""
         printfn "Loading %s" file
@@ -36,12 +37,13 @@ let main0 args =
             match ast with
             | Cons(command, Cons(symbol, _)) ->
                 printfn "%O %O" command symbol
-                rootEval env.Globals ast |> ignore
+                rootEval globals ast |> ignore
                 if (command = Sym "set") && (symbol = Sym "shen.*symbol-table*") then
                     ()
             | _ -> () // ignore copyright block at top
-    env.Globals.Symbols.["shen-*installing-kl*"] <- falsev
-    env.Globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
+    globals.Symbols.["shen-*installing-kl*"] <- falsev
+    globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
+    globals.Functions.["exit"] <- Native("exit", 1, Builtins.klExit)
     printfn ""
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
@@ -59,9 +61,9 @@ let main0 args =
         | Func _ -> string expr
         | InStream _ -> string expr
         | OutStream _ -> string expr
-    for kv in env.Globals.Symbols do
+    for kv in globals.Symbols do
         printfn "globals.Symbols.[\"%s\"] <- %O" kv.Key (valToStr kv.Value)
-    for kv in env.Globals.Functions do
+    for kv in globals.Functions do
         match kv.Value with
         | Defun(name, args, body) ->
             printfn "globals.Functions.[\"%s\"] <- Defun(\"%s\", [%s], %O)"
@@ -70,7 +72,7 @@ let main0 args =
                 (String.Join(", ", List.map (fun x -> "\"" + x + "\"") args))
                 (valToStr body)
         | _ -> ()
-//    eval env (Cons(Sym "shen.shen", Empty)) |> ignore
+    rootEval globals (Cons(Sym "shen.shen", Empty)) |> ignore
     0
 
 [<EntryPoint>]

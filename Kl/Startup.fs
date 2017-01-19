@@ -10,8 +10,8 @@ module Startup =
 
     let private fn name arity f = name, Native(name, arity, f)
 
-    let private installBase env =
-        install env.Globals.Functions [
+    let private installBase globals =
+        install globals.Functions [
             fn "intern"          1 klIntern
             fn "pos"             2 klStringPos
             fn "tlstr"           1 klStringTail
@@ -51,22 +51,18 @@ module Startup =
             fn "number?"         1 klIsNumber
         ]
         let onMono = Type.GetType("Mono.Runtime") <> null
-        let clrImpl = if onMono then "Mono" else "Microsoft.NET"
-        // TODO: identify CoreCLR?
         let ver = Environment.Version
-        install env.Globals.Symbols [
+        install globals.Symbols [
             "*language*",       Str "F# 4.0"
-            "*implementation*", Str(sprintf "CLR/%s" clrImpl)
+            "*implementation*", Str(sprintf "CLR/%s" (if onMono then "Mono" else "Microsoft.NET"))
             "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
             "*port*",           Str "0.2"
             "*porters*",        Str "Robert Koeninger"
             "*stinput*",        stinput
             "*stoutput*",       stoutput
-            // TODO: *home-directory* is bound to a string which denotes the directory
-            // relative to which all files are read or written.
-            //
-            // Gets overwritten in KL
+            // We could set *home-directory* here, but it gets
+            // overwritten in the KL distribution of Shen.
         ]
-        env
+        globals
 
-    let baseEnv() = installBase(emptyEnv())
+    let baseGlobals() = installBase(newGlobals())

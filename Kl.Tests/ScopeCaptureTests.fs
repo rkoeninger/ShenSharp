@@ -26,20 +26,20 @@ type ScopeCaptureTests() =
 
     [<Test>]
     member this.``preserves the value of closed-over function parameters``() =
-        let env = baseEnv()
-        runIn env "(set foo (absvector 3))" |> ignore
-        runIn env "(defun do-it (N) (if (= N 3) true (let _ (address-> (value foo) N (freeze N)) (do-it (+ N 1)))))" |> ignore
-        runIn env "(do-it 0)" |> ignore
-        assertEq (Int 0) (runIn env "((<-address (value foo) 0))")
-        assertEq (Int 1) (runIn env "((<-address (value foo) 1))")
-        assertEq (Int 2) (runIn env "((<-address (value foo) 2))")
+        let globals = baseGlobals()
+        runIn globals "(set foo (absvector 3))" |> ignore
+        runIn globals "(defun do-it (N) (if (= N 3) true (let _ (address-> (value foo) N (freeze N)) (do-it (+ N 1)))))" |> ignore
+        runIn globals "(do-it 0)" |> ignore
+        assertEq (Int 0) (runIn globals "((<-address (value foo) 0))")
+        assertEq (Int 1) (runIn globals "((<-address (value foo) 1))")
+        assertEq (Int 2) (runIn globals "((<-address (value foo) 2))")
 
     [<Test>]
     member this.``preserves the value of closed-over local variables``() =
-        let env = baseEnv()
-        runIn env "(set foo (absvector 3))" |> ignore
-        runIn env "(defun do-it (N) (if (= N 3) true (let X N (let _ (address-> (value foo) N (freeze X)) (do-it (+ N 1))))))" |> ignore
-        runIn env "(do-it 0)" |> ignore
-        assertEq (Int 0) (runIn env "((<-address (value foo) 0))")
-        assertEq (Int 1) (runIn env "((<-address (value foo) 1))")
-        assertEq (Int 2) (runIn env "((<-address (value foo) 2))")
+        let globals = baseGlobals()
+        runIn globals "(set foo (absvector 3))" |> ignore
+        runIn globals "(defun do-it (N) (if (= N 3) true (let X N (let _ (address-> (value foo) N (freeze X)) (do-it (+ N 1))))))" |> ignore
+        runIn globals "(do-it 0)" |> ignore
+        assertEq (Int 0) (runIn globals "((<-address (value foo) 0))")
+        assertEq (Int 1) (runIn globals "((<-address (value foo) 1))")
+        assertEq (Int 2) (runIn globals "((<-address (value foo) 2))")

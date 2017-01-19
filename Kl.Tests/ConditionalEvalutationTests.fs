@@ -11,10 +11,10 @@ open Kl.Startup
 type ConditionalEvalutationTests() =
 
     let assertEffect eff syntax =
-        let env = baseEnv()
-        runIn env "(defun effect (X) (do (set *effect* true) X))" |> ignore
-        runIn env syntax |> ignore
-        match env.Globals.Symbols.GetMaybe "*effect*" with
+        let globals = baseGlobals()
+        runIn globals "(defun effect (X) (do (set *effect* true) X))" |> ignore
+        runIn globals syntax |> ignore
+        match globals.Symbols.GetMaybe "*effect*" with
         | None -> if eff then Assert.Fail "Effect did not occurr" else ()
         | _ -> if not eff then Assert.Fail "Effect should not have occurred" else ()
 

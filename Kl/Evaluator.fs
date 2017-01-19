@@ -14,8 +14,7 @@ module Evaluator =
     let private defer env expr = Pending(env, expr)
 
     let private appendLocals env defs =
-        let locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs
-        {env with Locals = locals}
+        {env with Locals = List.fold (fun m (k, v) -> Map.add k v m) env.Locals defs}
 
     // Symbols not in operator position are either defined locally or they are idle.
     let private resolveSymbol env id =
@@ -105,7 +104,7 @@ module Evaluator =
 
     and private evalw env expr =
     
-        // Bools are just these two particular symbols.
+        // Booleans are just these two particular symbols.
         let isTrue = function
             | Sym "true" -> true
             | Sym "false" -> false
@@ -174,17 +173,11 @@ module Evaluator =
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
         | DefunExpr(name, paramz, body) ->
-            let f =
-                match Overrides.overrides.GetMaybe name with
-                | Some f -> f
-                | None -> Defun(name, paramz, body)
-            env.Globals.Functions.[name] <- f
+            env.Globals.Functions.[name] <- Defun(name, paramz, body)
             Done(Sym name)
 
         // Expression in operator position must evaluate to a Function.
         | AppExpr(f, args) ->
-            if f = Sym "shen.t*-rules" then
-                ()
             let operator = evalFunction env f
             let operands = List.map (eval env) args
             applyw env operator operands
@@ -219,4 +212,4 @@ module Evaluator =
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    let rootEval globals = eval(newEnv globals Map.empty)
+    let rootEval globals = eval {Globals = globals; Locals = Map.empty}

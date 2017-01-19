@@ -156,8 +156,6 @@ module Values =
     let err s = raise(SimpleError s)
     let errf format = Printf.ksprintf err format
     let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
-    let newEnv globals locals = {Globals = globals; Locals = locals}
-    let emptyEnv() = newEnv (newGlobals()) Map.empty
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
@@ -166,6 +164,3 @@ module Values =
         | x :: xs ->
             f x |> ignore
             each f xs
-
-module Overrides =
-    let overrides = new Defines<Function>()

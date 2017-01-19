@@ -29,18 +29,18 @@ let files = [
     "types.kl"
     "t-star.kl"
 ]
-let load env path = eval env (toCons [Sym "load"; Str path]) |> ignore
+let load globals path = rootEval globals (toCons [Sym "load"; Str path]) |> ignore
 
 let main0 () =
-    let env = baseEnv()
-    Overrides.overrides.["y-or-n?"] <- Native("y-or-n?", 1, fun _ _ -> truev)
+    let globals = baseGlobals()
     for file in files do
         printfn "Loading %s" file
         for ast in readAll(File.ReadAllText(Path.Combine(klFolder, file))) do
-            rootEval env.Globals ast |> ignore
+            rootEval globals ast |> ignore
+    globals.Functions.["y-or-n?"] <- Native("y-or-n?", 1, fun _ _ -> truev)
     Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, testFolder)
-    load env "README.shen"
-    load env "tests.shen"
+    load globals "README.shen"
+    load globals "tests.shen"
     printfn ""
     printfn "Press any key to exit..."
     Console.ReadKey() |> ignore

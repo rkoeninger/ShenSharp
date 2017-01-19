@@ -15,8 +15,8 @@ type PrintInfo() =
 
     [<Test>]
     member this.``print platform information``() =
-        let env = baseEnv()
-        for pair in env.Globals.Symbols do
+        let globals = baseGlobals()
+        for pair in globals.Symbols do
             printfn "%s = %O" pair.Key pair.Value
 
     [<Test>]

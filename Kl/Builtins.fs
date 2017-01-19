@@ -331,3 +331,9 @@ module Builtins =
             | 0 -> Int 1
             | h -> Int h
         | args -> argsErr "hash" ["value"; "integer"] args
+
+    let klExit _ = function
+        | [Int x] ->
+            Environment.Exit x
+            Empty
+        | args -> argsErr "exit" ["integer"] args
