@@ -48,7 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <Compile Include="Program.fs" />
+    <Compile Include="RunRepl.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kl\Kl.fsproj">

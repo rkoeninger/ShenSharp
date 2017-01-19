@@ -55,7 +55,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <None Include="App.config" />
-    <Compile Include="Program.fs" />
+    <Compile Include="RunTestSuite.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
