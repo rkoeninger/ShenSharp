@@ -166,11 +166,8 @@ module Builtins =
     let private startTime = DateTime.UtcNow
     let private stopwatch = Stopwatch.StartNew()
 
-    /// <remarks>
-    /// All returned values are in milliseconds
-    /// </remarks>
     let klGetTime _ = function
-        | [Sym "run"] | [Sym "real"] -> Num(decimal (stopwatch.ElapsedTicks / 10000L))
+        | [Sym "run"] | [Sym "real"] -> Num(decimal stopwatch.Elapsed.TotalSeconds)
         | [Sym "unix"] -> Num(decimal (DateTime.UtcNow - epoch).TotalSeconds)
         | [Sym s] -> errf "get-time expects symbols 'run or 'unix as argument, not %s" s
         | args -> argsErr "get-time" ["symbol"] args
