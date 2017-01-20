@@ -56,7 +56,7 @@ module Startup =
             "*language*",       Str "F# 4.0"
             "*implementation*", Str(sprintf "CLR/%s" (if onMono then "Mono" else "Microsoft.NET"))
             "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
-            "*port*",           Str "0.2"
+            "*port*",           Str "0.3"
             "*porters*",        Str "Robert Koeninger"
             "*stinput*",        console
             "*stoutput*",       console
