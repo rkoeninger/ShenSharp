@@ -13,7 +13,7 @@ http://www.shenlanguage.org/learn-shen/index.html
 
 The proper order for browsing the KL interpreter is as follows:
   * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs)
-  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Reader.fs)
+  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Load/Reader.fs)
   * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Evaluator.fs)
   * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Builtins.fs)
   * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs)

@@ -1,13 +1,14 @@
 ﻿open Kl
 open Kl.Values
-open Kl.Reader
 open Kl.Evaluator
 open Kl.Startup
+open Kl.Load.Reader
 open System
+open System.Diagnostics
 open System.IO
 
 let main0 args =
-    let stopwatch = System.Diagnostics.Stopwatch.StartNew()
+    let stopwatch = Stopwatch.StartNew()
     let files = [
                     "toplevel.kl"
                     "core.kl"

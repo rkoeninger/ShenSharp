@@ -5,8 +5,8 @@ open Kl
 open Kl.Values
 open Kl.Extensions
 open Kl.Evaluator
-open Kl.Reader
 open Kl.Startup
+open Kl.Load.Reader
 
 module TestCommon =
     

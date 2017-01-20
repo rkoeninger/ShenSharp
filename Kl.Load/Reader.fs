@@ -1,7 +1,8 @@
-﻿namespace Kl
+﻿namespace Kl.Load
 
 open FParsec
-open Values
+open Kl
+open Kl.Values
 
 /// <summary>The Reader parses KL source code into a value.</summary>
 /// <remarks>Reader is strict about some details. It will not handle extra spaces inside of parens.</remarks>

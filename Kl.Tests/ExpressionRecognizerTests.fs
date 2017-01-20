@@ -2,8 +2,8 @@
 
 open NUnit.Framework
 open Kl.Values
-open Kl.Reader
 open Kl.Expressions
+open Kl.Load.Reader
 open TestCommon
 
 [<TestFixture>]

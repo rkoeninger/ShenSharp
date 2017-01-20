@@ -5,10 +5,10 @@ open System.IO
 open System.Threading
 open Kl
 open Kl.Values
-open Kl.Reader
 open Kl.Evaluator
 open Kl.Builtins
 open Kl.Startup
+open Kl.Load.Reader
 
 let stackSize = 16777216
 let testFolder = @"..\..\..\Shen.Tests.Source"
