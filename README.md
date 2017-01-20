@@ -19,9 +19,8 @@ The proper order for browsing the KL interpreter is as follows:
   * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs)
 
 Status:
-  * All tests pass except for `proof assistant.shen`, which seems to hang,
-    don't know if it is making progress
-  * Evaluator is still very slow
+  * [All tests in the standard test suite pass](https://gist.github.com/rkoeninger/2f29ca2f6d5ab88c8f4dccacc4def3fc)
+  * Evaluator is still very slow, test suite takes ~2h
   * I can generate F# using FSharp.Compiler.Services, but it's really slow
   * I can generate F# by string concatenation (Fex), but it crashes when you try to compile it
     * It crashes with a StackOverflowException, no warnings or error messages
