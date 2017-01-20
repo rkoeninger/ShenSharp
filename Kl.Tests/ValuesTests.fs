@@ -14,12 +14,13 @@ type ValuesTests() =
         assertEq Empty Empty
 
     [<Test>]
-    member this.``Ints and Decs can be compared for equality``() =
+    member this.``Nums can be compared for equality``() =
         assertEq (Int 5) (Int 5)
         assertEq (Int -2) (Int -2)
         assertEq (Num 12.6m) (Num 12.6m)
         assertEq (Int 43) (Num 43m)
         assertEq (Int -104) (Num -104.0m)
+        assertNotEq (Int 0) (Num 0.00000000001m)
 
     [<Test>]
     member this.``Strings can be compared for equality``() =
