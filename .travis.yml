@@ -1,6 +1,4 @@
 notifications:
   email: false
-branches:
-  only:
-    - master
 language: csharp
+script:
