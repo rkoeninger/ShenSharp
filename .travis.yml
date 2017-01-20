@@ -1,4 +1,5 @@
 notifications:
   email: false
-language: csharp
+language: generic
 script:
+  - true
