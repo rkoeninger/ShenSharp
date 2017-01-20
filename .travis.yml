@@ -3,3 +3,4 @@ notifications:
 branches:
   only:
     - master
+language: csharp
