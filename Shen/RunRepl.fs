@@ -59,8 +59,7 @@ let main0 args =
         | Vec xs -> sprintf "Vec [|%s|]" (String.Join("; ", Array.map valToStr xs))
         | Err s -> sprintf "Err \"%s\"" s
         | Func _ -> string expr
-        | InStream _ -> string expr
-        | OutStream _ -> string expr
+        | Pipe io -> string expr
     for kv in globals.Symbols do
         printfn "globals.Symbols.[\"%s\"] <- %O" kv.Key (valToStr kv.Value)
     for kv in globals.Functions do

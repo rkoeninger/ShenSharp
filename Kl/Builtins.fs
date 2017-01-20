@@ -10,12 +10,9 @@ open Kl.Evaluator
 module Builtins =
 
     let private argsErr name (types: string list) (args: Value list) =
-        if types.Length = args.Length then
-            errf "%s expected %A arguments, given %A" name types.Length args.Length
-        else
-            match types with
-            | [] -> errf "%s expected no arguments" name
-            | _  -> errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
+        if types.Length <> args.Length
+            then errf "%s expected %A arguments, given %A" name types.Length args.Length
+            else errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
     let klIntern _ = function
         | [Str s] -> Sym s
@@ -131,46 +128,37 @@ module Builtins =
         | args -> argsErr "absvector?" ["value"] args
 
     let klWriteByte _ = function
-        | [Int i; OutStream stream] ->
+        | [Int i; Pipe io] ->
             if 0 <= i && i <= 255
                 then let b = byte i
-                     stream.Write(b)
+                     io.Write(b)
                      Int(int b)
                 else errf "integer value %i is exceeds the range of a byte" i
         | args -> argsErr "write-byte" ["integer"; "out-stream"] args
 
     let klReadByte _ = function
-        | [InStream stream] -> Int(stream.Read())
+        | [Pipe io] -> Int(io.Read())
         | args -> argsErr "read-byte" ["in-stream"] args
 
     let klOpen _ = function
-        | [Str path; Sym "in"] ->
+        | [Str path; Sym s] ->
             let stream =
-                try File.OpenRead path
+                try match s with
+                    | "in" -> File.OpenRead path
+                    | "out" -> File.OpenWrite path
+                    | _ -> errf "open expects symbol 'in or 'out as 2nd argument, not '%s" s
                 with e -> err e.Message
-            InStream {
+            Pipe {
                 Name = "File: " + path
                 Read = stream.ReadByte
-                Close = stream.Close
-            }
-        | [Str path; Sym "out"] ->
-            let stream =
-                try File.OpenWrite path
-                with e -> err e.Message
-            OutStream {
-                Name = "File: " + path
                 Write = stream.WriteByte
                 Close = stream.Close
             }
-        | [Str _; Sym s] -> errf "open expects symbol 'in or 'out as 2nd argument, not '%s" s
         | args -> argsErr "open" ["string"; "symbol"] args
 
     let klClose _ = function
-        | [InStream stream] ->
-            stream.Close()
-            Empty
-        | [OutStream stream] ->
-            stream.Close()
+        | [Pipe io] ->
+            io.Close()
             Empty
         | args -> argsErr "close" ["stream"] args
 
@@ -250,16 +238,9 @@ module Builtins =
         | [_] -> falsev
         | args -> argsErr "number?" ["value"] args
 
-    let stinput =
-        InStream {
+    let console = Pipe {
             Name = "Console"
             Read = (new ConsoleReader()).ReadByte
-            Close = fun () -> ()
-        }
-
-    let stoutput =
-        OutStream {
-            Name = "Console"
             Write = (new ConsoleWriter()).WriteByte
             Close = fun () -> ()
         }

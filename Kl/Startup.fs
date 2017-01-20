@@ -58,8 +58,8 @@ module Startup =
             "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
             "*port*",           Str "0.2"
             "*porters*",        Str "Robert Koeninger"
-            "*stinput*",        stinput
-            "*stoutput*",       stoutput
+            "*stinput*",        console
+            "*stoutput*",       console
             // We could set *home-directory* here, but it gets
             // overwritten in the KL distribution of Shen.
         ]

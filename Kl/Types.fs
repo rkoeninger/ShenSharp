@@ -12,8 +12,12 @@ open System.Text
 type SimpleError(message) =
     inherit Exception(message)
 
-type [<ReferenceEquality>] Input =  {Name: string; Read: unit -> int;   Close: unit -> unit}
-type [<ReferenceEquality>] Output = {Name: string; Write: byte -> unit; Close: unit -> unit}
+type [<ReferenceEquality>] IO = {
+    Name: string
+    Read: unit -> int
+    Write: byte -> unit
+    Close: unit -> unit
+}
 
 /// <summary>
 /// A mutable dictionary that maps symbols to values of some type <c>'a</c>.
@@ -53,16 +57,15 @@ and [<ReferenceEquality>] Function =
 /// </summary>
 and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
     | Empty
-    | Int       of int
-    | Dec       of decimal
-    | Str       of string
-    | Sym       of string
-    | Cons      of Value * Value
-    | Vec       of Value array
-    | Err       of string
-    | Func      of Function
-    | InStream  of Input
-    | OutStream of Output
+    | Int  of int
+    | Dec  of decimal
+    | Str  of string
+    | Sym  of string
+    | Cons of Value * Value
+    | Vec  of Value array
+    | Err  of string
+    | Func of Function
+    | Pipe of IO
     override this.Equals(that: obj) =
         match that with
         | :? Value as that ->
@@ -78,8 +81,7 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
             | Vec xs, Vec ys             -> xs.Length = ys.Length && Array.forall2 (=) xs ys
             | Err x, Err y               -> x = y
             | Func x, Func y             -> x = y
-            | InStream x, InStream y     -> x = y
-            | OutStream x, OutStream y   -> x = y
+            | Pipe x, Pipe y             -> x = y
             | _, _ -> false
         | _ -> false
     override this.GetHashCode() =
@@ -93,24 +95,22 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
         | Vec xs       -> hash xs
         | Err x        -> hash x
         | Func x       -> hash x
-        | InStream x   -> hash x
-        | OutStream x  -> hash x
+        | Pipe x       -> hash x
     override this.ToString() =
         let rec toList = function
             | Cons(x, y) -> x :: toList y
             | _ -> []
         match this with
-        | Empty       -> "()"
-        | Int i       -> string i
-        | Dec d       -> string d
-        | Str s       -> sprintf "\"%s\"" s
-        | Sym s       -> s
-        | Cons _      -> sprintf "(%s)" (String.Join(" ", toList this))
-        | Vec a       -> sprintf "<Vector (%i)>" a.Length
-        | Err s       -> sprintf "<Error (%s)>" s
-        | Func f      -> string f
-        | InStream  i -> sprintf "<InStream (%s)>" i.Name
-        | OutStream o -> sprintf "<OutStream (%s)>" o.Name
+        | Empty   -> "()"
+        | Int i   -> string i
+        | Dec d   -> string d
+        | Str s   -> sprintf "\"%s\"" s
+        | Sym s   -> s
+        | Cons _  -> sprintf "(%s)" (String.Join(" ", toList this))
+        | Vec a   -> sprintf "<Vector (%i)>" a.Length
+        | Err s   -> sprintf "<Error (%s)>" s
+        | Func f  -> string f
+        | Pipe io -> sprintf "<Stream (%s)>" io.Name
 
 type ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())
