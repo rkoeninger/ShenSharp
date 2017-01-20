@@ -1,5 +1,8 @@
 notifications:
   email: false
+branches:
+  only:
+    - master
 language: generic
 script:
   - true
