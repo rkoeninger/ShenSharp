@@ -21,7 +21,7 @@ module Builtins =
     let klStringPos _ = function
         | [Str s; Int index] ->
             if index >= 0 && index < s.Length
-                then Str(string s.[index])
+                then Str(string s.[int index])
                 else errf "Index %i out of bounds for string of length %i" index s.Length
         | args -> argsErr "pos" ["string"; "integer"] args
 
@@ -137,7 +137,7 @@ module Builtins =
         | args -> argsErr "write-byte" ["integer"; "out-stream"] args
 
     let klReadByte _ = function
-        | [Pipe io] -> Int(io.Read())
+        | [Pipe io] -> Num(decimal(io.Read()))
         | args -> argsErr "read-byte" ["in-stream"] args
 
     let klOpen _ = function
@@ -170,71 +170,46 @@ module Builtins =
     /// All returned values are in milliseconds
     /// </remarks>
     let klGetTime _ = function
-        | [Sym "run"] | [Sym "real"] -> Int(int (stopwatch.ElapsedTicks / 10000L))
-        | [Sym "unix"] -> Int(int (DateTime.UtcNow - epoch).TotalSeconds)
-        | [Sym s] -> errf "get-time expects symbols 'run or 'unix' as argument, not %s" s
+        | [Sym "run"] | [Sym "real"] -> Num(decimal (stopwatch.ElapsedTicks / 10000L))
+        | [Sym "unix"] -> Num(decimal (DateTime.UtcNow - epoch).TotalSeconds)
+        | [Sym s] -> errf "get-time expects symbols 'run or 'unix as argument, not %s" s
         | args -> argsErr "get-time" ["symbol"] args
 
     let klAdd _ = function
-        | [Int x; Int y] -> Int(x + y)
-        | [Int x; Dec y] -> Dec(decimal x + y)
-        | [Dec x; Int y] -> Dec(x + decimal y)
-        | [Dec x; Dec y] -> Dec(x + y)
+        | [Num x; Num y] -> Num(x + y)
         | args -> argsErr "+" ["number"; "number"] args
 
     let klSubtract _ = function
-        | [Int x; Int y] -> Int(x - y)
-        | [Int x; Dec y] -> Dec(decimal x - y)
-        | [Dec x; Int y] -> Dec(x - decimal y)
-        | [Dec x; Dec y] -> Dec(x - y)
+        | [Num x; Num y] -> Num(x - y)
         | args -> argsErr "-" ["number"; "number"] args
 
     let klMultiply _ = function
-        | [Int x; Int y] -> Int(x * y)
-        | [Int x; Dec y] -> Dec(decimal x * y)
-        | [Dec x; Int y] -> Dec(x * decimal y)
-        | [Dec x; Dec y] -> Dec(x * y)
+        | [Num x; Num y] -> Num(x * y)
         | args -> argsErr "*" ["number"; "number"] args
 
     let klDivide _ = function
-        | [_; Int 0] -> err "Division by zero"
-        | [_; Dec 0m] -> err "Division by zero"
-        | [Int x; Int y] -> Dec(decimal x / decimal y)
-        | [Int x; Dec y] -> Dec(decimal x / y)
-        | [Dec x; Int y] -> Dec(x / decimal y)
-        | [Dec x; Dec y] -> Dec(x / y)
+        | [_; Num 0m] -> err "Division by zero"
+        | [Num x; Num y] -> Num(x / y)
         | args -> argsErr "/" ["number"; "number"] args
 
     let klGreaterThan _ = function
-        | [Int x; Int y] -> boolv(x > y)
-        | [Int x; Dec y] -> boolv(decimal x > y)
-        | [Dec x; Int y] -> boolv(x > decimal y)
-        | [Dec x; Dec y] -> boolv(x > y)
+        | [Num x; Num y] -> boolv(x > y)
         | args -> argsErr ">" ["number"; "number"] args
 
     let klLessThan _ = function
-        | [Int x; Int y] -> boolv(x < y)
-        | [Int x; Dec y] -> boolv(decimal x < y)
-        | [Dec x; Int y] -> boolv(x < decimal y)
-        | [Dec x; Dec y] -> boolv(x < y)
+        | [Num x; Num y] -> boolv(x < y)
         | args -> argsErr "<" ["number"; "number"] args
 
     let klGreaterThanEqual _ = function
-        | [Int x; Int y] -> boolv(x >= y)
-        | [Int x; Dec y] -> boolv(decimal x >= y)
-        | [Dec x; Int y] -> boolv(x >= decimal y)
-        | [Dec x; Dec y] -> boolv(x >= y)
+        | [Num x; Num y] -> boolv(x >= y)
         | args -> argsErr ">=" ["number"; "number"] args
 
     let klLessThanEqual _ = function
-        | [Int x; Int y] -> boolv(x <= y)
-        | [Int x; Dec y] -> boolv(decimal x <= y)
-        | [Dec x; Int y] -> boolv(x <= decimal y)
-        | [Dec x; Dec y] -> boolv(x <= y)
+        | [Num x; Num y] -> boolv(x <= y)
         | args -> argsErr "<=" ["number"; "number"] args
 
     let klIsNumber _ = function
-        | [Int _] | [Dec _] -> truev
+        | [Num _] -> truev
         | [_] -> falsev
         | args -> argsErr "number?" ["value"] args
 
@@ -257,10 +232,7 @@ module Builtins =
         | args -> argsErr "shen.fillvector" ["vector"; "integer"; "integer"; "value"] args
 
     let klModulus _ = function
-        | [Int x; Int y] -> Int(x % y)
-        | [Int x; Dec y] -> Dec(decimal x % y)
-        | [Dec x; Int y] -> Dec(x % decimal y)
-        | [Dec x; Dec y] -> Dec(x % y)
+        | [Num x; Num y] -> Num(x % y)
         | args -> argsErr "shen.mod" ["number"; "number"] args
 
     let klIsAlpha _ = function
@@ -285,8 +257,8 @@ module Builtins =
         | args -> argsErr "append" ["list"; "list"] args
 
     let klHash _ = function
-        | [x; Int d] ->
-            match hash x % d with
+        | [x; Int i] ->
+            match hash x % i with
             | 0 -> Int 1
             | h -> Int h
         | args -> argsErr "hash" ["value"; "integer"] args

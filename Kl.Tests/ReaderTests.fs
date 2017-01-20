@@ -62,9 +62,9 @@ type ReaderTests() =
 
     [<Test>]
     member this.``decimals are parsable``() =
-        assertEq (Dec 4.25m) (read "4.25")
-        assertEq (Dec -345256.6465m) (read "-345256.6465")
-        assertEq (Dec 0m) (read "-0.0e0")
+        assertEq (Num 4.25m) (read "4.25")
+        assertEq (Num -345256.6465m) (read "-345256.6465")
+        assertEq (Num 0m) (read "-0.0e0")
 
     [<Test>]
     member this.``decimal parsing does not capture 'Inf' or similiar``() =

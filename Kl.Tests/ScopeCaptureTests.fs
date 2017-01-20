@@ -3,6 +3,7 @@
 open NUnit.Framework
 open TestCommon
 open Kl
+open Kl.Values
 open Kl.Startup
 
 [<TestFixture>]

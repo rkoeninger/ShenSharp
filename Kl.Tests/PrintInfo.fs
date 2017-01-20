@@ -22,7 +22,7 @@ type PrintInfo() =
     [<Test>]
     member this.``demo ToString() for values``() =
         printfn "%O" (Int 12)
-        printfn "%O" (Dec 34.12m)
+        printfn "%O" (Num 34.12m)
         printfn "%O" (Sym "hello")
         printfn "%O" (Str "hello")
         printfn "%O" Empty

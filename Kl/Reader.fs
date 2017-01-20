@@ -8,7 +8,7 @@ open Values
 module Reader =
 
     let private pValue, pValueRef = createParserForwardedToRef<Value, unit>()
-    let private number (n: string) = if (n.Contains(".")) then Dec(decimal n) else Int(int n)
+    let private number (n: string) = if (n.Contains(".")) then Num(decimal n) else Int(int n)
     let private pNum = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> number
     let private pStr = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"')) |>> Str
     let private pSym = regex "[^\\s\\x28\\x29]+" |>> Sym

@@ -17,9 +17,9 @@ type ValuesTests() =
     member this.``Ints and Decs can be compared for equality``() =
         assertEq (Int 5) (Int 5)
         assertEq (Int -2) (Int -2)
-        assertEq (Dec 12.6m) (Dec 12.6m)
-        assertEq (Int 43) (Dec 43m)
-        assertEq (Int -104) (Dec -104.0m)
+        assertEq (Num 12.6m) (Num 12.6m)
+        assertEq (Int 43) (Num 43m)
+        assertEq (Int -104) (Num -104.0m)
 
     [<Test>]
     member this.``Strings can be compared for equality``() =
@@ -69,7 +69,7 @@ type ValuesTests() =
     member this.``Hash codes can be generated for all value types``() =
         assertEq (hash Empty) (hash Empty)
         assertEq (hash (Int 46)) (hash (Int 46))
-        assertEq (hash (Dec -4.3m)) (hash (Dec -4.3m))
+        assertEq (hash (Num -4.3m)) (hash (Num -4.3m))
         assertEq (hash (Sym "abc")) (hash (Sym "abc"))
         assertEq (hash (Str "abc")) (hash (Str "abc"))
         assertEq (hash (Cons(Int 12, Sym "a"))) (hash (Cons(Int 12, Sym "a")))

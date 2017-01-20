@@ -52,7 +52,7 @@ let main0 args =
         match expr with
         | Empty -> "Empty"
         | Int x -> sprintf "Int %A" x
-        | Dec x -> sprintf "Dec %Am" x
+        | Num x -> sprintf "Dec %Am" x
         | Sym s -> sprintf "Sym \"%s\"" s
         | Str s -> sprintf "Str \"%s\"" s
         | Cons(x, y) -> sprintf "Cons(%s, %s)" (valToStr x) (valToStr y)

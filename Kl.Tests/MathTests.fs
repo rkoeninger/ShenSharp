@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open Kl
+open Kl.Values
 open TestCommon
 
 [<TestFixture>]
@@ -9,7 +10,7 @@ type MathTests() =
 
     let assertDec expr =
         match run expr with
-        | Dec _ -> ()
+        | Num _ -> ()
         | _ -> Assert.Fail "Decimal expected"
 
     let assertInt expr =
@@ -75,4 +76,4 @@ type MathTests() =
 
     [<Test>]
     member this.``dividing two integers does not truncate decimal``() =
-        assertEq (Dec 1.5m) (run "(/ 3 2)")
+        assertEq (Num 1.5m) (run "(/ 3 2)")

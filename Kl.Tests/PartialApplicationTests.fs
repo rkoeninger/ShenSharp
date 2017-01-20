@@ -2,6 +2,7 @@
 
 open NUnit.Framework
 open Kl
+open Kl.Values
 open Kl.Startup
 open TestCommon
 

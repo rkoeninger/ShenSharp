@@ -57,8 +57,7 @@ and [<ReferenceEquality>] Function =
 /// </summary>
 and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
     | Empty
-    | Int  of int
-    | Dec  of decimal
+    | Num  of decimal
     | Str  of string
     | Sym  of string
     | Cons of Value * Value
@@ -70,40 +69,36 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
         match that with
         | :? Value as that ->
             match this, that with
-            | Empty, Empty               -> true
-            | Int x, Int y               -> x = y
-            | Int x, Dec y               -> decimal x = y
-            | Dec x, Int y               -> x = decimal y
-            | Dec x, Dec y               -> x = y
-            | Str x, Str y               -> x = y
-            | Sym x, Sym y               -> x = y
-            | Cons(x1, x2), Cons(y1, y2) -> x1 = y1 && x2 = y2
-            | Vec xs, Vec ys             -> xs.Length = ys.Length && Array.forall2 (=) xs ys
-            | Err x, Err y               -> x = y
-            | Func x, Func y             -> x = y
-            | Pipe x, Pipe y             -> x = y
+            | Empty, Empty   -> true
+            | Num x, Num y   -> x = y
+            | Str x, Str y   -> x = y
+            | Sym x, Sym y   -> x = y
+            | Cons(x1, y1),
+              Cons(x2, y2)   -> x1 = x2 && y1 = y2
+            | Vec xs, Vec ys -> xs = ys
+            | Err x, Err y   -> x = y
+            | Func x, Func y -> x = y
+            | Pipe x, Pipe y -> x = y
             | _, _ -> false
         | _ -> false
     override this.GetHashCode() =
         match this with
-        | Empty        -> 1
-        | Int i        -> hash i
-        | Dec d        -> hash d
-        | Str s        -> hash s
-        | Sym s        -> hash s
-        | Cons(x1, x2) -> hash x1 ^^^ hash x2
-        | Vec xs       -> hash xs
-        | Err x        -> hash x
-        | Func x       -> hash x
-        | Pipe x       -> hash x
+        | Empty      -> 1
+        | Num x      -> hash x
+        | Str s      -> hash s
+        | Sym s      -> hash s
+        | Cons(x, y) -> hash x ^^^ hash y
+        | Vec xs     -> hash xs
+        | Err x      -> hash x
+        | Func x     -> hash x
+        | Pipe x     -> hash x
     override this.ToString() =
         let rec toList = function
             | Cons(x, y) -> x :: toList y
             | _ -> []
         match this with
         | Empty   -> "()"
-        | Int i   -> string i
-        | Dec d   -> string d
+        | Num x   -> x.ToString("0.################")
         | Str s   -> sprintf "\"%s\"" s
         | Sym s   -> s
         | Cons _  -> sprintf "(%s)" (String.Join(" ", toList this))
@@ -153,3 +148,7 @@ module Values =
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
+    let (|Int|_|) = function
+        | Num x when x % 1.0m = 0.0m -> Some(int x)
+        | _ -> None
+    let Int = Num << decimal

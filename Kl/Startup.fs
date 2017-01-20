@@ -65,4 +65,7 @@ module Startup =
         ]
         globals
 
+    /// <summary>
+    /// Creates a new global scope with the KL primitives installed.
+    /// </summary>
     let baseGlobals() = installBase(newGlobals())
