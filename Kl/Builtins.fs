@@ -10,9 +10,12 @@ open Kl.Evaluator
 module Builtins =
 
     let private argsErr name (types: string list) (args: Value list) =
-        if types.IsEmpty
-            then errf "%s expected no arguments" name
-            else errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
+        if types.Length = args.Length then
+            errf "%s expected %A arguments, given %A" name types.Length args.Length
+        else
+            match types with
+            | [] -> errf "%s expected no arguments" name
+            | _  -> errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
     let klIntern _ = function
         | [Str s] -> Sym s
@@ -62,7 +65,7 @@ module Builtins =
     let klValue globals = function
         | [Sym s] ->
             match globals.Symbols.GetMaybe s with
-            | Some v -> v
+            | Some x -> x
             | None -> errf "Symbol \"%s\" is undefined" s
         | args -> argsErr "value" ["symbol"] args
 
@@ -115,11 +118,11 @@ module Builtins =
         | args -> argsErr "<-address" ["vector"; "integer"] args
 
     let klWriteVector _ = function
-        | [Vec vector as vec; Int index; value] ->
-            if index >= 0 && index < vector.Length
-                then vector.[index] <- value
-                     vec
-                else errf "Index %i out of bounds for vector of length %i" index vector.Length
+        | [Vec array as vector; Int index; value] ->
+            if index >= 0 && index < array.Length
+                then array.[index] <- value
+                     vector
+                else errf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "address->" ["vector"; "integer"; "value"] args
 
     let klIsVector _ = function
@@ -142,21 +145,23 @@ module Builtins =
 
     let klOpen _ = function
         | [Str path; Sym "in"] ->
-            try let stream = File.OpenRead(path)
-                InStream {
-                    Name = "File: " + path
-                    Read = stream.ReadByte
-                    Close = stream.Close
-                }
-            with e -> err e.Message
+            let stream =
+                try File.OpenRead path
+                with e -> err e.Message
+            InStream {
+                Name = "File: " + path
+                Read = stream.ReadByte
+                Close = stream.Close
+            }
         | [Str path; Sym "out"] ->
-            try let stream = File.OpenWrite(path)
-                OutStream {
-                    Name = "File: " + path
-                    Write = stream.WriteByte
-                    Close = stream.Close
-                }
-            with e -> err e.Message
+            let stream =
+                try File.OpenWrite path
+                with e -> err e.Message
+            OutStream {
+                Name = "File: " + path
+                Write = stream.WriteByte
+                Close = stream.Close
+            }
         | [Str _; Sym s] -> errf "open expects symbol 'in or 'out as 2nd argument, not '%s" s
         | args -> argsErr "open" ["string"; "symbol"] args
 
