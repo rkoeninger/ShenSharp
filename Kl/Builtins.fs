@@ -21,7 +21,7 @@ module Builtins =
     let klStringPos _ = function
         | [Str s; Int index] ->
             if index >= 0 && index < s.Length
-                then Str(string s.[int index])
+                then Str(string s.[index])
                 else errf "Index %i out of bounds for string of length %i" index s.Length
         | args -> argsErr "pos" ["string"; "integer"] args
 
@@ -108,10 +108,10 @@ module Builtins =
         | args -> argsErr "absvector" ["integer"] args
 
     let klReadVector _ = function
-        | [Vec vector; Int index] ->
-            if index >= 0 && index < vector.Length
-                then vector.[index]
-                else errf "Index %i out of bounds for vector of length %i" index vector.Length
+        | [Vec array; Int index] ->
+            if index >= 0 && index < array.Length
+                then array.[index]
+                else errf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "<-address" ["vector"; "integer"] args
 
     let klWriteVector _ = function
@@ -134,11 +134,11 @@ module Builtins =
                      io.Write(b)
                      Int(int b)
                 else errf "integer value %i is exceeds the range of a byte" i
-        | args -> argsErr "write-byte" ["integer"; "out-stream"] args
+        | args -> argsErr "write-byte" ["integer"; "stream"] args
 
     let klReadByte _ = function
-        | [Pipe io] -> Num(decimal(io.Read()))
-        | args -> argsErr "read-byte" ["in-stream"] args
+        | [Pipe io] -> Int(io.Read())
+        | args -> argsErr "read-byte" ["stream"] args
 
     let klOpen _ = function
         | [Str path; Sym s] ->
