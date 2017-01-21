@@ -3,9 +3,12 @@ open Kl.Values
 open Kl.Evaluator
 open Kl.Startup
 open Kl.Load.Reader
+open Kl.Load.Translator
 open System
+open System.Collections.Generic
 open System.Diagnostics
 open System.IO
+open System.Linq
 
 let main0 args =
     let stopwatch = Stopwatch.StartNew()
@@ -49,29 +52,10 @@ let main0 args =
     printfn "Loading done"
     printfn "Time: %s" <| stopwatch.Elapsed.ToString()
     printfn ""
-    let rec valToStr expr =
-        match expr with
-        | Empty -> "Empty"
-        | Int x -> sprintf "Int %A" x
-        | Num x -> sprintf "Dec %Am" x
-        | Sym s -> sprintf "Sym \"%s\"" s
-        | Str s -> sprintf "Str \"%s\"" s
-        | Cons(x, y) -> sprintf "Cons(%s, %s)" (valToStr x) (valToStr y)
-        | Vec xs -> sprintf "Vec [|%s|]" (String.Join("; ", Array.map valToStr xs))
-        | Err s -> sprintf "Err \"%s\"" s
-        | Func _ -> string expr
-        | Pipe io -> string expr
-    for kv in globals.Symbols do
-        printfn "globals.Symbols.[\"%s\"] <- %O" kv.Key (valToStr kv.Value)
-    for kv in globals.Functions do
-        match kv.Value with
-        | Defun(name, args, body) ->
-            printfn "globals.Functions.[\"%s\"] <- Defun(\"%s\", [%s], %O)"
-                kv.Key
-                name
-                (String.Join(", ", List.map (fun x -> "\"" + x + "\"") args))
-                (valToStr body)
-        | _ -> ()
+    let origGlobals = baseGlobals()
+    let tup (kv: KeyValuePair<'a, 'b>) = (kv.Key, kv.Value)
+    printfn "%s" (encodeSymbols (Seq.toList origGlobals.Symbols.Keys) (Seq.map tup globals.Symbols))
+    printfn "%s" (encodeFunctions (Seq.toList origGlobals.Functions.Keys) (Seq.map tup globals.Functions))
     eval globals (Cons(Sym "shen.shen", Empty)) |> ignore
     0
 

@@ -53,6 +53,7 @@
   <ItemGroup>
     <Content Include="packages.config" />
     <Compile Include="Reader.fs" />
+    <Compile Include="Translator.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
