@@ -37,7 +37,7 @@ module Evaluator =
         | Some _ -> errf "Function not defined: %s" id
         | None -> resolveGlobalFunction globals id
 
-    let rec private applyw globals f args =
+    let rec private apply globals f args =
         match f with
 
         // Freezes can only be applied to 0 arguments.
@@ -59,10 +59,10 @@ module Evaluator =
             | [arg0] -> defer (appendLocals locals [param, arg0]) body
             | arg0 :: args1 ->
                 match evalv (globals, appendLocals locals [param, arg0]) body with
-                | Func f -> applyw globals f args1
+                | Func f -> apply globals f args1
                 | Sym s ->
                     let f = resolveFunction (globals, locals) s
-                    applyw globals f args1
+                    apply globals f args1
                 | _ -> errf "Too many arguments (%i) provided to lambda" args.Length
 
         // Defuns can be applied to anywhere between 0 and the their full parameter list.
@@ -97,7 +97,7 @@ module Evaluator =
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> applyw globals f (List.append previousArgs args)
+            | _ -> apply globals f (List.append previousArgs args)
 
     and private evalw ((globals, locals) as env) expr =
 
@@ -159,7 +159,7 @@ module Evaluator =
             with
             | :? SimpleError as e ->
                 let operator = evalf env handler
-                applyw globals operator [Err e.Message]
+                apply globals operator [Err e.Message]
             | _ -> reraise()
 
         // Second expression is in tail position.
@@ -177,7 +177,7 @@ module Evaluator =
         | AppExpr(f, args) ->
             let operator = evalf env f
             let operands = List.map (evalv env) args
-            applyw globals operator operands
+            apply globals operator operands
 
         // All other expressions/values are self-evaluating.
         | _ -> Done expr
