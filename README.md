@@ -5,11 +5,13 @@
 
 ![神#](https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/ShenSharp.png)
 
-Making a second attempt at implementing a certified Shen implementation. This time using F# to learn F# and functional idioms.
+Making a second attempt at implementing a certified Shen implementation.
+This time using F# to learn F# and functional idioms.
 
-Learn Shen here:
-
-http://www.shenlanguage.org/learn-shen/index.html
+Shen Resources:
+  * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
+  * [Tutorial](http://www.shenlanguage.org/learn-shen/index.html)
+  * [Mailing List](https://groups.google.com/forum/#!forum/qilang)
 
 The proper order for browsing the KL interpreter is as follows:
   * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs)
