@@ -6,14 +6,12 @@ open System.Threading
 open Kl
 open Kl.Values
 open Kl.Evaluator
-open Kl.Builtins
-open Kl.Startup
-open Kl.Load.Reader
+open Kl.Load.Compiler
 
 let stackSize = 16777216
 let testFolder = @"..\..\..\Shen.Tests.Source"
 let klFolder = @"..\..\..\Kl.Source"
-let files = [
+let klFiles = [
     "toplevel.kl"
     "core.kl"
     "sys.kl"
@@ -29,27 +27,21 @@ let files = [
     "types.kl"
     "t-star.kl"
 ]
-let load globals path = eval globals (toCons [Sym "load"; Str path]) |> ignore
 
-let main0 () =
-    let globals = baseGlobals()
-    for file in files do
-        printfn "Loading %s" file
-        for ast in readAll(File.ReadAllText(Path.Combine(klFolder, file))) do
-            eval globals ast |> ignore
+let runTestSuite () =
+    let globals = compile klFolder klFiles
     globals.Functions.["y-or-n?"] <- Native("y-or-n?", 1, fun _ _ -> truev)
     Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, testFolder)
-    load globals "README.shen"
-    load globals "tests.shen"
+    globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
+    eval globals (toCons [Sym "load"; Str "README.shen"]) |> ignore
+    eval globals (toCons [Sym "load"; Str "tests.shen"]) |> ignore
     printfn ""
     printfn "Press any key to exit..."
     Console.ReadKey() |> ignore
-    0
 
 [<EntryPoint>]
 let main args =
-    let mutable returnCode = 0
-    let thread = new Thread((fun () -> returnCode <- main0 ()), stackSize)
+    let thread = new Thread(runTestSuite, stackSize)
     thread.Start()
     thread.Join()
-    returnCode
+    0
