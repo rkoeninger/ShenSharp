@@ -14,6 +14,14 @@ open Kl.Load.Reader
 
 module Compiler =
 
+    [<CustomEquality; CustomComparison>]
+    type private RefWrapper<'a when 'a: equality>(value: 'a) =
+        member this.Value with get() = value
+        override this.Equals x = obj.ReferenceEquals(value, x)
+        override this.GetHashCode() = value.GetHashCode()
+        interface IComparable with
+            member this.CompareTo x = this.GetHashCode().CompareTo(x.GetHashCode())
+
     let private genId() = Guid.NewGuid()
     let private formatId id = id.ToString().Substring(0, 8)
 
