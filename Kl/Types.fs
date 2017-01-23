@@ -119,13 +119,21 @@ module Values =
     let truev = Sym "true"
     let falsev = Sym "false"
     let boolv b = if b then truev else falsev
+    let inRange min max value = min <= value && value < max
+    let inRangeInclusive min max value = min <= value && value <= max
     let err s = raise(SimpleError s)
     let errf format = Printf.ksprintf err format
-    let newGlobals() = {Symbols = new Defines<Value>(); Functions = new Defines<Function>()}
+    let newGlobals() = {
+        Symbols = new Defines<Value>()
+        Functions = new Defines<Function>()
+    }
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
+    let (|UnitStr|_|) = function
+        | Str s when s.Length = 1 -> Some s.[0]
+        | _ -> None
     let (|Int|_|) = function
         | Num x when x % 1.0m = 0.0m -> Some(int x)
         | _ -> None
-    let Int = Num << decimal
+    let Int = decimal >> Num

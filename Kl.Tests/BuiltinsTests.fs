@@ -28,7 +28,7 @@ type BuiltinsTests() =
     [<Test>]
     member this.``string->n and n->string functions should be able to result in same character``() =
         assertEq (Str "Hello") (run """(cn (n->string (string->n "Hello")) (tlstr "Hello"))""")
-        
+
     [<Test>]
     member this.``vectors should be pre-filled with Empty``() =
         assertEq (Vec [|Empty; Empty; Empty|]) (run "(absvector 3)")
@@ -46,7 +46,7 @@ type BuiltinsTests() =
         assertError "(tl ())"
         assertNoError "(hd (cons 0 ()))"
         assertNoError "(tl (cons 0 ()))"
-    
+   
     [<Test>]
     member this.``eval-kl evaluating a constant should equal that constant``() =
         assertEq (Int 5) (run "(eval-kl 5)")
@@ -68,6 +68,6 @@ type BuiltinsTests() =
     member this.``append should preserve the original order``() =
         assertEq
             (toCons [Int 1; Int 2; Int 3; Int 4; Int 5; Int 6])
-            (Builtins.klAppend (newGlobals()) [
+            (Builtins.klAppend () [
                 toCons [Int 1; Int 2; Int 3]
                 toCons [Int 4; Int 5; Int 6]])

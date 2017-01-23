@@ -9,8 +9,8 @@ open Kl.Evaluator
 
 module Builtins =
 
-    let private argsErr name (types: string list) (args: Value list) =
-        if types.Length <> args.Length
+    let private argsErr name types args =
+        if List.length types <> List.length args
             then errf "%s expected %A arguments, given %A" name types.Length args.Length
             else errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
@@ -19,17 +19,13 @@ module Builtins =
         | args -> argsErr "intern" ["string"] args
 
     let klStringPos _ = function
-        | [Str s; Int index] ->
-            if index >= 0 && index < s.Length
-                then Str(string s.[index])
-                else errf "Index %i out of bounds for string of length %i" index s.Length
+        | [Str s; Int index] when inRange 0 s.Length index -> Str(string s.[index])
+        | [Str s; Int index] -> errf "Index %i out of bounds for string of length %i" index s.Length
         | args -> argsErr "pos" ["string"; "integer"] args
 
     let klStringTail _ = function
-        | [Str s] ->
-            if (s.Length > 0)
-                then Str(s.Substring 1)
-                else err "strtl expects a non-empty string"
+        | [Str ""] -> err "tlstr expects a non-empty string"
+        | [Str s] -> Str(s.Substring 1)
         | args -> argsErr "tlstr" ["string"] args
 
     let klStringConcat _ = function
@@ -37,7 +33,7 @@ module Builtins =
         | args -> argsErr "cn" ["string"; "string"] args
 
     let klToString _ = function
-        | [x] -> Str(string x)
+        | [x: Value] -> Str(string x)
         | args -> argsErr "str" ["value"] args
 
     let klIsString _ = function
@@ -101,25 +97,22 @@ module Builtins =
 
     let klType _ = function
         | [x; _] -> x
-        | args -> argsErr "type" ["symbol"; "value"] args
+        | args -> argsErr "type" ["value"; "symbol"] args
 
     let klNewVector _ = function
         | [Int length] -> Vec(Array.create length Empty)
         | args -> argsErr "absvector" ["integer"] args
 
     let klReadVector _ = function
-        | [Vec array; Int index] ->
-            if index >= 0 && index < array.Length
-                then array.[index]
-                else errf "Index %i out of bounds for vector of length %i" index array.Length
+        | [Vec array; Int index] when inRange 0 array.Length index -> array.[index]
+        | [Vec array; Int index] -> errf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "<-address" ["vector"; "integer"] args
 
     let klWriteVector _ = function
-        | [Vec array as vector; Int index; value] ->
-            if index >= 0 && index < array.Length
-                then array.[index] <- value
-                     vector
-                else errf "Index %i out of bounds for vector of length %i" index array.Length
+        | [Vec array as vector; Int index; value] when inRange 0 array.Length index ->
+            array.[index] <- value
+            vector
+        | [Vec array; Int index] -> errf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "address->" ["vector"; "integer"; "value"] args
 
     let klIsVector _ = function
@@ -128,13 +121,12 @@ module Builtins =
         | args -> argsErr "absvector?" ["value"] args
 
     let klWriteByte _ = function
-        | [Int i; Pipe io] ->
-            if 0 <= i && i <= 255
-                then let b = byte i
-                     io.Write(b)
-                     Int(int b)
-                else errf "integer value %i is exceeds the range of a byte" i
-        | args -> argsErr "write-byte" ["integer"; "stream"] args
+        | [Int x; Pipe io] when inRange 0 256 x ->
+            let b = byte x
+            io.Write b
+            Int(int b)
+        | [Int x; Pipe _] -> errf "integer value %i is exceeds the range of a byte" x
+        | args -> argsErr "write-byte" ["byte"; "stream"] args
 
     let klReadByte _ = function
         | [Pipe io] -> Int(io.Read())
@@ -229,21 +221,18 @@ module Builtins =
         | args -> argsErr "shen.fillvector" ["vector"; "integer"; "integer"; "value"] args
 
     let klModulus _ = function
+        | [_; Num 0m] -> err "Modulus by zero"
         | [Num x; Num y] -> Num(x % y)
         | args -> argsErr "shen.mod" ["number"; "number"] args
 
     let klIsAlpha _ = function
-        | [Str s] ->
-            if s.Length <> 1
-                then err "String must be 1 character long"
-                else boolv(('A' <= s.[0] && s.[0] <= 'Z') || ('a' <= s.[0] && 'z' <= s.[0]))
+        | [UnitStr ch] -> boolv(inRangeInclusive 'A' 'Z' ch || inRangeInclusive 'a' 'z' ch)
+        | [Str _] -> err "String must be 1 character long"
         | args -> argsErr "shen.alpha?" ["string"] args
 
     let klIsDigit _ = function
-        | [Str s] ->
-            if s.Length <> 1
-                then err "String must be 1 character long"
-                else boolv('0' <= s.[0] && s.[0] <= '9')
+        | [UnitStr ch] -> boolv(inRangeInclusive '0' '9' ch)
+        | [Str _] -> err "String must be 1 character long"
         | args -> argsErr "shen.digit?" ["string"] args
 
     let rec klAppend globals = function
