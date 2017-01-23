@@ -36,7 +36,7 @@ and Locals = Map<string, Value>
 /// <summary>
 /// The different types of functions in KL.
 /// </summary>
-and [<ReferenceEquality>] Function =
+and [<ReferenceEquality; DebuggerDisplay("{ToString(),nq}")>] Function =
     | Native  of string * int * (Globals -> Value list -> Value)
     | Defun   of string * string list * Value
     | Lambda  of string * Locals * Value
