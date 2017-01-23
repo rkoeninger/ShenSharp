@@ -14,94 +14,54 @@ open Kl.Load.Reader
 
 module Compiler =
 
-    [<CustomEquality; CustomComparison>]
-    type private RefWrapper<'a when 'a: equality>(value: 'a) =
-        member this.Value with get() = value
-        override this.Equals x = obj.ReferenceEquals(value, x)
-        override this.GetHashCode() = value.GetHashCode()
-        interface IComparable with
-            member this.CompareTo x = this.GetHashCode().CompareTo(x.GetHashCode())
+    let private genId() = "array" + Guid.NewGuid().ToString().Substring(0, 8)
 
-    let private genId() = Guid.NewGuid()
-    let private formatId id = id.ToString().Substring(0, 8)
+    let private appendArrays xs ys =
+        List.append xs (List.filter (fun y -> not(List.contains y xs)) ys)
 
-    type private RefId = Guid
+    let rec private findArrays = function
+        | Cons(x, y) -> appendArrays (findArrays x) (findArrays y)
+        | Vec array -> [array]
+        | _ -> []
 
-    type private LiftedValue =
-        | LiftedEmpty
-        | LiftedNum of decimal
-        | LiftedStr of string
-        | LiftedSym of string
-        | LiftedCons of LiftedValue * LiftedValue
-        | LiftedVec of RefId
-        | LiftedFreeze of Locals * LiftedValue
-        | LiftedLambda of string * Locals * LiftedValue
+    let private buildRefs arrays = List.map (fun a -> (a, genId())) arrays
 
-    type private ExtractedValue =
-        | ExtractedVec of LiftedValue array
-
-    type private Refs = (RefId * ExtractedValue) list
-
-    // TODO: Vectors are not checked for equality (same vector referred to in multiple places)
-
-    let rec private lift = function
-        | Empty -> [], LiftedEmpty
-        | Num n -> [], LiftedNum n
-        | Str s -> [], LiftedStr s
-        | Sym s -> [], LiftedSym s
-        | Cons(x, y) ->
-            let (xRefs, xl) = lift x
-            let (yRefs, yl) = lift y
-            List.append xRefs yRefs, LiftedCons(xl, yl)
-        | Vec array ->
-            let id = genId()
-            let liftedArray = Array.map lift array
-            let childIds = List.concat (Seq.map fst liftedArray)
-            let extractedArray = Array.map snd liftedArray
-            List.append childIds [id, ExtractedVec extractedArray], LiftedVec id
-        | Func(Freeze(locals, body)) ->
-            let (refs, liftedBody) = lift body
-            refs, LiftedFreeze(locals, liftedBody)
-        | Func(Lambda(param, locals, body)) ->
-            let (refs, liftedBody) = lift body
-            refs, LiftedLambda(param, locals, liftedBody)
-        | x -> failwithf "%O can't be lifted" x
-
-    let rec private encode = function
+    let rec private encode arrayRefs = function
         | Empty -> "Empty"
         | Num n -> sprintf "Num %sm" ((Num n).ToString())
         | Str s -> sprintf "Str \"%s\"" (s.Replace("\r", "\\r").Replace("\n", "\\n"))
         | Sym s -> sprintf "Sym \"%s\"" s
-        | Cons(x, y) -> sprintf "Cons(%s, %s)" (encode x) (encode y)
+        | Cons(x, y) -> sprintf "Cons(%s, %s)" (encode arrayRefs x) (encode arrayRefs y)
+        | Vec array -> sprintf "Vec %s" (snd (List.find (fun (a, _) -> obj.ReferenceEquals(a, array)) arrayRefs))
         | Func(Freeze(locals, body)) ->
-            sprintf "Freeze(%s, %s)" (encodeLocals locals) (encode body)
+            sprintf "Freeze(%s, %s)" (encodeLocals arrayRefs locals) (encode arrayRefs body)
         | Func(Lambda(param, locals, body)) ->
-            sprintf "Lambda(\"%s\", %s, %s)" param (encodeLocals locals) (encode body)
+            sprintf "Lambda(\"%s\", %s, %s)" param (encodeLocals arrayRefs locals) (encode arrayRefs body)
         | x -> failwithf "%O can't be encoded" x
 
         // extract vectors and init them before building entire expression
 
-    and private encodeVector line name array =
+    and private encodeVector line arrayRefs name array =
         let tempId = Guid.NewGuid().ToString().Substring(0, 8)
         line <| sprintf "let array%s = Array.create %i (Sym \"shen.fail!\")" tempId (Array.length array)
         for (index, value) in Seq.zip (seq {0 .. 20000}) array do
             match value with
             | Sym "shen.fail!" -> ()
-            | _ -> line <| sprintf "array%s.[%i] <- %s" tempId index (encode value)
+            | _ -> line <| sprintf "array%s.[%i] <- %s" tempId index (encode arrayRefs value)
         line <| sprintf "globals.Symbols.[\"%s\"] <- Vec array%s" name tempId
 
-    and private encodeLocals locals =
-        sprintf "Map [%s] " (String.Join("; ", Map.map (fun k v -> sprintf "%s, %s" k (encode v)) locals))
+    and private encodeLocals arrayRefs locals =
+        sprintf "Map [%s] " (String.Join("; ", Map.map (fun k v -> sprintf "%s, %s" k (encode arrayRefs v)) locals))
 
-    let encodeSymbol line name value =
+    let encodeSymbol line arrayRefs name value =
         match value with
-        | Vec array -> encodeVector line name array
-        | _ -> line <| sprintf "globals.Symbols.[\"%s\"] <- %s" name (encode value)
+        | Vec array -> encodeVector line arrayRefs name array
+        | _ -> line <| sprintf "globals.Symbols.[\"%s\"] <- %s" name (encode arrayRefs value)
 
-    let encodeFunction line name = function
+    let encodeFunction line arrayRefs name = function
         | Defun(name, paramz, body) ->
             let paramzString = String.Join("; ", paramz |> Seq.map (sprintf "\"%s\""))
-            line <| sprintf "globals.Functions.[\"%s\"] <- Defun(\"%s\", [%s], %s)" name name paramzString (encode body)
+            line <| sprintf "globals.Functions.[\"%s\"] <- Defun(\"%s\", [%s], %s)" name name paramzString (encode arrayRefs body)
         | _ -> ()
 
     let load klFolder klFiles =
