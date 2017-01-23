@@ -55,6 +55,7 @@ module Compiler =
 
     let encodeSymbol line arrayRefs name value =
         match value with
+        // TODO: Just emit reference
         | Vec array -> encodeVector line arrayRefs name array
         | _ -> line <| sprintf "globals.Symbols.[\"%s\"] <- %s" name (encode arrayRefs value)
 
@@ -88,37 +89,43 @@ module Compiler =
     let compile klFolder klFiles =
         if not(File.Exists "Installer.dll") then
             let globals = load klFolder klFiles
-//            printfn "Generating installation code..."
-//            let buffer = new StringBuilder()
-//            let line s = buffer.AppendLine s |> ignore
-//            line "namespace Kl.Installation"
-//            line "open Kl"
-//            line "open Kl.Values"
-//            line "type Installer() ="
-//            line "    member this.Install(globals: Globals) ="
-//            let origGlobals = baseGlobals()
-//            for kv in globals.Symbols do
-//                if not(Seq.contains kv.Key origGlobals.Symbols.Keys) then
-//                    encodeSymbol (fun s -> line <| "        " + s) kv.Key kv.Value
-//            for kv in globals.Functions do
-//                if not(Seq.contains kv.Key origGlobals.Functions.Keys) then
-//                    if not(List.contains kv.Key ["exit"]) then
-//                        encodeFunction (fun s -> line <| "        " + s) kv.Key kv.Value
-//            line "        ()"
-//            File.WriteAllText("Installer.fs", buffer.ToString())
-//            printfn "Compiling installation code..."
-//            let service = new SimpleSourceCodeServices()
-//            let options = [|
-//                "fsc.exe"
-//                "-o"; "Installer.dll"
-//                "-a"; "Installer.fs"
-//                "-r"; "Kl.dll"
-//            |]
-//            let (errors, returnCode) = service.Compile options
-//            if returnCode <> 0 then
-//                raise <| new Exception(String.Join(", ", Seq.map (fun (e: FSharpErrorInfo) -> e.Message) errors))
-//            printfn "Installation code cached."
-//            printfn ""
+            printfn "Generating installation code..."
+            let buffer = new StringBuilder()
+            let line s = buffer.AppendLine s |> ignore
+            line "namespace Kl.Installation"
+            line "open Kl"
+            line "open Kl.Values"
+            line "type Installer() ="
+            line "    member this.Install(globals: Globals) ="
+            let origGlobals = baseGlobals()
+            for kv in globals.Symbols do
+                if not(Seq.contains kv.Key origGlobals.Symbols.Keys) then
+                    let arrayRefs = buildRefs (findArrays kv.Value)
+                    for (array, arrayName) in arrayRefs do
+                        line <| "        let " + arrayName + " = Array.create " + string (Array.length array) + " (Sym \"shen.fail!\")"
+                        for (index, item) in Seq.zip (seq {0 .. 20001}) array do
+                            if item <> Sym "shen.fail!" then
+                                line <| "        " + arrayName + ".[" + string index + "] <- " + encode arrayRefs item
+                    encodeSymbol (fun s -> line <| "        " + s) arrayRefs kv.Key kv.Value
+            for kv in globals.Functions do
+                if not(Seq.contains kv.Key origGlobals.Functions.Keys) then
+                    if not(List.contains kv.Key ["exit"]) then
+                        encodeFunction (fun s -> line <| "        " + s) [] kv.Key kv.Value
+            line "        ()"
+            File.WriteAllText("Installer.fs", buffer.ToString())
+            printfn "Compiling installation code..."
+            let service = new SimpleSourceCodeServices()
+            let options = [|
+                "fsc.exe"
+                "-o"; "Installer.dll"
+                "-a"; "Installer.fs"
+                "-r"; "Kl.dll"
+            |]
+            let (errors, returnCode) = service.Compile options
+            if returnCode <> 0 then
+                raise <| new Exception(String.Join(", ", Seq.map (fun (e: FSharpErrorInfo) -> e.Message) errors))
+            printfn "Installation code cached."
+            printfn ""
             globals
         else
             printfn "Loading cached assembly..."
