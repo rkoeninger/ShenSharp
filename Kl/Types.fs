@@ -7,11 +7,9 @@ open System.IO
 open System.Text
 
 /// <summary>
-/// Exception type that represents KL errors raised by (simple-error).
+/// A wrapper around a stream. Has a Name property
+/// for easy reference in the REPL.
 /// </summary>
-type SimpleError(message) =
-    inherit Exception(message)
-
 type [<ReferenceEquality>] IO = {
     Name: string
     Read: unit -> int
@@ -55,7 +53,7 @@ and [<ReferenceEquality>] Function =
 /// <summary>
 /// A value in KL.
 /// </summary>
-and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
+and [<DebuggerDisplay("{ToString(),nq}")>] Value =
     | Empty
     | Num  of decimal
     | Str  of string
@@ -65,33 +63,6 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
     | Err  of string
     | Func of Function
     | Pipe of IO
-    override this.Equals(that: obj) =
-        match that with
-        | :? Value as that ->
-            match this, that with
-            | Empty, Empty   -> true
-            | Num x, Num y   -> x = y
-            | Str x, Str y   -> x = y
-            | Sym x, Sym y   -> x = y
-            | Cons(x1, y1),
-              Cons(x2, y2)   -> x1 = x2 && y1 = y2
-            | Vec xs, Vec ys -> xs = ys
-            | Err x, Err y   -> x = y
-            | Func x, Func y -> x = y
-            | Pipe x, Pipe y -> x = y
-            | _, _ -> false
-        | _ -> false
-    override this.GetHashCode() =
-        match this with
-        | Empty      -> 1
-        | Num x      -> hash x
-        | Str s      -> hash s
-        | Sym s      -> hash s
-        | Cons(x, y) -> hash x ^^^ hash y
-        | Vec xs     -> hash xs
-        | Err x      -> hash x
-        | Func x     -> hash x
-        | Pipe x     -> hash x
     override this.ToString() =
         let rec toList = function
             | Cons(x, y) -> x :: toList y
@@ -106,6 +77,12 @@ and [<CustomEquality; NoComparison; DebuggerDisplay("{ToString()}")>] Value =
         | Err s   -> sprintf "<Error (%s)>" s
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream (%s)>" io.Name
+
+/// <summary>
+/// Exception type that represents KL errors raised by (simple-error).
+/// </summary>
+type SimpleError(message) =
+    inherit Exception(message)
 
 type ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())

@@ -45,7 +45,12 @@ type ValuesTests() =
     [<Test>]
     member this.``Streams can be compared for equality``() =
         let s = new MemoryStream()
-        let io = { Name = "Buffer"; Read = s.ReadByte; Write = s.WriteByte; Close = s.Close }
+        let io = {
+            Name = "Buffer"
+            Read = s.ReadByte
+            Write = s.WriteByte
+            Close = s.Close
+        }
         assertEq (Pipe io) (Pipe io)
 
     [<Test>]
