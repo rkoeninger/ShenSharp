@@ -7,7 +7,7 @@
 
 ShenSharp is a port of the [Shen language](http://shenlanguage.org/) to the CLR.
 
-Shen is a portable, functional programming language by [Mark Tarver](http://www.lambdassociates.org/) that offers pattern matching, macros, optional lazy evaluation, static type checking, logic programming and a compiler-compiler. Shen is a descendant of the LISP family of languages that also includes features commonly found in ML family languages.
+Shen is a portable, functional programming language by [Mark Tarver](http://www.shenlanguage.org/lambdassociates/htdocs/index.htm) that offers pattern matching, macros, optional lazy evaluation, static type checking, logic programming and a compiler-compiler. Shen is a descendant of the LISP family of languages that also includes features commonly found in ML family languages.
 
 Currently implemented as an interpreter, ShenSharp loads and runs Shen code on demand. The interpreter approach suffers from poor performance, but optimizations are forthcoming.
 
