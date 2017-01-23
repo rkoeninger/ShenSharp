@@ -41,23 +41,11 @@ module Compiler =
 
         // extract vectors and init them before building entire expression
 
-    and private encodeVector line arrayRefs name array =
-        let tempId = Guid.NewGuid().ToString().Substring(0, 8)
-        line <| sprintf "let array%s = Array.create %i (Sym \"shen.fail!\")" tempId (Array.length array)
-        for (index, value) in Seq.zip (seq {0 .. 20000}) array do
-            match value with
-            | Sym "shen.fail!" -> ()
-            | _ -> line <| sprintf "array%s.[%i] <- %s" tempId index (encode arrayRefs value)
-        line <| sprintf "globals.Symbols.[\"%s\"] <- Vec array%s" name tempId
-
     and private encodeLocals arrayRefs locals =
         sprintf "Map [%s] " (String.Join("; ", Map.map (fun k v -> sprintf "%s, %s" k (encode arrayRefs v)) locals))
 
     let encodeSymbol line arrayRefs name value =
-        match value with
-        // TODO: Just emit reference
-        | Vec array -> encodeVector line arrayRefs name array
-        | _ -> line <| sprintf "globals.Symbols.[\"%s\"] <- %s" name (encode arrayRefs value)
+        line <| sprintf "globals.Symbols.[\"%s\"] <- %s" name (encode arrayRefs value)
 
     let encodeFunction line arrayRefs name = function
         | Defun(name, paramz, body) ->
@@ -102,15 +90,15 @@ module Compiler =
                 if not(Seq.contains kv.Key origGlobals.Symbols.Keys) then
                     let arrayRefs = buildRefs (findArrays kv.Value)
                     for (array, arrayName) in arrayRefs do
+                        // TODO: not finding the nested (@v 0) vector while searching the *property-vector*
                         line <| "        let " + arrayName + " = Array.create " + string (Array.length array) + " (Sym \"shen.fail!\")"
                         for (index, item) in Seq.zip (seq {0 .. 20001}) array do
                             if item <> Sym "shen.fail!" then
                                 line <| "        " + arrayName + ".[" + string index + "] <- " + encode arrayRefs item
                     encodeSymbol (fun s -> line <| "        " + s) arrayRefs kv.Key kv.Value
             for kv in globals.Functions do
-                if not(Seq.contains kv.Key origGlobals.Functions.Keys) then
-                    if not(List.contains kv.Key ["exit"]) then
-                        encodeFunction (fun s -> line <| "        " + s) [] kv.Key kv.Value
+                if not(Seq.contains kv.Key origGlobals.Functions.Keys || List.contains kv.Key ["exit"]) then
+                    encodeFunction (fun s -> line <| "        " + s) [] kv.Key kv.Value
             line "        ()"
             File.WriteAllText("Installer.fs", buffer.ToString())
             printfn "Compiling installation code..."
