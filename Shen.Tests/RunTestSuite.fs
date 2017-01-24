@@ -9,8 +9,8 @@ open Kl.Evaluator
 open Kl.Load.Compiler
 
 let stackSize = 16777216
-let testFolder = @"..\..\..\Shen.Tests.Source"
-let klFolder = @"..\..\..\Kl.Source"
+let testFolder = @"..\..\..\Distribution\Tests"
+let klFolder = @"..\..\..\Distribution\Kl"
 let klFiles = [
     "toplevel.kl"
     "core.kl"
