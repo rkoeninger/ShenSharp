@@ -20,6 +20,7 @@ This port [passes all tests in the Shen standard test suite](https://gist.github
 ### Shen Resources
   * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
   * [Tutorial](http://www.shenlanguage.org/learn-shen/index.html)
+  * [Wiki](https://github.com/Shen-Language/wiki/wiki)
   * [Mailing List](https://groups.google.com/forum/#!forum/qilang)
 
 ### CLR Platform Support Status
