@@ -3,7 +3,7 @@
 
 # ShenSharp
 
-![神#](https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/ShenSharp.png)
+![神#](https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/Assets/ShenSharp.png)
 
 ShenSharp is a port of the [Shen language](http://shenlanguage.org/) to the CLR.
 
