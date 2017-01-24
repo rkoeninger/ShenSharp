@@ -3,9 +3,6 @@ notifications:
 branches:
   only:
     - master
-os:
-  - linux
-  - osx
 language: csharp
 solution: ShenSharp.sln
 install:
