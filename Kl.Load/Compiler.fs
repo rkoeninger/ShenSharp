@@ -16,12 +16,9 @@ module Compiler =
 
     let private genId() = "array" + Guid.NewGuid().ToString().Substring(0, 8)
 
-    let private appendArrays xs ys =
-        List.append xs (List.filter (fun y -> not(List.contains y xs)) ys)
-
     let rec private findArrays = function
-        | Cons(x, y) -> appendArrays (findArrays x) (findArrays y)
-        | Vec array -> [array]
+        | Cons(x, y) -> List.append (findArrays x) (findArrays y)
+        | Vec array -> List.append (List.collect findArrays (Array.toList array)) [array]
         | _ -> []
 
     let private buildRefs arrays = List.map (fun a -> (a, genId())) arrays
@@ -34,12 +31,10 @@ module Compiler =
         | Cons(x, y) -> sprintf "Cons(%s, %s)" (encode arrayRefs x) (encode arrayRefs y)
         | Vec array -> sprintf "Vec %s" (snd (List.find (fun (a, _) -> obj.ReferenceEquals(a, array)) arrayRefs))
         | Func(Freeze(locals, body)) ->
-            sprintf "Freeze(%s, %s)" (encodeLocals arrayRefs locals) (encode arrayRefs body)
+            sprintf "Func(Freeze(%s, %s))" (encodeLocals arrayRefs locals) (encode arrayRefs body)
         | Func(Lambda(param, locals, body)) ->
-            sprintf "Lambda(\"%s\", %s, %s)" param (encodeLocals arrayRefs locals) (encode arrayRefs body)
+            sprintf "Func(Lambda(\"%s\", %s, %s))" param (encodeLocals arrayRefs locals) (encode arrayRefs body)
         | x -> failwithf "%O can't be encoded" x
-
-        // extract vectors and init them before building entire expression
 
     and private encodeLocals arrayRefs locals =
         sprintf "Map [%s] " (String.Join("; ", Map.map (fun k v -> sprintf "%s, %s" k (encode arrayRefs v)) locals))
@@ -84,7 +79,7 @@ module Compiler =
             line "open Kl"
             line "open Kl.Values"
             line "type Installer() ="
-            line "    member this.Install(globals: Globals) ="
+            line "    static member Install(globals: Globals) ="
             let origGlobals = baseGlobals()
             for kv in globals.Symbols do
                 if not(Seq.contains kv.Key origGlobals.Symbols.Keys) then
@@ -118,8 +113,9 @@ module Compiler =
         else
             printfn "Loading cached assembly..."
             printfn ""
-            let assembly = Assembly.LoadFile("Installer.dll")
+            let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, "Installer.dll"))
             let installation = assembly.GetType("Kl.Installation.Installer")
-            let install = installation.GetMethod("Install", BindingFlags.Static)
+            let install = installation.GetMethod("Install")
             let globals = baseGlobals()
-            install.Invoke(null, [|globals|]) :?> Globals
+            install.Invoke(null, [|globals|]) |> ignore
+            globals
