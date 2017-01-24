@@ -20,99 +20,101 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Tests", "Shen.Tests\Shen.Tests.fsproj", "{65484F8F-D542-4F87-99A9-23A6C50C35BF}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Kl.Source", "Kl.Source", "{D7456AFE-A50A-41AB-957D-1F5E09E1C828}"
-	ProjectSection(SolutionItems) = preProject
-		Kl.Source\core.kl = Kl.Source\core.kl
-		Kl.Source\declarations.kl = Kl.Source\declarations.kl
-		Kl.Source\load.kl = Kl.Source\load.kl
-		Kl.Source\macros.kl = Kl.Source\macros.kl
-		Kl.Source\prolog.kl = Kl.Source\prolog.kl
-		Kl.Source\reader.kl = Kl.Source\reader.kl
-		Kl.Source\sequent.kl = Kl.Source\sequent.kl
-		Kl.Source\sys.kl = Kl.Source\sys.kl
-		Kl.Source\t-star.kl = Kl.Source\t-star.kl
-		Kl.Source\toplevel.kl = Kl.Source\toplevel.kl
-		Kl.Source\track.kl = Kl.Source\track.kl
-		Kl.Source\types.kl = Kl.Source\types.kl
-		Kl.Source\writer.kl = Kl.Source\writer.kl
-		Kl.Source\yacc.kl = Kl.Source\yacc.kl
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shen.Tests.Source", "Shen.Tests.Source", "{DE2EF6E8-7619-4B10-9FA8-CB1C2A19AE3F}"
-	ProjectSection(SolutionItems) = preProject
-		Shen.Tests.Source\binary.shen = Shen.Tests.Source\binary.shen
-		Shen.Tests.Source\bubble version 1.shen = Shen.Tests.Source\bubble version 1.shen
-		Shen.Tests.Source\bubble version 2.shen = Shen.Tests.Source\bubble version 2.shen
-		Shen.Tests.Source\calculator.shen = Shen.Tests.Source\calculator.shen
-		Shen.Tests.Source\cartprod.shen = Shen.Tests.Source\cartprod.shen
-		Shen.Tests.Source\change.shen = Shen.Tests.Source\change.shen
-		Shen.Tests.Source\classes-defaults.shen = Shen.Tests.Source\classes-defaults.shen
-		Shen.Tests.Source\classes-inheritance.shen = Shen.Tests.Source\classes-inheritance.shen
-		Shen.Tests.Source\classes-typed.shen = Shen.Tests.Source\classes-typed.shen
-		Shen.Tests.Source\classes-untyped.shen = Shen.Tests.Source\classes-untyped.shen
-		Shen.Tests.Source\depth'.shen = Shen.Tests.Source\depth'.shen
-		Shen.Tests.Source\einstein.shen = Shen.Tests.Source\einstein.shen
-		Shen.Tests.Source\fruit machine.shen = Shen.Tests.Source\fruit machine.shen
-		Shen.Tests.Source\interpreter.shen = Shen.Tests.Source\interpreter.shen
-		Shen.Tests.Source\metaprog.shen = Shen.Tests.Source\metaprog.shen
-		Shen.Tests.Source\minim.shen = Shen.Tests.Source\minim.shen
-		Shen.Tests.Source\mutual.shen = Shen.Tests.Source\mutual.shen
-		Shen.Tests.Source\n queens.shen = Shen.Tests.Source\n queens.shen
-		Shen.Tests.Source\newton version 1.shen = Shen.Tests.Source\newton version 1.shen
-		Shen.Tests.Source\newton version 2.shen = Shen.Tests.Source\newton version 2.shen
-		Shen.Tests.Source\parse.prl = Shen.Tests.Source\parse.prl
-		Shen.Tests.Source\parser.shen = Shen.Tests.Source\parser.shen
-		Shen.Tests.Source\powerset.shen = Shen.Tests.Source\powerset.shen
-		Shen.Tests.Source\prime.shen = Shen.Tests.Source\prime.shen
-		Shen.Tests.Source\prolog.shen = Shen.Tests.Source\prolog.shen
-		Shen.Tests.Source\proof assistant.shen = Shen.Tests.Source\proof assistant.shen
-		Shen.Tests.Source\proplog version 1.shen = Shen.Tests.Source\proplog version 1.shen
-		Shen.Tests.Source\proplog version 2.shen = Shen.Tests.Source\proplog version 2.shen
-		Shen.Tests.Source\qmachine.shen = Shen.Tests.Source\qmachine.shen
-		Shen.Tests.Source\README.shen = Shen.Tests.Source\README.shen
-		Shen.Tests.Source\red-black.shen = Shen.Tests.Source\red-black.shen
-		Shen.Tests.Source\search.shen = Shen.Tests.Source\search.shen
-		Shen.Tests.Source\semantic net.shen = Shen.Tests.Source\semantic net.shen
-		Shen.Tests.Source\spreadsheet.shen = Shen.Tests.Source\spreadsheet.shen
-		Shen.Tests.Source\stack.shen = Shen.Tests.Source\stack.shen
-		Shen.Tests.Source\streams.shen = Shen.Tests.Source\streams.shen
-		Shen.Tests.Source\strings.shen = Shen.Tests.Source\strings.shen
-		Shen.Tests.Source\structures-typed.shen = Shen.Tests.Source\structures-typed.shen
-		Shen.Tests.Source\structures-untyped.shen = Shen.Tests.Source\structures-untyped.shen
-		Shen.Tests.Source\tests.shen = Shen.Tests.Source\tests.shen
-		Shen.Tests.Source\TinyLispFunctions.txt = Shen.Tests.Source\TinyLispFunctions.txt
-		Shen.Tests.Source\TinyTypes.shen = Shen.Tests.Source\TinyTypes.shen
-		Shen.Tests.Source\types.shen = Shen.Tests.Source\types.shen
-		Shen.Tests.Source\whist.shen = Shen.Tests.Source\whist.shen
-		Shen.Tests.Source\yacc.shen = Shen.Tests.Source\yacc.shen
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chap13", "Chap13", "{AF801D02-E322-400F-B5B2-30F729839672}"
-	ProjectSection(SolutionItems) = preProject
-		Shen.Tests.Source\Chap13\problems.txt = Shen.Tests.Source\Chap13\problems.txt
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shen.Source", "Shen.Source", "{95D60277-F1CE-43BB-B62C-FCB8BBE3F8E9}"
-	ProjectSection(SolutionItems) = preProject
-		Shen.Source\backend.shen = Shen.Source\backend.shen
-		Shen.Source\core.shen = Shen.Source\core.shen
-		Shen.Source\declarations.shen = Shen.Source\declarations.shen
-		Shen.Source\load.shen = Shen.Source\load.shen
-		Shen.Source\macros.shen = Shen.Source\macros.shen
-		Shen.Source\make.shen = Shen.Source\make.shen
-		Shen.Source\prolog.shen = Shen.Source\prolog.shen
-		Shen.Source\reader.shen = Shen.Source\reader.shen
-		Shen.Source\sequent.shen = Shen.Source\sequent.shen
-		Shen.Source\sys.shen = Shen.Source\sys.shen
-		Shen.Source\t-star.shen = Shen.Source\t-star.shen
-		Shen.Source\toplevel.shen = Shen.Source\toplevel.shen
-		Shen.Source\track.shen = Shen.Source\track.shen
-		Shen.Source\types.shen = Shen.Source\types.shen
-		Shen.Source\writer.shen = Shen.Source\writer.shen
-		Shen.Source\yacc.shen = Shen.Source\yacc.shen
-	EndProjectSection
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl.Load", "Kl.Load\Kl.Load.fsproj", "{5EA0DBC2-329B-4075-BEE2-EF83186C5529}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Distribution", "Distribution", "{952AF58D-64E0-499B-B881-F66C2218FFA1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Kl", "Kl", "{98C425F5-007B-4AFC-9DBC-6FB9F3C1F60A}"
+	ProjectSection(SolutionItems) = preProject
+		Distribution\Kl\core.kl = Distribution\Kl\core.kl
+		Distribution\Kl\declarations.kl = Distribution\Kl\declarations.kl
+		Distribution\Kl\load.kl = Distribution\Kl\load.kl
+		Distribution\Kl\macros.kl = Distribution\Kl\macros.kl
+		Distribution\Kl\prolog.kl = Distribution\Kl\prolog.kl
+		Distribution\Kl\reader.kl = Distribution\Kl\reader.kl
+		Distribution\Kl\sequent.kl = Distribution\Kl\sequent.kl
+		Distribution\Kl\sys.kl = Distribution\Kl\sys.kl
+		Distribution\Kl\t-star.kl = Distribution\Kl\t-star.kl
+		Distribution\Kl\toplevel.kl = Distribution\Kl\toplevel.kl
+		Distribution\Kl\track.kl = Distribution\Kl\track.kl
+		Distribution\Kl\types.kl = Distribution\Kl\types.kl
+		Distribution\Kl\writer.kl = Distribution\Kl\writer.kl
+		Distribution\Kl\yacc.kl = Distribution\Kl\yacc.kl
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shen", "Shen", "{83FB8880-9570-4CFD-805F-21CCFFFC6918}"
+	ProjectSection(SolutionItems) = preProject
+		Distribution\Shen\backend.shen = Distribution\Shen\backend.shen
+		Distribution\Shen\core.shen = Distribution\Shen\core.shen
+		Distribution\Shen\declarations.shen = Distribution\Shen\declarations.shen
+		Distribution\Shen\load.shen = Distribution\Shen\load.shen
+		Distribution\Shen\macros.shen = Distribution\Shen\macros.shen
+		Distribution\Shen\make.shen = Distribution\Shen\make.shen
+		Distribution\Shen\prolog.shen = Distribution\Shen\prolog.shen
+		Distribution\Shen\reader.shen = Distribution\Shen\reader.shen
+		Distribution\Shen\sequent.shen = Distribution\Shen\sequent.shen
+		Distribution\Shen\sys.shen = Distribution\Shen\sys.shen
+		Distribution\Shen\t-star.shen = Distribution\Shen\t-star.shen
+		Distribution\Shen\toplevel.shen = Distribution\Shen\toplevel.shen
+		Distribution\Shen\track.shen = Distribution\Shen\track.shen
+		Distribution\Shen\types.shen = Distribution\Shen\types.shen
+		Distribution\Shen\writer.shen = Distribution\Shen\writer.shen
+		Distribution\Shen\yacc.shen = Distribution\Shen\yacc.shen
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{503C4118-CA58-43AE-9E7C-6D15387082AF}"
+	ProjectSection(SolutionItems) = preProject
+		Distribution\Tests\binary.shen = Distribution\Tests\binary.shen
+		Distribution\Tests\bubble version 1.shen = Distribution\Tests\bubble version 1.shen
+		Distribution\Tests\bubble version 2.shen = Distribution\Tests\bubble version 2.shen
+		Distribution\Tests\calculator.shen = Distribution\Tests\calculator.shen
+		Distribution\Tests\cartprod.shen = Distribution\Tests\cartprod.shen
+		Distribution\Tests\change.shen = Distribution\Tests\change.shen
+		Distribution\Tests\classes-defaults.shen = Distribution\Tests\classes-defaults.shen
+		Distribution\Tests\classes-inheritance.shen = Distribution\Tests\classes-inheritance.shen
+		Distribution\Tests\classes-typed.shen = Distribution\Tests\classes-typed.shen
+		Distribution\Tests\classes-untyped.shen = Distribution\Tests\classes-untyped.shen
+		Distribution\Tests\depth'.shen = Distribution\Tests\depth'.shen
+		Distribution\Tests\einstein.shen = Distribution\Tests\einstein.shen
+		Distribution\Tests\fruit machine.shen = Distribution\Tests\fruit machine.shen
+		Distribution\Tests\interpreter.shen = Distribution\Tests\interpreter.shen
+		Distribution\Tests\metaprog.shen = Distribution\Tests\metaprog.shen
+		Distribution\Tests\minim.shen = Distribution\Tests\minim.shen
+		Distribution\Tests\mutual.shen = Distribution\Tests\mutual.shen
+		Distribution\Tests\n queens.shen = Distribution\Tests\n queens.shen
+		Distribution\Tests\newton version 1.shen = Distribution\Tests\newton version 1.shen
+		Distribution\Tests\newton version 2.shen = Distribution\Tests\newton version 2.shen
+		Distribution\Tests\parse.prl = Distribution\Tests\parse.prl
+		Distribution\Tests\parser.shen = Distribution\Tests\parser.shen
+		Distribution\Tests\powerset.shen = Distribution\Tests\powerset.shen
+		Distribution\Tests\prime.shen = Distribution\Tests\prime.shen
+		Distribution\Tests\prolog.shen = Distribution\Tests\prolog.shen
+		Distribution\Tests\proof assistant.shen = Distribution\Tests\proof assistant.shen
+		Distribution\Tests\proplog version 1.shen = Distribution\Tests\proplog version 1.shen
+		Distribution\Tests\proplog version 2.shen = Distribution\Tests\proplog version 2.shen
+		Distribution\Tests\qmachine.shen = Distribution\Tests\qmachine.shen
+		Distribution\Tests\README.shen = Distribution\Tests\README.shen
+		Distribution\Tests\red-black.shen = Distribution\Tests\red-black.shen
+		Distribution\Tests\search.shen = Distribution\Tests\search.shen
+		Distribution\Tests\semantic net.shen = Distribution\Tests\semantic net.shen
+		Distribution\Tests\spreadsheet.shen = Distribution\Tests\spreadsheet.shen
+		Distribution\Tests\stack.shen = Distribution\Tests\stack.shen
+		Distribution\Tests\streams.shen = Distribution\Tests\streams.shen
+		Distribution\Tests\strings.shen = Distribution\Tests\strings.shen
+		Distribution\Tests\structures-typed.shen = Distribution\Tests\structures-typed.shen
+		Distribution\Tests\structures-untyped.shen = Distribution\Tests\structures-untyped.shen
+		Distribution\Tests\tests.shen = Distribution\Tests\tests.shen
+		Distribution\Tests\TinyLispFunctions.txt = Distribution\Tests\TinyLispFunctions.txt
+		Distribution\Tests\TinyTypes.shen = Distribution\Tests\TinyTypes.shen
+		Distribution\Tests\types.shen = Distribution\Tests\types.shen
+		Distribution\Tests\whist.shen = Distribution\Tests\whist.shen
+		Distribution\Tests\yacc.shen = Distribution\Tests\yacc.shen
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chap13", "Chap13", "{EA5D8677-8964-40D0-9879-C5872787F345}"
+	ProjectSection(SolutionItems) = preProject
+		Distribution\Tests\Chap13\problems.txt = Distribution\Tests\Chap13\problems.txt
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -145,6 +147,9 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{AF801D02-E322-400F-B5B2-30F729839672} = {DE2EF6E8-7619-4B10-9FA8-CB1C2A19AE3F}
+		{98C425F5-007B-4AFC-9DBC-6FB9F3C1F60A} = {952AF58D-64E0-499B-B881-F66C2218FFA1}
+		{83FB8880-9570-4CFD-805F-21CCFFFC6918} = {952AF58D-64E0-499B-B881-F66C2218FFA1}
+		{503C4118-CA58-43AE-9E7C-6D15387082AF} = {952AF58D-64E0-499B-B881-F66C2218FFA1}
+		{EA5D8677-8964-40D0-9879-C5872787F345} = {503C4118-CA58-43AE-9E7C-6D15387082AF}
 	EndGlobalSection
 EndGlobal
