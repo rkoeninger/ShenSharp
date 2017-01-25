@@ -76,4 +76,10 @@
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
+  <Target Name="RemoveOutDir" AfterTargets="Clean">
+    <ItemGroup>
+      <OutDirDlls Include="$(OutDir)\*.dll"/>
+    </ItemGroup>
+    <Delete Files="@(OutDirDlls)" />
+  </Target>
 </Project>
