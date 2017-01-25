@@ -1,7 +1,6 @@
 ﻿namespace Kl.Load
 
 open System
-open System.Diagnostics
 open System.IO
 open System.Reflection
 open System.Text
@@ -37,35 +36,27 @@ module Compiler =
         | x -> failwithf "%O can't be encoded" x
 
     and private encodeLocals arrayRefs locals =
-        sprintf "Map [%s] " (String.Join("; ", Map.map (fun k v -> sprintf "%s, %s" k (encode arrayRefs v)) locals))
+        sprintf "Map [%s]" (String.Join("; ", Map.map (fun k v -> sprintf "%s, %s" k (encode arrayRefs v)) locals))
 
     let encodeSymbol line arrayRefs name value =
         line <| sprintf "globals.Symbols.[\"%s\"] <- %s" name (encode arrayRefs value)
 
     let encodeFunction line arrayRefs name = function
         | Defun(name, paramz, body) ->
-            let paramzString = String.Join("; ", paramz |> Seq.map (sprintf "\"%s\""))
+            let paramzString = String.Join("; ", Seq.map (sprintf "\"%s\"") paramz)
             line <| sprintf "globals.Functions.[\"%s\"] <- Defun(\"%s\", [%s], %s)" name name paramzString (encode arrayRefs body)
         | _ -> ()
 
     let load klFolder klFiles =
-        let stopwatch = Stopwatch.StartNew()
         let globals = baseGlobals()
         for file in (List.map (fun f -> Path.Combine(klFolder, f)) klFiles) do
-            printfn ""
-            printfn "Loading %s" file
-            printfn ""
+            printf "Loading %s " file
             stdout.Flush()
             let text = File.ReadAllText(file)
             for ast in readAll text do
-                match ast with
-                | Cons(command, Cons(symbol, _)) ->
-                    printfn "%O %O" command symbol
-                    eval globals ast |> ignore
-                | _ -> () // ignore copyright block at top
-        printfn ""
-        printfn "Loading done"
-        printfn "Time: %s" <| stopwatch.Elapsed.ToString()
+                printf "."
+                eval globals ast |> ignore
+            printfn ""
         printfn ""
         globals
 
@@ -82,17 +73,16 @@ module Compiler =
             if not(Seq.contains kv.Key origGlobals.Symbols.Keys) then
                 let arrayRefs = buildRefs (findArrays kv.Value)
                 for (array, arrayName) in arrayRefs do
-                    // TODO: not finding the nested (@v 0) vector while searching the *property-vector*
-                    line <| "        let " + arrayName + " = Array.create " + string (Array.length array) + " (Sym \"shen.fail!\")"
+                    line <| sprintf "        let %s = Array.create %i (Sym \"shen.fail!\")" arrayName (Array.length array)
                     for (index, item) in Seq.zip (seq {0 .. 20001}) array do
                         if item <> Sym "shen.fail!" then
-                            line <| "        " + arrayName + ".[" + string index + "] <- " + encode arrayRefs item
-                encodeSymbol (fun s -> line <| "        " + s) arrayRefs kv.Key kv.Value
+                            line <| sprintf "        %s.[%i] <- %s" arrayName index (encode arrayRefs item)
+                encodeSymbol (line << sprintf "        %s") arrayRefs kv.Key kv.Value
         for kv in globals.Functions do
             if not(Seq.contains kv.Key origGlobals.Functions.Keys || List.contains kv.Key ["exit"]) then
-                encodeFunction (fun s -> line <| "        " + s) [] kv.Key kv.Value
+                encodeFunction (line << sprintf "        %s") [] kv.Key kv.Value
         line "        ()"
-        buffer.ToString()
+        string buffer
 
     let emitDll name =
         let service = new SimpleSourceCodeServices()
