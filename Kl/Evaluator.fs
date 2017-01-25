@@ -99,6 +99,7 @@ module Evaluator =
             | [] -> Done(Func(partial))
             | _ -> apply globals f (List.append previousArgs args)
 
+    // Evaluates expression, deferring work in tail position.
     and private evalw ((globals, locals) as env) expr =
 
         // Booleans are just these two particular symbols.
@@ -196,12 +197,9 @@ module Evaluator =
             | Sym s -> resolveFunction env s
             | _ -> err "Operator expression must resolve to a function"
 
-    /// <summary>
-    /// Evaluates an expression into a value.
-    /// </summary>
+    // Evaluates an expression, running all deferred work.
+    // Must be tail recursive. This is where tail call optimization happens.
     and private evalv ((globals, _) as env) expr =
-
-        // Must be tail recursive. This is where tail call optimization happens.
         match evalw env expr with
         | Done value -> value
         | Pending(locals, expr) -> evalv (globals, locals) expr
