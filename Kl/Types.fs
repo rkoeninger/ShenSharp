@@ -128,9 +128,6 @@ module Values =
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
-    let (|UnitStr|_|) = function
-        | Str s when s.Length = 1 -> Some s.[0]
-        | _ -> None
     let (|Int|_|) = function
         | Num x when x % 1.0m = 0.0m -> Some(int x)
         | _ -> None
