@@ -1,12 +1,13 @@
 ﻿namespace Kl
 
 open System
+open System.Collections.Generic
 open Values
 open Builtins
 
 module Startup =
 
-    let private install (functions: Defines<'a>) = List.iter functions.Add
+    let private install (functions: Dictionary<string, 'a>) = List.iter functions.Add
 
     let private fn name arity f = name, Native(name, arity, f)
 
@@ -54,11 +55,10 @@ module Startup =
             fn "number?"         1 klIsNumber
         ]
         let onMono = Type.GetType("Mono.Runtime") <> null
-        let ver = Environment.Version
         install globals.Symbols [
             "*language*",       Str "F# 4.0"
             "*implementation*", Str(sprintf "CLR/%s" (if onMono then "Mono" else "Microsoft.NET"))
-            "*release*",        Str(sprintf "%i.%i" ver.Major ver.Minor)
+            "*release*",        Str(string Environment.Version)
             "*port*",           Str "0.4"
             "*porters*",        Str "Robert Koeninger"
             "*stinput*",        console
@@ -71,4 +71,5 @@ module Startup =
     /// <summary>
     /// Creates a new global scope with the KL primitives installed.
     /// </summary>
+    [<CompiledName "BaseGlobals">]
     let baseGlobals() = installBase(newGlobals())

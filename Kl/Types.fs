@@ -5,6 +5,7 @@ open System.Collections.Generic
 open System.Diagnostics
 open System.IO
 open System.Text
+open FSharp.Core.Printf
 
 /// <summary>
 /// A wrapper around a stream. Has a Name property
@@ -18,15 +19,13 @@ type [<ReferenceEquality>] IO = {
 }
 
 /// <summary>
-/// A mutable dictionary that maps symbols to values of some type <c>'a</c>.
-/// </summary>
-type Defines<'a> = Dictionary<string, 'a>
-
-/// <summary>
 /// A global, mutable set of symbol definitions that contains separate
 /// symbol and function namespaces.
 /// </summary>
-type Globals = {Symbols: Defines<Value>; Functions: Defines<Function>}
+type Globals = {
+    Symbols: Dictionary<string, Value>
+    Functions: Dictionary<string, Function>
+}
 
 /// <summary>
 /// An immutable map of local variable definitions.
@@ -44,8 +43,8 @@ and [<ReferenceEquality; DebuggerDisplay("{ToString(),nq}")>] Function =
     | Partial of Function * Value list
     override this.ToString() =
         match this with
-        | Native(name, arity, _) -> sprintf "%s" name
-        | Defun(name, paramz, _) -> sprintf "%s" name
+        | Native(name, _, _)     -> sprintf "%s" name
+        | Defun(name, _, _)      -> sprintf "%s" name
         | Lambda(param, _, body) -> sprintf "<Lambda (%s) %O>" param body
         | Freeze(_, body)        -> sprintf "<Freeze %O>" body
         | Partial(f, args)       -> sprintf "<Partial %O (%i)>" f args.Length
@@ -88,7 +87,7 @@ type SimpleError(message) =
 /// Console reader is an adapter that buffers input by line to provide
 /// character stream to Shen REPL in expected format.
 /// </summary>
-type ConsoleReader() =
+type internal ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())
     let mutable line: byte[] = [||]
     let mutable index = 0
@@ -121,10 +120,10 @@ module Values =
     let inRange min max value = min <= value && value < max
     let inRangeInclusive min max value = min <= value && value <= max
     let err s = raise(SimpleError s)
-    let errf format = Printf.ksprintf err format
+    let errf format = ksprintf err format
     let newGlobals() = {
-        Symbols = new Defines<Value>()
-        Functions = new Defines<Function>()
+        Symbols = new Dictionary<string, Value>()
+        Functions = new Dictionary<string, Function>()
     }
     let rec toCons = function
         | [] -> Empty

@@ -201,4 +201,5 @@ module Evaluator =
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    let eval globals = evalv (globals, Map.empty)
+    [<CompiledName "Eval">]
+    let eval globals expr = evalv (globals, Map.empty) expr
