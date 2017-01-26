@@ -37,6 +37,8 @@ module Evaluator =
         | Some _ -> errf "Function not defined: %s" id
         | None -> resolveGlobalFunction globals id
 
+    // Applies function to arguments.
+    // Could return deferred work or a partial function.
     let rec private apply globals f args =
         match f with
 
@@ -195,7 +197,7 @@ module Evaluator =
             match evalv env expr with
             | Func f -> f
             | Sym s -> resolveFunction env s
-            | _ -> err "Operator expression must resolve to a function"
+            | _ -> err "Operator expression must evaluate to a function"
 
     // Evaluates an expression, running all deferred work.
     // Must be tail recursive. This is where tail call optimization happens.
