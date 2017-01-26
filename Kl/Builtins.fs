@@ -205,14 +205,9 @@ module Builtins =
     let console = Pipe {
             Name = "Console"
             Read = (new ConsoleReader()).ReadByte
-            Write = (new ConsoleWriter()).WriteByte
-            Close = fun () -> ()
+            Write = Console.OpenStandardOutput().WriteByte
+            Close = fun () -> err "Can't close Console"
         }
-
-    let klIsSymbol _ = function
-        | [Sym _] -> truev
-        | [_] -> falsev
-        | args -> argsErr "symbol?" ["value"] args
 
     let klFillVector _ = function
         | [Vec array as vector; Int start; Int stop; fillValue] ->
@@ -224,23 +219,6 @@ module Builtins =
         | [_; Num 0m] -> err "Modulus by zero"
         | [Num x; Num y] -> Num(x % y)
         | args -> argsErr "shen.mod" ["number"; "number"] args
-
-    let klIsAlpha _ = function
-        | [UnitStr ch] -> boolv(inRangeInclusive 'A' 'Z' ch || inRangeInclusive 'a' 'z' ch)
-        | [Str _] -> err "String must be 1 character long"
-        | args -> argsErr "shen.alpha?" ["string"] args
-
-    let klIsDigit _ = function
-        | [UnitStr ch] -> boolv(inRangeInclusive '0' '9' ch)
-        | [Str _] -> err "String must be 1 character long"
-        | args -> argsErr "shen.digit?" ["string"] args
-
-    let rec klAppend globals = function
-        | [Empty; Empty] -> Empty
-        | [Empty; Cons _ as cons] -> cons
-        | [Cons _ as cons; Empty] -> cons
-        | [Cons(a, b); Cons _ as cons] -> Cons(a, klAppend globals [b; cons])
-        | args -> argsErr "append" ["list"; "list"] args
 
     let klHash _ = function
         | [x; Int i] ->

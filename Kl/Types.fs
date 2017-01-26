@@ -84,6 +84,10 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
 type SimpleError(message) =
     inherit Exception(message)
 
+/// <summary>
+/// Console reader is an adapter that buffers input by line to provide
+/// character stream to Shen REPL in expected format.
+/// </summary>
 type ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())
     let mutable line: byte[] = [||]
@@ -94,12 +98,6 @@ type ConsoleReader() =
             index <- 0
         index <- index + 1
         int (line.[index - 1])
-    member this.Close = reader.Close
-
-type ConsoleWriter() =
-    let stream = Console.OpenStandardOutput()
-    member this.WriteByte = stream.WriteByte
-    member this.Close = stream.Close
 
 module Extensions =
     type IDictionary<'a, 'b> with
