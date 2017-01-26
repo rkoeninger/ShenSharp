@@ -17,8 +17,8 @@ module TestCommon =
         List.fold (fun _ -> eval globals) Empty (readAll syntax)
     let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
     let assertNotEq (expected: 'a) (actual: 'a) = Assert.AreNotEqual(expected, actual)
-    let assertTrue syntax = assertEq truev (runAll syntax)
-    let assertFalse syntax = assertEq falsev (runAll syntax)
+    let assertTrue syntax = assertEq True (runAll syntax)
+    let assertFalse syntax = assertEq False (runAll syntax)
     let assertEach pairs =
         let globals = baseGlobals()
         List.iter (fun (expected, syntax) -> assertEq expected (runIn globals syntax)) pairs

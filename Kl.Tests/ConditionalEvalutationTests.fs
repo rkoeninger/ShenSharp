@@ -20,10 +20,10 @@ type ConditionalEvalutationTests() =
 
     [<Test>]
     member this.``and expression evals to true if both argument expressions eval to true``() =
-        assertEq truev (run "(and true true)")
-        assertEq falsev (run "(and true false)")
-        assertEq falsev (run "(and false true)")
-        assertEq falsev (run "(and false false)")
+        assertEq True (run "(and true true)")
+        assertEq False (run "(and true false)")
+        assertEq False (run "(and false true)")
+        assertEq False (run "(and false false)")
 
     [<Test>]
     member this.``and expression requires conditionals eval to boolean granted they are evaluated``() =
@@ -36,11 +36,25 @@ type ConditionalEvalutationTests() =
         assertEffect false "(and false (effect true))"
 
     [<Test>]
+    member this.``and expression can be partially applied``() =
+        assertFalse "((and false) false)"
+        assertFalse "((and false) true)"
+        assertFalse "((and true) false)"
+        assertTrue "((and true) true)"
+        assertTrue "((and) true true)"
+
+    [<Test>]
+    member this.``and expression does not do short-circuit evaluation when partially applied``() =
+        assertEffect true "((and true) (effect true))"
+        assertEffect true "((and false) (effect true))"
+        assertEffect true "((and) true (effect true))"
+
+    [<Test>]
     member this.``or expression evals to true if one or both argument expressions eval to true``() =
-        assertEq truev (run "(or true true)")
-        assertEq truev (run "(or true false)")
-        assertEq truev (run "(or false true)")
-        assertEq falsev (run "(or false false)")
+        assertEq True (run "(or true true)")
+        assertEq True (run "(or true false)")
+        assertEq True (run "(or false true)")
+        assertEq False (run "(or false false)")
 
     [<Test>]
     member this.``or expression requires conditionals eval to boolean granted they are evaluated``() =
@@ -51,6 +65,20 @@ type ConditionalEvalutationTests() =
     member this.``or expression should only eval second conditional if first eval'd to false``() =
         assertEffect true "(or false (effect true))"
         assertEffect false "(or true (effect true))"
+
+    [<Test>]
+    member this.``or expression can be partially applied``() =
+        assertFalse "((or false) false)"
+        assertTrue "((or false) true)"
+        assertTrue "((or true) false)"
+        assertTrue "((or true) true)"
+        assertTrue "((or) true true)"
+
+    [<Test>]
+    member this.``or expression does not do short-circuit evaluation when partially applied``() =
+        assertEffect true "((or true) (effect true))"
+        assertEffect true "((or false) (effect true))"
+        assertEffect true "((or) false (effect true))"
 
     [<Test>]
     member this.``if expression evals consequent or alternative depending on what condition evals to``() =
@@ -76,6 +104,20 @@ type ConditionalEvalutationTests() =
     member this.``if expression should only eval alternative when condition eval's to false``() =
         assertEffect true "(if false 0 (effect true))"
         assertEffect false "(if true 0 (effect true))"
+
+    [<Test>]
+    member this.``if expression can be partially applied``() =
+        assertEq (Int 1) (run "((if true) 1 2)")
+        assertEq (Int 1) (run "((if true 1) 2)")
+        assertEq (Int 2) (run "((if false) 1 2)")
+        assertEq (Int 2) (run "(((if false) 1) 2)")
+
+    [<Test>]
+    member this.``if expression does not do short-circuit evaluation when partially applied``() =
+        assertEffect true "((if true) 0 (effect 0))"
+        assertEffect true "((if false) (effect 0) 0)"
+        assertEffect true "((if) false (effect 0) 0)"
+        assertEffect true "((if) true 0 (effect 0))"
 
     [<Test>]
     member this.``cond expression evaluates consequent in clause where condition evals to true``() =

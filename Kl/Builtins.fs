@@ -14,6 +14,18 @@ module Builtins =
             then errf "%s expected %A arguments, given %A" name types.Length args.Length
             else errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
+    let klIf _ = function
+        | [Bool c; x; y] -> if c then x else y
+        | args -> argsErr "if" ["boolean"; "value"; "value"] args
+
+    let klAnd _ = function
+        | [Bool x; Bool y] -> Bool(x && y)
+        | args -> argsErr "and" ["boolean"; "boolean"] args
+
+    let klOr _ = function
+        | [Bool x; Bool y] -> Bool(x || y)
+        | args -> argsErr "or" ["boolean"; "boolean"] args
+
     let klIntern _ = function
         | [Str s] -> Sym s
         | args -> argsErr "intern" ["string"] args
@@ -37,8 +49,8 @@ module Builtins =
         | args -> argsErr "str" ["value"] args
 
     let klIsString _ = function
-        | [Str _] -> truev
-        | [_] -> falsev
+        | [Str _] -> True
+        | [_] -> False
         | args -> argsErr "string?" ["value"] args
 
     let klIntToString _ = function
@@ -83,12 +95,12 @@ module Builtins =
         | args -> argsErr "tl" ["cons"] args
 
     let klIsCons _ = function
-        | [Cons _] -> truev
-        | [_] -> falsev
+        | [Cons _] -> True
+        | [_] -> False
         | args -> argsErr "cons?" ["value"] args
 
     let klEquals _ = function
-        | [x; y] -> boolv(x = y)
+        | [x; y] -> Bool(x = y)
         | args -> argsErr "=" ["value"; "value"] args
 
     let klEval globals = function
@@ -116,8 +128,8 @@ module Builtins =
         | args -> argsErr "address->" ["vector"; "integer"; "value"] args
 
     let klIsVector _ = function
-        | [Vec _] -> truev
-        | [_] -> falsev
+        | [Vec _] -> True
+        | [_] -> False
         | args -> argsErr "absvector?" ["value"] args
 
     let klWriteByte _ = function
@@ -182,24 +194,24 @@ module Builtins =
         | args -> argsErr "/" ["number"; "number"] args
 
     let klGreaterThan _ = function
-        | [Num x; Num y] -> boolv(x > y)
+        | [Num x; Num y] -> Bool(x > y)
         | args -> argsErr ">" ["number"; "number"] args
 
     let klLessThan _ = function
-        | [Num x; Num y] -> boolv(x < y)
+        | [Num x; Num y] -> Bool(x < y)
         | args -> argsErr "<" ["number"; "number"] args
 
     let klGreaterThanEqual _ = function
-        | [Num x; Num y] -> boolv(x >= y)
+        | [Num x; Num y] -> Bool(x >= y)
         | args -> argsErr ">=" ["number"; "number"] args
 
     let klLessThanEqual _ = function
-        | [Num x; Num y] -> boolv(x <= y)
+        | [Num x; Num y] -> Bool(x <= y)
         | args -> argsErr "<=" ["number"; "number"] args
 
     let klIsNumber _ = function
-        | [Num _] -> truev
-        | [_] -> falsev
+        | [Num _] -> True
+        | [_] -> False
         | args -> argsErr "number?" ["value"] args
 
     let console = Pipe {

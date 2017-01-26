@@ -12,6 +12,9 @@ module Startup =
 
     let private installBase globals =
         install globals.Functions [
+            fn "if"              3 klIf
+            fn "and"             2 klAnd
+            fn "or"              2 klOr
             fn "intern"          1 klIntern
             fn "pos"             2 klStringPos
             fn "tlstr"           1 klStringTail

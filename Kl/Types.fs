@@ -114,9 +114,10 @@ module Extensions =
         else Equal
 
 module Values =
-    let truev = Sym "true"
-    let falsev = Sym "false"
-    let boolv b = if b then truev else falsev
+    let Int = decimal >> Num
+    let (|Int|_|) = function
+        | Num x when x % 1.0m = 0.0m -> Some(int x)
+        | _ -> None
     let inRange min max value = min <= value && value < max
     let inRangeInclusive min max value = min <= value && value <= max
     let err s = raise(SimpleError s)
@@ -128,7 +129,15 @@ module Values =
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
-    let (|Int|_|) = function
-        | Num x when x % 1.0m = 0.0m -> Some(int x)
+
+    // Booleans are just these two particular symbols.
+    let True = Sym "true"
+    let False = Sym "false"
+    let Bool b = if b then True else False
+    let (|Bool|_|) = function
+        | x when x = True -> Some true
+        | x when x = False -> Some false
         | _ -> None
-    let Int = decimal >> Num
+    let isTrue = function
+        | Bool b -> b
+        | _ -> err "Conditional must evaluate to boolean"

@@ -102,15 +102,7 @@ module Evaluator =
             | _ -> apply globals f (List.append previousArgs args)
 
     // Evaluates expression, deferring work in tail position.
-    and private evalw ((globals, locals) as env) expr =
-
-        // Booleans are just these two particular symbols.
-        let isTrue = function
-            | Sym "true" -> true
-            | Sym "false" -> false
-            | _ -> err "Conditional must evaluate to boolean"
-
-        match expr with
+    and private evalw ((globals, locals) as env) = function
 
         // Should only get here in the case of Symbols not in operator position.
         // In this case, Symbols always evaluate without error.
@@ -118,11 +110,11 @@ module Evaluator =
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | AndExpr(left, right) ->
-            Done(boolv(isTrue(evalv env left) && isTrue(evalv env right)))
+            Done(Bool(isTrue(evalv env left) && isTrue(evalv env right)))
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | OrExpr(left, right) ->
-            Done(boolv(isTrue(evalv env left) || isTrue(evalv env right)))
+            Done(Bool(isTrue(evalv env left) || isTrue(evalv env right)))
 
         // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->
@@ -183,7 +175,7 @@ module Evaluator =
             apply globals operator operands
 
         // All other expressions/values are self-evaluating.
-        | _ -> Done expr
+        | expr -> Done expr
 
     // Does a full eval of expr, looking to get a Function.
     // 3 ways this can work:
