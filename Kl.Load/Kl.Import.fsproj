@@ -12,7 +12,7 @@
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Name>Kl.Load</Name>
+    <Name>Kl.Import</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -53,7 +53,8 @@
   <ItemGroup>
     <Content Include="packages.config" />
     <Compile Include="Reader.fs" />
-    <Compile Include="Compiler.fs" />
+    <Compile Include="Generator.fs" />
+    <Compile Include="Loader.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">

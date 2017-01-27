@@ -65,8 +65,8 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\Kl.Load\Kl.Load.fsproj">
-      <Name>Kl.Load</Name>
+    <ProjectReference Include="..\Kl.Load\Kl.Import.fsproj">
+      <Name>Kl.Import</Name>
       <Project>{5ea0dbc2-329b-4075-bee2-ef83186c5529}</Project>
       <Private>True</Private>
     </ProjectReference>
@@ -78,7 +78,7 @@
   </ItemGroup>
   <Target Name="RemoveOutDir" AfterTargets="Clean">
     <ItemGroup>
-      <OutDirDlls Include="$(OutDir)\*.dll"/>
+      <OutDirDlls Include="$(OutDir)\*.dll" />
     </ItemGroup>
     <Delete Files="@(OutDirDlls)" />
   </Target>

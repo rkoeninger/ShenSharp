@@ -6,7 +6,7 @@ open System.Threading
 open Kl
 open Kl.Values
 open Kl.Evaluator
-open Kl.Load.Compiler
+open Kl.Import.Loader
 
 let stackSize = 16777216
 let testFolder = @"..\..\..\Distribution\Tests"
@@ -29,15 +29,12 @@ let klFiles = [
 ]
 
 let runTestSuite () =
-    let globals = compile klFolder klFiles
+    let globals = cache klFolder klFiles
     globals.Functions.["y-or-n?"] <- Native("y-or-n?", 1, fun _ _ -> True)
     Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, testFolder)
     globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
     eval globals (toCons [Sym "load"; Str "README.shen"]) |> ignore
     eval globals (toCons [Sym "load"; Str "tests.shen"]) |> ignore
-    printfn ""
-    printfn "Press any key to exit..."
-    Console.ReadKey() |> ignore
 
 [<EntryPoint>]
 let main args =

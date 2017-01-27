@@ -3,7 +3,7 @@
 open NUnit.Framework
 open Kl
 open Kl.Values
-open Kl.Load.Reader
+open Kl.Import.Reader
 open TestCommon
 
 [<TestFixture>]

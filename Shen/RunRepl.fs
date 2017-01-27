@@ -5,7 +5,7 @@ open System.Threading
 open Kl
 open Kl.Values
 open Kl.Evaluator
-open Kl.Load.Compiler
+open Kl.Import.Loader
 
 let stackSize = 16777216
 let klFolder = @"..\..\..\Distribution\Kl"
@@ -27,7 +27,7 @@ let klFiles = [
 ]
 
 let runRepl files =
-    let globals = compile klFolder klFiles
+    let globals = cache klFolder klFiles
     globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
     globals.Functions.["cd"] <- Native("cd", 1, Builtins.klCd)
     globals.Functions.["exit"] <- Native("exit", 1, Builtins.klExit)
