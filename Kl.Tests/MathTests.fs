@@ -6,7 +6,7 @@ open Kl.Values
 open TestCommon
 
 [<TestFixture>]
-type MathTests() =
+type ``Math operators``() =
 
     let assertDec expr =
         match run expr with
@@ -19,49 +19,49 @@ type MathTests() =
         | _ -> Assert.Fail "Int expected"
 
     [<Test>]
-    member this.``adding two integers gives integer``() =
+    member this.``return an integeer when adding two integers``() =
         assertInt "(+ 5 3)"
 
     [<Test>]
-    member this.``adding decimal and integer gives decimal``() =
+    member this.``return a decimal when adding a decimal and an integer``() =
         assertDec "(+ 1.1 2)"
         assertDec "(+ 11 -2.4)"
     
     [<Test>]
-    member this.``adding two decimals gives decimal``() =
+    member this.``return a decimal when adding two decimals``() =
         assertDec "(+ 1.1 2.4)"
 
     [<Test>]
-    member this.``subtracting two integers gives integer``() =
+    member this.``return an integer when subtracting two integers``() =
         assertInt "(- 1 2)"
 
     [<Test>]
-    member this.``subtracting integer from decimal gives decimal``() =
+    member this.``return a decimal when subtracting an integer from a decimal``() =
         assertDec "(- 1.1 2)"
 
     [<Test>]
-    member this.``subtracting decimal from integer gives decimal``() =
+    member this.``return a decimal when subtracting a decimal from an integer``() =
         assertDec "(- 11 -2.4)"
 
     [<Test>]
-    member this.``subtracting two decimals gives decimal``() =
+    member this.``return a decimal when subtracting two decimals``() =
         assertDec "(- 1.1 2.4)"
 
     [<Test>]
-    member this.``multiplying two integers gives integer``() =
+    member this.``return an integer when multiplying two integers``() =
         assertInt "(* 1 2)"
 
     [<Test>]
-    member this.``multiplying integer and decimal gives decimal``() =
+    member this.``return a decimal when multiplying an integer and a decimal``() =
         assertDec "(* 1.1 2)"
         assertDec "(* 11 -2.4)"
 
     [<Test>]
-    member this.``multiplying two decimals gives decimal``() =
+    member this.``return a decimal when multiplying two decimals``() =
         assertDec "(* 1.1 2.4)"
 
     [<Test>]
-    member this.``dividing any combination of two decimals/integers gives decimal``() =
+    member this.``return a decimal when dividing any combination of decimals and integers``() =
         assertDec "(/ 1 2)"
         assertDec "(/ 2 1)"
         assertDec "(/ 1.1 2)"
@@ -69,11 +69,12 @@ type MathTests() =
         assertDec "(/ 1.1 2.4)"
 
     [<Test>]
-    member this.``division by decimal/integer zero raises an error``() =
+    member this.``raise an error when dividing by zero in any combination of decimals and integers``() =
         assertError "(/ 1 0)"
         assertError "(/ 1 0.0)"
         assertError "(/ 10 (5 - 5.0))"
 
     [<Test>]
-    member this.``dividing two integers does not truncate decimal``() =
+    member this.``do not truncate decimal when dividing two integers that are not divisible``() =
         assertEq (Num 1.5m) (run "(/ 3 2)")
+        assertEq 0 1
