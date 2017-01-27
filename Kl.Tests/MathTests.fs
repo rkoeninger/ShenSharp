@@ -77,4 +77,3 @@ type ``Math operators``() =
     [<Test>]
     member this.``do not truncate decimal when dividing two integers that are not divisible``() =
         assertEq (Num 1.5m) (run "(/ 3 2)")
-        assertEq 0 1
