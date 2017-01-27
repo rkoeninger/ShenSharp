@@ -244,3 +244,15 @@ module Builtins =
             Environment.Exit x
             Empty
         | args -> argsErr "exit" ["integer"] args
+
+    let klCd globals = function
+        | [Str path] ->
+            let current =
+                match globals.Symbols.["*home-directory*"] with
+                | Str s -> s
+                | _ -> ""
+            let fullPath = Path.GetFullPath(Path.Combine(current, path))
+            Environment.CurrentDirectory <- fullPath
+            globals.Symbols.["*home-directory*"] <- Str fullPath
+            Str fullPath
+        | args -> argsErr "cd" ["string"] args
