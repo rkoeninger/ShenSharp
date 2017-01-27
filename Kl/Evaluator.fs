@@ -47,7 +47,7 @@ module Evaluator =
         | Freeze(locals, body) ->
             match args with
             | [] -> defer locals body
-            | _ -> errf "Too many arguments (%i) provided to freeze" args.Length
+            | _ -> errf "%O expected 0 arguments, given %i" f args.Length
 
         // Each lambda only takes exactly 1 argument.
         // Applying a lambda to 0 arguments is an error.
@@ -57,7 +57,7 @@ module Evaluator =
         // Lambdas evaluate their body with local scope captured when they were formed.
         | Lambda(param, locals, body) ->
             match args with
-            | [] -> err "Zero arguments provided to lambda"
+            | [] -> errf "%O expected 1 arguments, given 0" f
             | [arg0] -> defer (appendLocals locals [param, arg0]) body
             | arg0 :: args1 ->
                 match evalv (globals, appendLocals locals [param, arg0]) body with
@@ -65,34 +65,28 @@ module Evaluator =
                 | Sym s ->
                     let f = resolveFunction (globals, locals) s
                     apply globals f args1
-                | _ -> errf "Too many arguments (%i) provided to lambda" args.Length
+                | _ -> errf "%O expected 1 arguments, given %i" f args.Length
 
         // Defuns can be applied to anywhere between 0 and the their full parameter list.
         // An error is raised if a Defun is applied to more arguments than it takes.
         // If applied to fewer arguments than the full parameter list, a Partial is returned.
         // They do not retain local state and are usually evaluated at the root level.
-        | Defun(name, paramz, body) as defun ->
-            match args.Length, paramz.Length with
-            | Lesser ->
+        | Defun(name, paramz, body) ->
+            if args.Length < paramz.Length then
                 match args with
-                | [] -> Done(Func defun)
-                | _ -> Done(Func(Partial(defun, args)))
-            | Equal ->
+                | [] -> Done(Func f)
+                | _ -> Done(Func(Partial(f, args)))
+            else
                 defer (Map(List.zip paramz args)) body
-            | Greater ->
-                errf "Too many arguments (%i) provided to defun \"%s\"" args.Length name
 
         // Natives have the same rules as Defuns.
-        | Native(name, arity, f) as native ->
-            match args.Length, arity with
-            | Lesser ->
+        | Native(name, arity, nativeF) ->
+            if args.Length < arity then
                 match args with
-                | [] -> Done(Func native)
-                | _ -> Done(Func(Partial(native, args)))
-            | Equal ->
-                Done(f globals args)
-            | Greater ->
-                errf "Too many arguments (%i) provided to native \"%s\"" args.Length name
+                | [] -> Done(Func f)
+                | _ -> Done(Func(Partial(f, args)))
+            else
+                Done(nativeF globals args)
 
         // Applying a partial applies the original function
         // to the previous and current argument lists appended.

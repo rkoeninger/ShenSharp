@@ -11,7 +11,7 @@ module Builtins =
 
     let private argsErr name types args =
         if List.length types <> List.length args
-            then errf "%s expected %A arguments, given %A" name types.Length args.Length
+            then errf "%s expected %i arguments, given %i" name types.Length args.Length
             else errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
     let klIf _ = function

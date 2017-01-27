@@ -83,10 +83,8 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
 type SimpleError(message) =
     inherit Exception(message)
 
-/// <summary>
-/// Console reader is an adapter that buffers input by line to provide
-/// character stream to Shen REPL in expected format.
-/// </summary>
+// Console reader is an adapter that buffers input by line to provide
+// character stream to Shen REPL in expected format.
 type internal ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())
     let mutable line: byte[] = [||]
@@ -105,12 +103,10 @@ module Extensions =
             | true, x -> Some x
             | false, _ -> None
 
-    let (|Greater|Equal|Lesser|) (x, y) =
-        if x > y
-            then Greater
-        elif x < y
-            then Lesser
-        else Equal
+    let (|Greater|Equal|Lesser|) = function
+        | x, y when x > y -> Greater
+        | x, y when x < y -> Lesser
+        | _ -> Equal
 
 module Values =
     let Int = decimal >> Num
@@ -118,7 +114,6 @@ module Values =
         | Num x when x % 1.0m = 0.0m -> Some(int x)
         | _ -> None
     let inRange min max value = min <= value && value < max
-    let inRangeInclusive min max value = min <= value && value <= max
     let err s = raise(SimpleError s)
     let errf format = ksprintf err format
     let newGlobals() = {
