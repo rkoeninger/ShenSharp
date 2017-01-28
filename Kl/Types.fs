@@ -45,9 +45,9 @@ and [<ReferenceEquality; DebuggerDisplay("{ToString(),nq}")>] Function =
         match this with
         | Native(name, _, _)     -> sprintf "%s" name
         | Defun(name, _, _)      -> sprintf "%s" name
-        | Lambda(param, _, body) -> sprintf "<Lambda (%s) %O>" param body
+        | Lambda(param, _, body) -> sprintf "<Lambda %s %O>" param body
         | Freeze(_, body)        -> sprintf "<Freeze %O>" body
-        | Partial(f, args)       -> sprintf "<Partial %O (%i)>" f args.Length
+        | Partial(f, args)       -> sprintf "<Partial %O %s>" f (String.Join(" ", args))
 
 /// <summary>
 /// A value in KL.
@@ -72,10 +72,10 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Str s   -> sprintf "\"%s\"" s
         | Sym s   -> s
         | Cons _  -> sprintf "(%s)" (String.Join(" ", toList this))
-        | Vec a   -> sprintf "<Vector (%i)>" a.Length
-        | Err s   -> sprintf "<Error (%s)>" s
+        | Vec a   -> sprintf "<Vector %i>" a.Length
+        | Err s   -> sprintf "<Error \"%s\">" s
         | Func f  -> string f
-        | Pipe io -> sprintf "<Stream (%s)>" io.Name
+        | Pipe io -> sprintf "<Stream %s>" io.Name
 
 /// <summary>
 /// Exception type that represents KL errors raised by (simple-error).
