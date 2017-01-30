@@ -65,7 +65,7 @@
     <Compile Include="BuiltinsTests.fs" />
     <Compile Include="PartialApplicationTests.fs" />
     <Compile Include="ScopeCaptureTests.fs" />
-    <Compile Include="TailRecursionTests.fs" />
+    <Compile Include="Trampolines.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
