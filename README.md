@@ -31,7 +31,9 @@ This port [passes all tests in the Shen standard test suite](https://gist.github
 
 ### Guided Tour of the Code
   * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs)
-  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Load/Reader.fs)
   * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Evaluator.fs)
   * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Builtins.fs)
   * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs)
+  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Reader.fs)
+  * [Generator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Generator.fs)
+  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Loader.fs)
