@@ -30,10 +30,10 @@ This port [passes all tests in the Shen standard test suite](https://gist.github
   * [.NET Core](https://www.microsoft.com/net/core#windowsvs2015) - Unknown/not yet supported
 
 ### Guided Tour of the Code
-  * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs)
-  * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Evaluator.fs)
-  * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Builtins.fs)
-  * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs)
-  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Reader.fs)
-  * [Generator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Generator.fs)
-  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Loader.fs)
+  * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs) - Defines types for Kλ Values, Functions, Environment, Errors and some helpers
+  * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Evaluator.fs) - Interprets Kλ code in the form of a Kλ data structure, rendering a Kλ value
+  * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Builtins.fs) - All the primitive functions needed to interpret Kλ
+  * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs) - Builds a primitive Kλ environment
+  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Reader.fs) - Parses Kλ code
+  * [Generator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Generator.fs) - Generates F# code to restore a Kλ environment
+  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Loader.fs) - Reads and evaluates the Shen runtime from Kλ distribution or loads runtime from code generated on previous run
