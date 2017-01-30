@@ -51,7 +51,7 @@
     <Compile Include="RunRepl.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Kl.Load\Kl.Import.fsproj">
+    <ProjectReference Include="..\Kl.Import\Kl.Import.fsproj">
       <Name>Kl.Import</Name>
       <Project>{5ea0dbc2-329b-4075-bee2-ef83186c5529}</Project>
       <Private>True</Private>
