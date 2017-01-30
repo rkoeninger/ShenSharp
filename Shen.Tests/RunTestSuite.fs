@@ -1,7 +1,5 @@
 ﻿module Shen.Tests
 
-open System
-open System.IO
 open System.Threading
 open Kl
 open Kl.Values

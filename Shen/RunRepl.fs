@@ -1,6 +1,5 @@
 ﻿module Shen
 
-open System
 open System.Threading
 open Kl
 open Kl.Values
