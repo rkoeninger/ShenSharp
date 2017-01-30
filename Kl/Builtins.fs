@@ -150,6 +150,7 @@ module Builtins =
                 try match s with
                     | "in" -> File.OpenRead path
                     | "out" -> File.OpenWrite path
+                    | "append" -> File.Open(path, FileMode.Append)
                     | _ -> errf "open expects symbol 'in or 'out as 2nd argument, not '%s" s
                 with e -> err e.Message
             Pipe {
