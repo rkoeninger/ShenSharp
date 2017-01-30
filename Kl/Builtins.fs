@@ -151,7 +151,7 @@ module Builtins =
                     | "in" -> File.OpenRead path
                     | "out" -> File.OpenWrite path
                     | "append" -> File.Open(path, FileMode.Append)
-                    | _ -> errf "open expects symbol 'in or 'out as 2nd argument, not '%s" s
+                    | _ -> errf "open expects symbol 'in, 'out or 'append as 2nd argument, not '%s" s
                 with e -> err e.Message
             Pipe {
                 Name = "File: " + path
