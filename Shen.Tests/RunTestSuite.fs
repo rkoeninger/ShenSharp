@@ -30,9 +30,7 @@ let klFiles = [
 
 let runTestSuite () =
     let globals = cache klFolder klFiles
-    globals.Functions.["y-or-n?"] <- Native("y-or-n?", 1, fun _ _ -> True)
-    Environment.CurrentDirectory <- Path.Combine(Environment.CurrentDirectory, testFolder)
-    globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
+    eval globals (toCons [Sym "cd"; Str testFolder]) |> ignore
     eval globals (toCons [Sym "load"; Str "README.shen"]) |> ignore
     eval globals (toCons [Sym "load"; Str "tests.shen"]) |> ignore
 

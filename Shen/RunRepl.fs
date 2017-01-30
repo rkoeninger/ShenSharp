@@ -28,9 +28,6 @@ let klFiles = [
 
 let runRepl files =
     let globals = cache klFolder klFiles
-    globals.Symbols.["*home-directory*"] <- Str(Environment.CurrentDirectory.Replace('\\', '/'))
-    globals.Functions.["cd"] <- Native("cd", 1, Builtins.klCd)
-    globals.Functions.["exit"] <- Native("exit", 1, Builtins.klExit)
 
     if Array.isEmpty files then
         eval globals (toCons [Sym "shen.shen"]) |> ignore

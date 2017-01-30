@@ -252,7 +252,8 @@ module Builtins =
                 | Str s -> s
                 | _ -> ""
             let fullPath = Path.GetFullPath(Path.Combine(current, path))
-            Environment.CurrentDirectory <- fullPath
+            try Environment.CurrentDirectory <- fullPath
+            with e -> err e.Message
             globals.Symbols.["*home-directory*"] <- Str fullPath
             Str fullPath
         | args -> argsErr "cd" ["string"] args

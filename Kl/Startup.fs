@@ -1,18 +1,15 @@
 ﻿namespace Kl
 
 open System
-open System.Collections.Generic
 open Values
 open Builtins
 
 module Startup =
 
-    let private install (functions: Dictionary<string, 'a>) = List.iter functions.Add
-
     let private fn name arity f = name, Native(name, arity, f)
 
     let private installBase globals =
-        install globals.Functions [
+        List.iter globals.Functions.Add [
             fn "if"              3 klIf
             fn "and"             2 klAnd
             fn "or"              2 klOr
@@ -53,9 +50,11 @@ module Startup =
             fn ">="              2 klGreaterThanEqual
             fn "<="              2 klLessThanEqual
             fn "number?"         1 klIsNumber
+            fn "exit"            1 klExit
+            fn "cd"              1 klCd
         ]
         let onMono = Type.GetType("Mono.Runtime") <> null
-        install globals.Symbols [
+        List.iter globals.Symbols.Add [
             "*language*",       Str "F# 4.0"
             "*implementation*", Str(sprintf "CLR/%s" (if onMono then "Mono" else "Microsoft.NET"))
             "*release*",        Str(string Environment.Version)
@@ -63,8 +62,7 @@ module Startup =
             "*porters*",        Str "Robert Koeninger"
             "*stinput*",        console
             "*stoutput*",       console
-            // We could set *home-directory* here, but it gets
-            // overwritten in the KL distribution of Shen.
+            "*home-directory*", Str Environment.CurrentDirectory
         ]
         globals
 

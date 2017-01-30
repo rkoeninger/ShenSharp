@@ -41,13 +41,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 
 (set *macros* (cons (lambda X (shen.timer-macro X)) (cons (lambda X (shen.cases-macro X)) (cons (lambda X (shen.abs-macro X)) (cons (lambda X (shen.put/get-macro X)) (cons (lambda X (shen.compile-macro X)) (cons (lambda X (shen.datatype-macro X)) (cons (lambda X (shen.let-macro X)) (cons (lambda X (shen.assoc-macro X)) (cons (lambda X (shen.make-string-macro X)) (cons (lambda X (shen.output-macro X)) (cons (lambda X (shen.input-macro X)) (cons (lambda X (shen.error-macro X)) (cons (lambda X (shen.prolog-macro X)) (cons (lambda X (shen.synonyms-macro X)) (cons (lambda X (shen.nl-macro X)) (cons (lambda X (shen.@s-macro X)) (cons (lambda X (shen.defprolog-macro X)) (cons (lambda X (shen.function-macro X)) ())))))))))))))))))))
 
-(set *home-directory* ())
-
 (set shen.*gensym* 0)
 
 (set shen.*tracking* ())
 
-(set *home-directory* "")
+(if (not (bound? *home-directory*)) (set *home-directory* "") ())
 
 (set shen.*alphabet* (cons A (cons B (cons C (cons D (cons E (cons F (cons G (cons H (cons I (cons J (cons K (cons L (cons M (cons N (cons O (cons P (cons Q (cons R (cons S (cons T (cons U (cons V (cons W (cons X (cons Y (cons Z ())))))))))))))))))))))))))))
 
