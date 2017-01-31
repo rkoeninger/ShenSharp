@@ -234,11 +234,11 @@ module Builtins =
         | args -> argsErr "shen.mod" ["number"; "number"] args
 
     let klHash _ = function
-        | [x; Int i] ->
-            match hash x % i with
+        | [Str s; Int i] ->
+            match hash s % i with
             | 0 -> Int 1
             | h -> Int h
-        | args -> argsErr "hash" ["value"; "integer"] args
+        | args -> argsErr "hash" ["string"; "integer"] args
 
     let klExit _ = function
         | [Int x] ->

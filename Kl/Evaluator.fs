@@ -13,8 +13,6 @@ module Evaluator =
 
     let private defer locals expr = Pending(locals, expr)
 
-    let private appendLocals = List.fold (fun m (k, v) -> Map.add k v m)
-
     // Symbols in operand position are either defined locally or they are idle.
     let private resolveSymbol locals id =
         match Map.tryFind id locals with
@@ -58,9 +56,9 @@ module Evaluator =
         | Lambda(param, locals, body) ->
             match args with
             | [] -> errf "%O expected 1 arguments, given 0" f
-            | [arg0] -> defer (appendLocals locals [param, arg0]) body
+            | [arg0] -> defer (Map.add param arg0 locals) body
             | arg0 :: args1 ->
-                match evalv (globals, appendLocals locals [param, arg0]) body with
+                match evalv (globals, Map.add param arg0 locals) body with
                 | Func f -> apply globals f args1
                 | Sym s ->
                     let f = resolveFunction (globals, locals) s
@@ -129,7 +127,7 @@ module Evaluator =
         // Body expression is in tail position.
         | LetExpr(symbol, binding, body) ->
             let value = evalv env binding
-            defer (appendLocals locals [symbol, value]) body
+            defer (Map.add symbol value locals) body
 
         // Lambdas capture local scope.
         | LambdaExpr(param, body) ->

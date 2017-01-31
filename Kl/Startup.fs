@@ -53,7 +53,7 @@ module Startup =
             fn "exit"            1 klExit
             fn "cd"              1 klCd
         ]
-        let onMono = Type.GetType("Mono.Runtime") <> null
+        let onMono = Type.GetType "Mono.Runtime" <> null
         List.iter globals.Symbols.Add [
             "*language*",       Str "F# 4.0"
             "*implementation*", Str(sprintf "CLR/%s" (if onMono then "Mono" else "Microsoft.NET"))
