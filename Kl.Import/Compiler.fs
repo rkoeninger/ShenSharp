@@ -7,17 +7,15 @@ open Kl.Expressions
 
 module Compiler =
 
-    type ExprType =
-        | Bottom
-        | KlValue
-        | FsBoolean
-        | FsDecimal
-        | FsString
-        | FsUnit
+    let private nullRange = mkFileIndexRange 50 (mkPos 100 100) (mkPos 200 200)
 
-    let nullRange = mkFileIndexRange 50 (mkPos 100 100) (mkPos 200 200)
-
+    let private bool b = SynExpr.Const(SynConst.Bool b, nullRange)
+    let private num x = SynExpr.Const(SynConst.Decimal x, nullRange)
+    let private str s = SynExpr.Const(SynConst.String(s, nullRange), nullRange)
     let private id name = SynExpr.Ident(new Ident(name, nullRange))
+    let private parens e = SynExpr.Paren(e, nullRange, None, nullRange)
+    let private tuple vals = SynExpr.Tuple(vals, List.replicate (List.length vals - 1) nullRange, nullRange)
+    let private list vals = SynExpr.ArrayOrList(true, vals, nullRange)
 
     let private app fExpr argExpr =
         SynExpr.App(
@@ -40,8 +38,6 @@ module Compiler =
             right,
             nullRange)
 
-    let private parens e = SynExpr.Paren(e, nullRange, None, nullRange)
-
     let private branch condition consequent alternative =
         SynExpr.IfThenElse(
             condition,
@@ -51,6 +47,44 @@ module Compiler =
             false,
             nullRange,
             nullRange)
+
+    let private var name value body =
+        SynExpr.LetOrUse(
+            false,
+            false,
+            [SynBinding.Binding(
+                None,
+                SynBindingKind.NormalBinding,
+                false,
+                false,
+                [],
+                PreXmlDoc.Empty,
+                SynValData.SynValData(
+                    None,
+                    SynValInfo.SynValInfo(
+                        [],
+                        SynArgInfo.SynArgInfo([], false, None)),
+                    None),
+                SynPat.Named(
+                    SynPat.Wild nullRange,
+                    new Ident(name, nullRange),
+                    false,
+                    None,
+                    nullRange),
+                None,
+                body,
+                nullRange,
+                SequencePointInfoForBinding.NoSequencePointAtLetBinding)],
+            body,
+            nullRange)
+
+    type private ExprType =
+        | Bottom
+        | KlValue
+        | FsBoolean
+        | FsDecimal
+        | FsString
+        | FsUnit
 
     // needs application context to know for which function there
     // is an argument type error
@@ -68,60 +102,94 @@ module Compiler =
         | _, FsUnit -> infix (id "|>") fsExpr (id "ignore")
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
+    let private (|>>) fsExprWithType targetType = convert targetType fsExprWithType
+
+    let private rename s = "kl" + s
+
     let rec private flattenDo = function
         | DoExpr(first, second) -> List.append (flattenDo first) (flattenDo second)
         | klExpr -> [klExpr]
 
-    // needs lexical scope and application context
-    let rec private build globals klExpr = // Value -> FsExpr, ExprType
-        match klExpr with
-        | Empty -> () // id "Empty", KlValue
-        | Num x -> () // SynExpr.Const(SynConst.Decimal x, nullRange), FsDecimal
-        | Str s -> () // SynExpr.Const(SynConst.String x, nullRange), FsString
-        | Sym "true" -> () // SynExpr.Const(SynConst.Boolean true, nullRange), FsBoolean
-        | Sym "false" -> () // SynExpr.Const(SynConst.Boolean false, nullRange), FsBoolean
-        | Sym s -> () // idle symbol: App(UnionCase("Value", "Sym"), Const(String(x))), KlValue
-                      // local definition: Id(ConvertNameToFs(s)), KlValue
-        | AndExpr(left, right) -> ()
-            // infix (id "&&")
-            //       (convert FsBoolean (build globals left))
-            //       (convert FsBoolean (build globals right))
-            //   , FsBoolean
-        | OrExpr(left, right) -> ()
-        // obscure optimizations - does this actually happen?
-        | IfExpr(Sym "true", consequent, _) -> build globals consequent
-        | IfExpr(Sym "false", _, alternative) -> build globals alternative
-        | IfExpr(condition, consequent, alternative) -> ()
-            // branch (convert FsBoolean (build condition))
-            //        (build consequent)
-            //        (build alternative)
-            // need to join branch types, depends on context - just make KlValue?
+    // TODO: needs lexical scope for building Symbols
+    // TODO: make sure error messages and conditions are
+    //       consistent with Evaluator
+    //       needs application context for this
+    let rec private build ((globals, locals) as context) = function
+        | Empty -> id "Empty", KlValue
+        | Num x -> num x, FsDecimal
+        | Str s -> str s, FsString
+        | Sym "true" -> bool true, FsBoolean
+        | Sym "false" -> bool false, FsBoolean
+        | Sym s ->
+            if List.contains s locals
+                then id (rename s), KlValue // Local variable
+                else app (id "Sym") (str s), KlValue // Idle symbol
+        | AndExpr(left, right) ->
+            infix (id "&&")
+                  (build context left  |>> FsBoolean)
+                  (build context right |>> FsBoolean), FsBoolean
+        | OrExpr(left, right) ->
+            infix (id "||")
+                  (build context left  |>> FsBoolean)
+                  (build context right |>> FsBoolean), FsBoolean
+
+        // TODO: Find a way to avoid converting result types to KlValue
+        | IfExpr(condition, consequent, alternative) ->
+            branch (build context condition   |>> FsBoolean)
+                   (build context consequent  |>> KlValue)
+                   (build context alternative |>> KlValue), KlValue
         | CondExpr clauses ->
-            let compileClauses = function
-                | [] -> () // id "Empty"
-                | (Sym "true", consequent) :: _ -> () // consequent - optimization
-                | (Sym "false", _) :: rest -> () // rest - this doesn't happen
-                | (condition, consequent) :: rest -> () // if condition then consequent else rest
-            compileClauses clauses // need to join branch types, depends on context
-        | LetExpr(param, binding, body) -> () // might be able to put let on its own line instead of
-                                              // part of expr, depends on context
-        | DoExpr _ as doExpr -> () // flattenDo doExpr // ignore result of all but last
-        | LambdaExpr(param, body) -> () // build CompiledLambda: Globals -> Value -> Value
-        | FreezeExpr body -> () // build CompiledFreeze: Globals -> Value
-        | TrapExpr(body, handler) -> () // try...with, need to join branch types
+            let rec compileClauses = function
+                | [] -> id "Empty" // TODO: is this the right way?
+                                   // needs to be consistent with Evaluator
+                | (Sym "true", consequent) :: _ -> build context consequent |>> KlValue
+                | (condition, consequent) :: rest ->
+                    branch (build context condition  |>> FsBoolean)
+                           (build context consequent |>> KlValue)
+                           (compileClauses rest)
+            compileClauses clauses, KlValue
+        | LetExpr(param, binding, body) ->
+            failwith "can't compile"
+            // TODO: might be able to put let on its own line instead of part of expr, depends on context
+            // TODO: need to optimize types
+            // var param (build context binding |>> KlValue) (build (globals, param :: locals) body |>> KlValue)
+        | DoExpr _ as doExpr -> failwith "can't compile" // flattenDo doExpr // ignore result of all but last
+        | LambdaExpr(param, body) -> failwith "can't compile"
+            // build CompiledLambda: Globals -> Value -> Value
+        | FreezeExpr body -> failwith "can't compile"
+            // build CompiledFreeze: Globals -> Value
+        | TrapExpr(body, handler) -> failwith "can't compile" // try...with, need to join branch types
         | DefunExpr _ -> failwith "can't compile defun in expr position" // or can we?
-        | AppExpr(Sym "+", [x; y]) -> () // (convert FsDecimal x + convert FsDecimal y), FsDecimal
-        | AppExpr(Sym "intern", [x]) -> () // App(UnionCase("Value", "Sym"), convert FsString x)
-        | AppExpr(Sym "cn", [x; y]) -> ()
-            // (build x |> convert FsString) + (build y |> convert FsString), FsString
-        | AppExpr(Sym "/", [x; y]) -> ()
-            // should throw DivisionByZeroException as usual,
-            // trap-error needs to catch all exceptions,
-            // klDivide should not have special case for /0
-        // | Expr [Sym "cons"; x; y] -> ()
-        | AppExpr(Sym "cons", [x; y]) -> ()
-            // app (id "Cons") (parens (tuple2 (build x |> convert KlValue) (build y |> convert KlValue)))
-        | AppExpr(f, args) -> () // ``f`` globals [arg0; arg1], KlValue
+
+        // Inlining of primitive functions
+        | Expr [Sym "="; x; y] ->
+            infix (id "=")
+                  (build context x |>> KlValue)
+                  (build context y |>> KlValue), FsBoolean
+        | Expr [Sym "+"; x; y] ->
+            infix (id "+")
+                  (build context x |>> FsDecimal)
+                  (build context y |>> FsDecimal), FsDecimal
+        // TODO: other math operators
+        | Expr [Sym "/"; x; y] -> failwith "can't compile"
+            // TODO: should throw DivisionByZeroException as usual
+            // TODO: trap-error needs to catch all exceptions
+            // TODO: klDivide should not have special case for /0
+        | Expr [Sym "intern"; x] -> app (id "Sym") (build context x |>> FsString), KlValue
+        | Expr [Sym "cn"; x; y] ->
+            infix (id "+")
+                  (build context x |>> FsString)
+                  (build context y |>> FsString), FsString
+        | Expr [Sym "cons"; x; y] ->
+            app (id "Cons") (parens (tuple (List.map (build context >> convert KlValue) [x; y]))), KlValue
+
+        // TODO: transform function name
+        // TODO: need to confirm argument count
+        | AppExpr(Sym s, args) -> app (app (id s) (id "_gs")) (list (List.map (build context >> convert KlValue) args)), KlValue
+
+        // TODO: if it's some other expression, we need an apply function
+        | AppExpr(f, args) -> failwith "can't compile"
+
         | _ -> failwith "Unable to compile"
 
     let private compileDefun globals name paramz body = () // Defun -> module let binding

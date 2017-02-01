@@ -11,7 +11,7 @@ module Expressions =
         | Cons(x, y) -> Option.map (fun xs -> x :: xs) (toListOption y)
         | _ -> None
 
-    let private (|Expr|_|) = toListOption
+    let (|Expr|_|) = toListOption
 
     let (|AndExpr|_|) = function
         | Expr [Sym "and"; left; right] -> Some(left, right)
