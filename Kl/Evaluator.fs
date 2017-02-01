@@ -11,7 +11,7 @@ module Evaluator =
         | Done of Value
         | Pending of Locals * Value
 
-    let private defer locals expr = Pending(locals, expr)
+    let inline private defer locals expr = Pending(locals, expr)
 
     // Symbols in operand position are either defined locally or they are idle.
     let private resolveSymbol locals id =
