@@ -132,7 +132,7 @@ module Compiler =
 
     let private (|>>) fsExprWithType targetType = convert targetType fsExprWithType
 
-    let private rename s = "kl" + s
+    let private rename s = "kl_" + s
 
     let rec private flattenDo = function
         | DoExpr(first, second) -> List.append (flattenDo first) (flattenDo second)

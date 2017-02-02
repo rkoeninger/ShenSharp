@@ -30,9 +30,9 @@ type PrintInfo() =
         printfn "%O" (Cons(Int 1, Cons(Int 2, Cons(Int 3, Empty))))
         printfn "%O" (Vec(Array.create 10 Empty))
         printfn "%O" (Err "Something went wrong")
-        printfn "%O" (Func(Native("+", 2, klAdd)))
+        printfn "%O" (Func(Native("+", 2, ``kl_+``)))
         printfn "%O" (Func(Defun("add", ["X"; "Y"], toCons [Sym "+"; Sym "X"; Sym "Y"])))
         printfn "%O" (Func(Lambda("X", Map.empty, toCons [Sym "+"; Int 1; Sym "X"])))
         printfn "%O" (Func(Freeze(Map.empty, toCons [Sym "get-time"; Sym "run"])))
-        printfn "%O" (Func(Partial(Native("+", 2, klAdd), [Int 1])))
+        printfn "%O" (Func(Partial(Native("+", 2, ``kl_+``), [Int 1])))
         printfn "%O" console
