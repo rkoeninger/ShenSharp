@@ -63,7 +63,10 @@ module Compiler =
                     None,
                     SynValInfo.SynValInfo(
                         [],
-                        SynArgInfo.SynArgInfo([], false, None)),
+                        SynArgInfo.SynArgInfo(
+                            [],
+                            false,
+                            None)),
                     None),
                 SynPat.Named(
                     SynPat.Wild nullRange,
@@ -72,11 +75,36 @@ module Compiler =
                     None,
                     nullRange),
                 None,
-                body,
+                value,
                 nullRange,
                 SequencePointInfoForBinding.NoSequencePointAtLetBinding)],
             body,
             nullRange)
+
+    let private tryWith body e handler =
+        SynExpr.TryWith(
+            body,
+            nullRange,
+            [SynMatchClause.Clause(
+                SynPat.Paren(
+                    SynPat.LongIdent(
+                        LongIdentWithDots.LongIdentWithDots(
+                            [new Ident(e, nullRange)],
+                            []),
+                        None,
+                        None,
+                        SynConstructorArgs.Pats [],
+                        None,
+                        nullRange),
+                    nullRange),
+                None,
+                handler,
+                nullRange,
+                SequencePointInfoForTarget.SequencePointAtTarget)],
+            nullRange,
+            nullRange,
+            SequencePointInfoForTry.SequencePointAtTry nullRange,
+            SequencePointInfoForWith.SequencePointAtWith nullRange)
 
     type private ExprType =
         | Bottom
@@ -110,7 +138,6 @@ module Compiler =
         | DoExpr(first, second) -> List.append (flattenDo first) (flattenDo second)
         | klExpr -> [klExpr]
 
-    // TODO: needs lexical scope for building Symbols
     // TODO: make sure error messages and conditions are
     //       consistent with Evaluator
     //       needs application context for this
@@ -121,9 +148,9 @@ module Compiler =
         | Sym "true" -> bool true, FsBoolean
         | Sym "false" -> bool false, FsBoolean
         | Sym s ->
-            if List.contains s locals
-                then id (rename s), KlValue // Local variable
-                else app (id "Sym") (str s), KlValue // Idle symbol
+            if Set.contains s locals
+                then id (rename s), KlValue
+                else app (id "Sym") (str s), KlValue
         | AndExpr(left, right) ->
             infix (id "&&")
                   (build context left  |>> FsBoolean)
@@ -149,19 +176,22 @@ module Compiler =
                            (compileClauses rest)
             compileClauses clauses, KlValue
         | LetExpr(param, binding, body) ->
-            failwith "can't compile"
             // TODO: might be able to put let on its own line instead of part of expr, depends on context
             // TODO: need to optimize types
-            // var param (build context binding |>> KlValue) (build (globals, param :: locals) body |>> KlValue)
+            var param
+                (build context binding |>> KlValue)
+                (build (globals, Set.add param locals) body |>> KlValue), KlValue
         | DoExpr _ as doExpr -> failwith "can't compile" // flattenDo doExpr // ignore result of all but last
         | LambdaExpr(param, body) -> failwith "can't compile"
-            // build CompiledLambda: Globals -> Value -> Value
+            // Globals -> Value -> Value
+            // app (id "CompiledLambda") (lamb ["_gs"; param] (build context body |>> KlValue))
         | FreezeExpr body -> failwith "can't compile"
-            // build CompiledFreeze: Globals -> Value
+            // Globals -> Value
+            // app (id "CompiledFreeze") (lamb ["_gs"] (build context body |>> KlValue))
         | TrapExpr(body, handler) -> failwith "can't compile" // try...with, need to join branch types
         | DefunExpr _ -> failwith "can't compile defun in expr position" // or can we?
 
-        // Inlining of primitive functions
+        // Inlining of primitive functions - need to be renamed
         | Expr [Sym "="; x; y] ->
             infix (id "=")
                   (build context x |>> KlValue)
@@ -181,11 +211,14 @@ module Compiler =
                   (build context x |>> FsString)
                   (build context y |>> FsString), FsString
         | Expr [Sym "cons"; x; y] ->
-            app (id "Cons") (parens (tuple (List.map (build context >> convert KlValue) [x; y]))), KlValue
+            app (id "Cons")
+                (parens (tuple (List.map (build context >> convert KlValue) [x; y]))), KlValue
 
         // TODO: transform function name
         // TODO: need to confirm argument count
-        | AppExpr(Sym s, args) -> app (app (id s) (id "_gs")) (list (List.map (build context >> convert KlValue) args)), KlValue
+        | AppExpr(Sym s, args) ->
+            app (app (id (rename s)) (id "_gs"))
+                (list (List.map (build context >> convert KlValue) args)), KlValue
 
         // TODO: if it's some other expression, we need an apply function
         | AppExpr(f, args) -> failwith "can't compile"
