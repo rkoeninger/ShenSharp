@@ -4,10 +4,10 @@ open System.IO
 open NUnit.Framework
 open Kl
 open Kl.Values
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type ValuesTests() =
+type Equality() =
 
     [<Test>]
     member this.``Empty values are equal``() =
@@ -58,7 +58,7 @@ type ValuesTests() =
         assertEq (Err "whoops") (Err "whoops")
 
     [<Test>]
-    member this.``Functions can be compared for equality``() =
+    member this.``Functions can be compared for reference equality``() =
         let f = Freeze(Map.empty, Empty)
         assertEq (Func f) (Func f)
         let l = Lambda("X", Map.empty, toCons [Sym "+"; Int 1; Sym "X"])
@@ -70,6 +70,7 @@ type ValuesTests() =
             | _ -> err "Must be integer"
         let n = Native("inc", 1, inc)
         assertEq (Func n) (Func n)
+        assertNotEq (Func(Freeze(Map.empty, Empty))) (Func(Freeze(Map.empty, Empty)))
 
     [<Test>]
     member this.``Hash codes can be generated for all value types``() =

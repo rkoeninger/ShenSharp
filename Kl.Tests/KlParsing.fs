@@ -4,10 +4,10 @@ open NUnit.Framework
 open Kl
 open Kl.Values
 open Kl.Import.Reader
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type ``The Reader``() =
+type ``KL Parsing``() =
 
     [<Test>]
     member this.``does not handle extra spaces inside of parens``() =

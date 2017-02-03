@@ -4,10 +4,10 @@ open NUnit.Framework
 open Kl
 open Kl.Startup
 open Kl.Values
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type ErrorHandlingTests() =
+type ``Error Handling``() =
 
     [<Test>]
     member this.``simple-error should cause uncaught error``() =

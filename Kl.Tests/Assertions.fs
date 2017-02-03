@@ -8,7 +8,7 @@ open Kl.Evaluator
 open Kl.Startup
 open Kl.Import.Reader
 
-module TestCommon =
+module Assertions =
     
     let runIn globals syntax = eval globals (read syntax)
     let run = runIn (baseGlobals())

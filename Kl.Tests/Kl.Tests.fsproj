@@ -52,21 +52,21 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <Compile Include="TestCommon.fs" />
-    <Compile Include="PrintInfo.fs" />
-    <Compile Include="ValuesTests.fs" />
-    <Compile Include="ReaderTests.fs" />
-    <Compile Include="ExpressionRecognizerTests.fs" />
-    <Compile Include="MathTests.fs" />
-    <Compile Include="EvaluationOrderTests.fs" />
-    <Compile Include="ConditionalEvalutationTests.fs" />
-    <Compile Include="SymbolEvaluationTests.fs" />
-    <Compile Include="ErrorHandlingTests.fs" />
-    <Compile Include="BuiltinsTests.fs" />
-    <Compile Include="PartialApplicationTests.fs" />
-    <Compile Include="ScopeCaptureTests.fs" />
-    <Compile Include="Trampolines.fs" />
-    <Compile Include="CompilationTests.fs" />
+    <Compile Include="Assertions.fs" />
+    <Compile Include="PrintDebugInfo.fs" />
+    <Compile Include="Equality.fs" />
+    <Compile Include="KlParsing.fs" />
+    <Compile Include="ExpressionRecognition.fs" />
+    <Compile Include="Arithmetic.fs" />
+    <Compile Include="EvaluationOrder.fs" />
+    <Compile Include="ConditionalEvalutation.fs" />
+    <Compile Include="SymbolResolution.fs" />
+    <Compile Include="ErrorHandling.fs" />
+    <Compile Include="Primitive Functions.fs" />
+    <Compile Include="PartialApplication.fs" />
+    <Compile Include="ScopeCapture.fs" />
+    <Compile Include="TailCallOptimization.fs" />
+    <Compile Include="Compilation.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FantomasLib">

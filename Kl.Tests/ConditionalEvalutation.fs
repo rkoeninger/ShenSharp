@@ -1,14 +1,14 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
-open TestCommon
 open Kl
 open Kl.Extensions
 open Kl.Values
 open Kl.Startup
+open Assertions
 
 [<TestFixture>]
-type ConditionalEvalutationTests() =
+type ``Conditional Evalutation``() =
 
     let assertEffect eff syntax =
         let globals = baseGlobals()

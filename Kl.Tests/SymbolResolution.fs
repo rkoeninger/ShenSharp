@@ -5,10 +5,10 @@ open Kl
 open Kl.Values
 open Kl.Startup
 open Kl.Import.Reader
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type SymbolEvaluationTests() =
+type ``Symbol Resolution``() =
 
     [<Test>]
     member this.``symbols not at head of application should be resolved using local scope or be idle``() =

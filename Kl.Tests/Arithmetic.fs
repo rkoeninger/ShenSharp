@@ -3,10 +3,10 @@
 open NUnit.Framework
 open Kl
 open Kl.Values
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type ``Math operators``() =
+type Arithmetic() =
 
     let assertDec expr =
         match run expr with

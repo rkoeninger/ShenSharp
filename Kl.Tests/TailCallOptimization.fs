@@ -5,10 +5,10 @@ open Kl
 open Kl.Values
 open Kl.Startup
 open Kl.Import.Reader
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type Trampolines() =
+type ``Tail Call Optimization``() =
 
     let attempt body =
         assertTrue (sprintf "(defun count-down (X) %s) (count-down 20000)" body)

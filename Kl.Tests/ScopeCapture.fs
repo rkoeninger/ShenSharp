@@ -1,13 +1,13 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
-open TestCommon
 open Kl
 open Kl.Values
 open Kl.Startup
+open Assertions
 
 [<TestFixture>]
-type ScopeCaptureTests() =
+type ``Scope Capture``() =
 
     [<Test>]
     member this.``lambda expressions should capture local variables``() =

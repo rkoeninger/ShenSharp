@@ -4,10 +4,10 @@ open NUnit.Framework
 open Kl
 open Kl.Values
 open Kl.Startup
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type PartialApplicationTests() =
+type ``Partial Application``() =
 
     [<Test>]
     member this.``defuns should be partially applicable``() =
@@ -110,7 +110,7 @@ type PartialApplicationTests() =
         assertEq (Int 3) (run "((((lambda _ +) 0) 1) 2)")
 
     [<Test>]
-    member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from defun``() =
+    member this.``excessive arguments are not applied by function that symbol resolves to if symbol returned from defun``() =
         assertEq (Int 3) <| runAll
             "(defun f () +)
              ((f) 1 2)"
@@ -120,6 +120,6 @@ type PartialApplicationTests() =
              (f 1 2)"
 
     [<Test>]
-    member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from native``() =
+    member this.``excessive arguments are not applied by function that symbol resolves to if symbol returned from native``() =
         assertEq (Int 3) (run "((intern \"+\") 1 2)")
         assertError "(intern \"+\" 1 2)"

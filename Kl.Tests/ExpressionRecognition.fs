@@ -4,10 +4,10 @@ open NUnit.Framework
 open Kl.Values
 open Kl.Expressions
 open Kl.Import.Reader
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type ``Expression patterns recognize``() =
+type ``Expression Recognition``() =
 
     let check recognizer strings =
         let checkSample (some, s) =

@@ -6,12 +6,10 @@ open Kl
 open Kl.Values
 open Kl.Builtins
 open Kl.Startup
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type PrintInfo() =
-
-    // Prints environment info so we can confirm it on CI boxes
+type ``Print Debug Info``() =
 
     [<Test>]
     member this.``print platform information``() =

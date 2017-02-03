@@ -5,10 +5,10 @@ open Kl
 open Kl.Values
 open Kl.Evaluator
 open Kl.Startup
-open TestCommon
+open Assertions
 
 [<TestFixture>]
-type BuiltinsTests() =
+type ``Primitive Functions``() =
 
     [<Test>]
     member this.``string index out of bounds should raise error``() =

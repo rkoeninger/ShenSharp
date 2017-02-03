@@ -1,13 +1,13 @@
 ﻿namespace Kl.Tests
 
 open NUnit.Framework
-open TestCommon
 open Kl
 open Kl.Values
 open Kl.Startup
+open Assertions
 
 [<TestFixture>]
-type EvaluationOrderTests() =
+type ``Evaluation Order``() =
 
     [<Test>]
     member this.``argument expressions in applications should be evaluated left to right``() =
