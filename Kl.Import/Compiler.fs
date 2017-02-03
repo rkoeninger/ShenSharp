@@ -212,6 +212,8 @@ module Compiler =
 
         | _ -> failwith "Unable to compile"
 
+    let buildExpr context klExpr = build context klExpr |> fst
+
     let private compileDefun globals name paramz body = () // Defun -> module let binding
 
     let compile globals = () // return a module definition
