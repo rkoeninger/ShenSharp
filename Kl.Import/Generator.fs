@@ -9,8 +9,8 @@ module Generator =
     let private genId() = "array" + Guid.NewGuid().ToString().Substring(0, 8)
 
     let rec private findArrays = function
-        | Cons(x, y) -> List.append (findArrays x) (findArrays y)
-        | Vec array -> List.append (List.collect findArrays (Array.toList array)) [array]
+        | Cons(x, y) -> findArrays x @ findArrays y
+        | Vec array -> List.collect findArrays (Array.toList array) @ [array]
         | _ -> []
 
     let private buildRefs arrays = List.map (fun a -> (a, genId())) arrays

@@ -151,7 +151,7 @@ module Compiler =
     let private rename s = "kl_" + s
 
     let rec private flattenDo = function
-        | DoExpr(first, second) -> List.append (flattenDo first) (flattenDo second)
+        | DoExpr(first, second) -> flattenDo first @ flattenDo second
         | klExpr -> [klExpr]
 
     // TODO: make sure error messages and conditions are

@@ -91,7 +91,7 @@ module Evaluator =
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> apply globals f (List.append previousArgs args)
+            | _ -> apply globals f (previousArgs @ args)
 
     // Evaluates expression, deferring work in tail position.
     and private evalw ((globals, locals) as env) = function
