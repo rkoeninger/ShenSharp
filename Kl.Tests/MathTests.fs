@@ -19,7 +19,7 @@ type ``Math operators``() =
         | _ -> Assert.Fail "Int expected"
 
     [<Test>]
-    member this.``return an integeer when adding two integers``() =
+    member this.``return an integer when adding two integers``() =
         assertInt "(+ 5 3)"
 
     [<Test>]
