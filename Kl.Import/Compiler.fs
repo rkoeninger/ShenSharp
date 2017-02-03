@@ -132,6 +132,22 @@ module Compiler =
 
     let private (|>>) fsExprWithType targetType = convert targetType fsExprWithType
 
+    // The type of the last expression is the type of the whole sequence
+    let private dos exprsWithTypes =
+        let rec buildDos = function
+            | [exprWithType] -> exprWithType
+            | exprWithType :: rest ->
+                let rest, restType = buildDos rest
+                SynExpr.Sequential(
+                    SequencePointInfoForSeq.SequencePointsAtSeq,
+                    false,
+                    exprWithType |>> FsUnit,
+                    rest,
+                    nullRange), restType
+            | [] -> failwith "do must have at least 2 statements"
+        let seqExpr, lastType = buildDos exprsWithTypes
+        SynExpr.Do(seqExpr, nullRange), lastType
+
     let private rename s = "kl_" + s
 
     let rec private flattenDo = function
@@ -181,41 +197,18 @@ module Compiler =
             var param
                 (build context binding |>> KlValue)
                 (build (globals, Set.add param locals) body |>> KlValue), KlValue
-        | DoExpr _ as doExpr -> failwith "can't compile" // flattenDo doExpr // ignore result of all but last
+        | DoExpr _ as doExpr -> dos (List.map (build context) (flattenDo doExpr))
         | LambdaExpr(param, body) -> failwith "can't compile"
             // Globals -> Value -> Value
-            // app (id "CompiledLambda") (lamb ["_gs"; param] (build context body |>> KlValue))
+            // app (id "Func")
+            //     (app (id "CompiledLambda") (lamb ["_gs"; param] (build context body |>> KlValue)))
         | FreezeExpr body -> failwith "can't compile"
             // Globals -> Value
-            // app (id "CompiledFreeze") (lamb ["_gs"] (build context body |>> KlValue))
+            // app (id "Func")
+            //     (app (id "CompiledFreeze") (lamb ["_gs"] (build context body |>> KlValue)))
         | TrapExpr(body, handler) -> failwith "can't compile" // try...with, need to join branch types
         | DefunExpr _ -> failwith "can't compile defun in expr position" // or can we?
 
-        // Inlining of primitive functions - need to be renamed
-        | Expr [Sym "="; x; y] ->
-            infix (id "=")
-                  (build context x |>> KlValue)
-                  (build context y |>> KlValue), FsBoolean
-        | Expr [Sym "+"; x; y] ->
-            infix (id "+")
-                  (build context x |>> FsDecimal)
-                  (build context y |>> FsDecimal), FsDecimal
-        // TODO: other math operators
-        | Expr [Sym "/"; x; y] -> failwith "can't compile"
-            // TODO: should throw DivisionByZeroException as usual
-            // TODO: trap-error needs to catch all exceptions
-            // TODO: klDivide should not have special case for /0
-        | Expr [Sym "intern"; x] -> app (id "Sym") (build context x |>> FsString), KlValue
-        | Expr [Sym "cn"; x; y] ->
-            infix (id "+")
-                  (build context x |>> FsString)
-                  (build context y |>> FsString), FsString
-        | Expr [Sym "cons"; x; y] ->
-            app (id "Cons")
-                (parens (tuple (List.map (build context >> convert KlValue) [x; y]))), KlValue
-
-        // TODO: transform function name
-        // TODO: need to confirm argument count
         | AppExpr(Sym s, args) ->
             app (app (id (rename s)) (id "_gs"))
                 (list (List.map (build context >> convert KlValue) args)), KlValue
