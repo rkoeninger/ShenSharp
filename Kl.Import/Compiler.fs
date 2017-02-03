@@ -110,8 +110,6 @@ module Compiler =
         | Bottom
         | KlValue
         | FsBoolean
-        | FsDecimal
-        | FsString
         | FsUnit
 
     // needs application context to know for which function there
@@ -121,12 +119,8 @@ module Compiler =
         | x, y when x = y -> fsExpr
         | Bottom, _ -> fsExpr
         | FsBoolean, KlValue -> app (id "Bool") fsExpr
-        | FsDecimal, KlValue -> app (id "Dec") fsExpr
-        | FsString, KlValue -> app (id "Str") fsExpr
         | FsUnit, KlValue -> id "Empty"
         | KlValue, FsBoolean -> app (id "isTrue") fsExpr
-        | KlValue, FsDecimal -> app (id "asDecimal") fsExpr
-        | KlValue, FsString -> app (id "asString") fsExpr
         | _, FsUnit -> infix (id "|>") fsExpr (id "ignore")
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
@@ -159,8 +153,8 @@ module Compiler =
     //       needs application context for this
     let rec private build ((globals, locals) as context) = function
         | Empty -> id "Empty", KlValue
-        | Num x -> num x, FsDecimal
-        | Str s -> str s, FsString
+        | Num x -> app (id "Num") (num x), KlValue
+        | Str s -> app (id "Str") (str s), KlValue
         | Sym "true" -> bool true, FsBoolean
         | Sym "false" -> bool false, FsBoolean
         | Sym s ->
