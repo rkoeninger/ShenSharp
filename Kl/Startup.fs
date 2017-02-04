@@ -9,7 +9,19 @@ module Startup =
     let private fn name arity f = name, Native(name, arity, f)
 
     let private installBase globals =
-        List.iter globals.Functions.Add [
+        let onMono = Type.GetType "Mono.Runtime" <> null
+        let platform = if onMono then "Mono" else "Microsoft.NET"
+        let symbols = [
+            "*language*",       Str "F# 4.0"
+            "*implementation*", Str(sprintf "CLR/%s" platform)
+            "*release*",        Str(string Environment.Version)
+            "*port*",           Str "0.4"
+            "*porters*",        Str "Robert Koeninger"
+            "*stinput*",        console
+            "*stoutput*",       console
+            "*home-directory*", Str Environment.CurrentDirectory
+        ]
+        let functions = [
             fn "if"              3 kl_if
             fn "and"             2 kl_and
             fn "or"              2 kl_or
@@ -53,17 +65,8 @@ module Startup =
             fn "exit"            1 kl_exit
             fn "cd"              1 kl_cd
         ]
-        let onMono = Type.GetType "Mono.Runtime" <> null
-        List.iter globals.Symbols.Add [
-            "*language*",       Str "F# 4.0"
-            "*implementation*", Str(sprintf "CLR/%s" (if onMono then "Mono" else "Microsoft.NET"))
-            "*release*",        Str(string Environment.Version)
-            "*port*",           Str "0.4"
-            "*porters*",        Str "Robert Koeninger"
-            "*stinput*",        console
-            "*stoutput*",       console
-            "*home-directory*", Str Environment.CurrentDirectory
-        ]
+        List.iter globals.Symbols.Add symbols
+        List.iter globals.Functions.Add functions
         globals
 
     /// <summary>

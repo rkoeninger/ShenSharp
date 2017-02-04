@@ -15,9 +15,7 @@ module Evaluator =
 
     // Symbols in operand position are either defined locally or they are idle.
     let private resolveSymbol locals id =
-        match Map.tryFind id locals with
-        | Some value -> value
-        | None -> Sym id
+        defaultArg (Map.tryFind id locals) (Sym id)
 
     let private resolveGlobalFunction globals id =
         match globals.Functions.GetMaybe id with
