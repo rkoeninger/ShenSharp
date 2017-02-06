@@ -40,9 +40,12 @@ module Evaluator =
 
         // Freezes can only be applied to 0 arguments.
         // They evaluate their body with local scope captured where they were formed.
-        | Freeze(locals, body) ->
+        | Freeze impl ->
             match args with
-            | [] -> defer locals body
+            | [] ->
+                match impl with
+                | InterpretedFreeze(locals, body) -> defer locals body
+                | CompiledFreeze f -> Done(f globals)
             | _ -> errf "%O expected 0 arguments, given %i" f args.Length
 
         // Each lambda only takes exactly 1 argument.
@@ -51,14 +54,25 @@ module Evaluator =
         // arguments to the returned function. If lambda does not return another
         // function, this is an error.
         // Lambdas evaluate their body with local scope captured when they were formed.
-        | Lambda(param, locals, body) ->
+        | Lambda impl ->
             match args with
             | [] -> errf "%O expected 1 arguments, given 0" f
-            | [arg0] -> defer (Map.add param arg0 locals) body
+            | [arg0] ->
+                match impl with
+                | InterpretedLambda(locals, param, body) -> defer (Map.add param arg0 locals) body
+                | CompiledLambda f -> Done(f globals arg0)
             | arg0 :: args1 ->
-                match evalv (globals, Map.add param arg0 locals) body with
+                let result =
+                    match impl with
+                    | InterpretedLambda(locals, param, body) -> evalv (globals, Map.add param arg0 locals) body
+                    | CompiledLambda f -> f globals arg0
+                match result with
                 | Func f -> apply globals f args1
                 | Sym s ->
+                    let locals =
+                        match impl with
+                        | InterpretedLambda(locals, _, _) -> locals
+                        | CompiledLambda _ -> Map.empty
                     let f = resolveFunction (globals, locals) s
                     apply globals f args1
                 | _ -> errf "%O expected 1 arguments, given %i" f args.Length
@@ -67,22 +81,15 @@ module Evaluator =
         // An error is raised if a Defun is applied to more arguments than it takes.
         // If applied to fewer arguments than the full parameter list, a Partial is returned.
         // They do not retain local state and are usually evaluated at the root level.
-        | Defun(name, paramz, body) ->
-            if args.Length < paramz.Length then
-                match args with
-                | [] -> Done(Func f)
-                | _ -> Done(Func(Partial(f, args)))
-            else
-                defer (Map(List.zip paramz args)) body
-
-        // Natives have the same rules as Defuns.
-        | Native(name, arity, nativeF) ->
+        | Defun(name, arity, impl) ->
             if args.Length < arity then
                 match args with
                 | [] -> Done(Func f)
                 | _ -> Done(Func(Partial(f, args)))
             else
-                Done(nativeF globals args)
+                match impl with
+                | InterpretedDefun(paramz, body) -> defer (Map(List.zip paramz args)) body
+                | CompiledDefun f -> Done(f globals args)
 
         // Applying a partial applies the original function
         // to the previous and current argument lists appended.
@@ -129,11 +136,11 @@ module Evaluator =
 
         // Lambdas capture local scope.
         | LambdaExpr(param, body) ->
-            Done(Func(Lambda(param, locals, body)))
+            Done(Func(Lambda(InterpretedLambda(locals, param, body))))
 
         // Freezes capture local scope.
         | FreezeExpr body ->
-            Done(Func(Freeze(locals, body)))
+            Done(Func(Freeze(InterpretedFreeze(locals, body))))
 
         // Handler expression only evaluated if body results in an error.
         // Handler expression must evaluate to a Function.
@@ -155,7 +162,8 @@ module Evaluator =
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
         | DefunExpr(name, paramz, body) ->
-            globals.Functions.[name] <- Defun(name, paramz, body)
+            globals.Functions.[name] <-
+                Defun(name, List.length paramz, InterpretedDefun(paramz, body))
             Done(Sym name)
 
         // Expression in operator position must evaluate to a Function.

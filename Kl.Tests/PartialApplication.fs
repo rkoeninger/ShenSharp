@@ -48,7 +48,7 @@ type ``Partial Application``() =
     [<Test>]
     member this.``applying a native to fewer arguments than it takes results in a partial``() =
         match run "(+ 2)" with
-        | Func(Partial(Native("+", _, _), [Int 2])) -> ()
+        | Func(Partial(Defun("+", _, _), [Int 2])) -> ()
         | _ -> Assert.Fail "Partial expected"
 
         assertEq (Int 3) (run "((+ 2) 1)")
@@ -56,7 +56,7 @@ type ``Partial Application``() =
     [<Test>]
     member this.``applying a native that takes 1 or more parameters to 0 arguments results in that same primitve``() =
         match run "(+)" with
-        | Func(Native("+", _, _)) -> ()
+        | Func(Defun("+", _, _)) -> ()
         | x -> Assert.Fail "Native expected"
 
         assertEq (Int 3) (run "((+) 1 2)")
