@@ -54,6 +54,7 @@
     <Content Include="packages.config" />
     <Compile Include="Reader.fs" />
     <Compile Include="Generator.fs" />
+    <Compile Include="Syntax.fs" />
     <Compile Include="Compiler.fs" />
     <Compile Include="Loader.fs" />
   </ItemGroup>
