@@ -45,7 +45,7 @@ module Evaluator =
             | [] ->
                 match impl with
                 | InterpretedFreeze(locals, body) -> defer locals body
-                | CompiledFreeze f -> Done(f globals)
+                | CompiledFreeze native -> Done(native globals)
             | _ -> errf "%O expected 0 arguments, given %i" f args.Length
 
         // Each lambda only takes exactly 1 argument.
@@ -60,12 +60,12 @@ module Evaluator =
             | [arg0] ->
                 match impl with
                 | InterpretedLambda(locals, param, body) -> defer (Map.add param arg0 locals) body
-                | CompiledLambda f -> Done(f globals arg0)
+                | CompiledLambda native -> Done(native globals arg0)
             | arg0 :: args1 ->
                 let result =
                     match impl with
                     | InterpretedLambda(locals, param, body) -> evalv (globals, Map.add param arg0 locals) body
-                    | CompiledLambda f -> f globals arg0
+                    | CompiledLambda native -> native globals arg0
                 match result with
                 | Func f -> apply globals f args1
                 | Sym s ->
@@ -88,8 +88,11 @@ module Evaluator =
                 | _ -> Done(Func(Partial(f, args)))
             else
                 match impl with
-                | InterpretedDefun(paramz, body) -> defer (Map(List.zip paramz args)) body
-                | CompiledDefun f -> Done(f globals args)
+                | InterpretedDefun(paramz, body) ->
+                    if args.Length > arity
+                        then errf "%O expected %i arguments, given %i" f arity args.Length
+                        else defer (Map(List.zip paramz args)) body
+                | CompiledDefun native -> Done(native globals args)
 
         // Applying a partial applies the original function
         // to the previous and current argument lists appended.
