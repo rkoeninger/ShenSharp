@@ -62,7 +62,7 @@
     <Compile Include="ConditionalEvalutation.fs" />
     <Compile Include="SymbolResolution.fs" />
     <Compile Include="ErrorHandling.fs" />
-    <Compile Include="Primitive Functions.fs" />
+    <Compile Include="PrimitiveFunctions.fs" />
     <Compile Include="PartialApplication.fs" />
     <Compile Include="ScopeCapture.fs" />
     <Compile Include="TailCallOptimization.fs" />
