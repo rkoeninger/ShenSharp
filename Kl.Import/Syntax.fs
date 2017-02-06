@@ -3,20 +3,30 @@
 open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.Range
 
+/// <summary>
+/// A collection of helper functions to simplify
+/// syntax for building F# ASTs.
+/// </summary>
 module Syntax =
 
     // Picked large values for line, col because there will be an unpredictable
     // ArrayIndexOutOfBoundsException if the numbers are too small
-    let private range fn = mkRange fn (mkPos 512 512) (mkPos 1024 1024)
-    let ident fn s = new Ident(s, range fn)
+    let private loc fn = mkRange fn (mkPos 512 512) (mkPos 1024 1024)
+    let ident fn s = new Ident(s, loc fn)
     let longIdent fn parts = List.map (ident fn) parts
     let longIdentWithDots fn parts =
         LongIdentWithDots.LongIdentWithDots(
             List.map (ident fn) parts,
-            List.replicate (List.length parts - 1) (range fn))
+            List.replicate (List.length parts - 1) (loc fn))
     let longType fn parts = SynType.LongIdent(longIdentWithDots fn parts)
-    let namePat fn s = SynPat.Named(SynPat.Wild(range fn), ident fn s, false, None, range fn)
-    let typedPat fn pat synType = SynPat.Paren(SynPat.Typed(pat, synType, range fn), range fn)
+    let shortType fn s = longType fn [s]
+    let namePat fn s = SynPat.Named(SynPat.Wild(loc fn), ident fn s, false, None, loc fn)
+    let typedPat fn pat synType = SynPat.Paren(SynPat.Typed(pat, synType, loc fn), loc fn)
+    let nameTypeSimplePat fn s synType =
+        SynSimplePat.Typed(
+            SynSimplePat.Id(ident fn s, None, true, false, false, loc fn),
+            synType,
+            loc fn)
     let simpleBinding fn pat value =
         SynBinding.Binding(
             None,
@@ -32,22 +42,22 @@ module Syntax =
             pat,
             None,
             value,
-            range fn,
+            loc fn,
             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
-    let boolExpr fn b = SynExpr.Const(SynConst.Bool b, range fn)
-    let decimalExpr fn n = SynExpr.Const(SynConst.Decimal n, range fn)
-    let stringExpr fn s = SynExpr.Const(SynConst.String(s, range fn), range fn)
+    let boolExpr fn b = SynExpr.Const(SynConst.Bool b, loc fn)
+    let decimalExpr fn n = SynExpr.Const(SynConst.Decimal n, loc fn)
+    let stringExpr fn s = SynExpr.Const(SynConst.String(s, loc fn), loc fn)
     let idExpr fn s = SynExpr.Ident(ident fn s)
-    let parenExpr fn expr = SynExpr.Paren(expr, range fn, None, range fn)
-    let listExpr fn vals = SynExpr.ArrayOrList(false, vals, range fn)
-    let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, range fn)
+    let parenExpr fn expr = SynExpr.Paren(expr, loc fn, None, loc fn)
+    let listExpr fn vals = SynExpr.ArrayOrList(false, vals, loc fn)
+    let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc fn)
     let infixExpr fn op left right =
         SynExpr.App(
             ExprAtomicFlag.NonAtomic,
             false,
-            SynExpr.App(ExprAtomicFlag.NonAtomic, true, op, left, range fn),
+            SynExpr.App(ExprAtomicFlag.NonAtomic, true, op, left, loc fn),
             right,
-            range fn)
+            loc fn)
     let ifExpr fn condition consequent alternative =
         SynExpr.IfThenElse(
             condition,
@@ -55,29 +65,29 @@ module Syntax =
             Some alternative,
             SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
             false,
-            range fn,
-            range fn)
+            loc fn,
+            loc fn)
     let letExpr fn symbol value body =
         SynExpr.LetOrUse(
             false,
             false,
             [simpleBinding fn symbol value],
             body,
-            range fn)
+            loc fn)
     let tryWithExpr fn body e handler =
         SynExpr.TryWith(
             body,
-            range fn,
+            loc fn,
             [SynMatchClause.Clause(
                 namePat fn e,
                 None,
                 handler,
-                range fn,
+                loc fn,
                 SequencePointInfoForTarget.SequencePointAtTarget)],
-            range fn,
-            range fn,
-            SequencePointInfoForTry.SequencePointAtTry(range fn),
-            SequencePointInfoForWith.SequencePointAtWith(range fn))
+            loc fn,
+            loc fn,
+            SequencePointInfoForTry.SequencePointAtTry(loc fn),
+            SequencePointInfoForWith.SequencePointAtWith(loc fn))
     let rec sequentialExpr fn = function
         | [] -> failwith "sequential cannot be empty"
         | [expr] -> expr
@@ -87,9 +97,18 @@ module Syntax =
                 false,
                 expr,
                 sequentialExpr fn rest,
-                range fn)
-    let doExpr fn expr = SynExpr.Do(expr, range fn)
-    let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, range fn)
+                loc fn)
+    let doExpr fn expr = SynExpr.Do(expr, loc fn)
+    let lambdaExpr fn paramz body =
+        SynExpr.Lambda(
+            false,
+            false,
+            SynSimplePats.SimplePats(
+                List.map (fun (s, synType) -> nameTypeSimplePat fn s synType) paramz,
+                loc fn),
+            body,
+            loc fn)
+    let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
     let letDecl fn name paramz body =
         SynModuleDecl.Let(false,
             [SynBinding.Binding(
@@ -116,12 +135,12 @@ module Syntax =
                             (fun s -> typedPat fn (namePat fn s) (longType fn ["Kl"; "Value"]))
                             paramz),
                     None,
-                    range fn),
+                    loc fn),
                 None,
                 body,
-                range fn,
-                SequencePointInfoForBinding.SequencePointAtBinding(range fn))],
-            range fn)
+                loc fn,
+                SequencePointInfoForBinding.SequencePointAtBinding(loc fn))],
+            loc fn)
     let parsedFile fn decls =
         ParsedInput.ImplFile(
             ParsedImplFileInput.ParsedImplFileInput(
@@ -138,5 +157,5 @@ module Syntax =
                     PreXmlDoc.Empty,
                     [],
                     None,
-                    range fn)],
+                    loc fn)],
                 (false, false)))

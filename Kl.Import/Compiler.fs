@@ -88,14 +88,29 @@ module Compiler =
                 (build (fn, globals, Set.add param locals) body |>> KlValue), KlValue
         | DoExpr _ as doExpr -> failwith "can't compile"
             //dos (List.map (build context) (flattenDo doExpr))
-        | LambdaExpr(param, body) -> failwith "can't compile"
-            // Globals -> Value -> Value
-            // app (id "Func")
-            //     (app (id "CompiledLambda") (lamb ["globals"; param] (build context body |>> KlValue)))
-        | FreezeExpr body -> failwith "can't compile"
-            // Globals -> Value
-            // app (id "Func")
-            //     (app (id "CompiledFreeze") (lamb ["globals"] (build context body |>> KlValue)))
+        | LambdaExpr(param, body) ->
+            let param = rename param
+            parens fn
+                (appExpr fn
+                    (idExpr fn "Func")
+                    (appExpr fn
+                        (idExpr fn "Lambda")
+                        (appExpr fn
+                            (idExpr fn "CompiledLambda")
+                            (lambdaExpr fn
+                                ["globals", shortType fn "Globals"; param, shortType fn "Value"]
+                                (build (fn, globals, Set.union (Set.ofList ["globals"; param]) locals) body |>> KlValue))))), KlValue
+        | FreezeExpr body ->
+            parens fn
+                (appExpr fn
+                    (idExpr fn "Func")
+                    (appExpr fn
+                        (idExpr fn "Lambda")
+                        (appExpr fn
+                            (idExpr fn "CompiledLambda")
+                            (lambdaExpr fn
+                                ["globals", shortType fn "Globals"]
+                                (build (fn, globals, Set.add "globals" locals) body |>> KlValue))))), KlValue
         | TrapExpr(body, LambdaExpr(param, handler)) ->
             tryWithExpr fn
                 (build context body |>> KlValue)
