@@ -15,7 +15,7 @@ type ``Error Handling``() =
             run "(simple-error \"whoops\")" |> ignore
             Assert.Fail "Exception expected"
         with
-            :? SimpleError as e -> Assert.AreEqual("whoops", e.Message)
+            e -> Assert.AreEqual("whoops", e.Message)
 
     [<Test>]
     member this.``simple-error should be caught by trap-error``() =

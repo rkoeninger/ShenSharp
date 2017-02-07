@@ -151,11 +151,9 @@ module Evaluator =
         | TrapExpr(body, handler) ->
             try
                 Done(evalv env body)
-            with
-            | :? SimpleError as e ->
+            with e ->
                 let operator = evalf env handler
                 apply globals operator [Err e.Message]
-            | _ -> reraise()
 
         // Second expression is in tail position.
         | DoExpr(first, second) ->

@@ -89,12 +89,6 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream %s>" io.Name
 
-/// <summary>
-/// Exception type that represents KL errors raised by (simple-error).
-/// </summary>
-type SimpleError(message) =
-    inherit Exception(message)
-
 // Console reader is an adapter that buffers input by line to provide
 // character stream to Shen REPL in expected format.
 type internal ConsoleReader() =
@@ -126,8 +120,8 @@ module Values =
         | Num x when x % 1.0m = 0.0m -> Some(int x)
         | _ -> None
     let inRange min max value = min <= value && value < max
-    let err s = raise(SimpleError s)
-    let errf format = ksprintf err format
+    let err s = failwith s
+    let errf format = failwithf format
     let newGlobals() = {
         Symbols = new Dictionary<string, Value>()
         Functions = new Dictionary<string, Function>()
