@@ -44,6 +44,34 @@ module Syntax =
             value,
             loc fn,
             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
+    let letBinding fn name paramz body =
+        SynBinding.Binding(
+            None,
+            SynBindingKind.NormalBinding,
+            false,
+            false,
+            [],
+            PreXmlDoc.Empty,
+            SynValData.SynValData(
+                None,
+                SynValInfo.SynValInfo(
+                    List.map
+                        (fun (s, _) -> [SynArgInfo.SynArgInfo([], false, Some(ident fn s))])
+                        paramz,
+                    SynArgInfo.SynArgInfo([], false, None)),
+                None),
+            SynPat.LongIdent(
+                longIdentWithDots fn [name],
+                None,
+                None,
+                SynConstructorArgs.Pats(
+                    List.map (fun (s, synType) -> typedPat fn (namePat fn s) synType) paramz),
+                None,
+                loc fn),
+            None,
+            body,
+            loc fn,
+            SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
     let boolExpr fn b = SynExpr.Const(SynConst.Bool b, loc fn)
     let decimalExpr fn n = SynExpr.Const(SynConst.Decimal n, loc fn)
     let stringExpr fn s = SynExpr.Const(SynConst.String(s, loc fn), loc fn)
@@ -99,48 +127,31 @@ module Syntax =
                 sequentialExpr fn rest,
                 loc fn)
     let doExpr fn expr = SynExpr.Do(expr, loc fn)
-    let lambdaExpr fn paramz body =
-        SynExpr.Lambda(
-            false,
-            false,
-            SynSimplePats.SimplePats(
-                List.map (fun (s, synType) -> nameTypeSimplePat fn s synType) paramz,
-                loc fn),
-            body,
-            loc fn)
-    let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
-    let letDecl fn name paramz body =
-        SynModuleDecl.Let(false,
-            [SynBinding.Binding(
-                None,
-                SynBindingKind.NormalBinding,
+    let rec lambdaExpr fn paramz body =
+        match paramz with
+        | [] ->
+            SynExpr.Lambda(
                 false,
                 false,
-                [],
-                PreXmlDoc.Empty,
-                SynValData.SynValData(
-                    None,
-                    SynValInfo.SynValInfo(
-                        List.map
-                            (fun s -> [SynArgInfo.SynArgInfo([], false, Some(ident fn s))])
-                            paramz,
-                        SynArgInfo.SynArgInfo([], false, None)),
-                    None),
-                SynPat.LongIdent(
-                    longIdentWithDots fn [name],
-                    None,
-                    None,
-                    SynConstructorArgs.Pats(
-                        List.map
-                            (fun s -> typedPat fn (namePat fn s) (longType fn ["Kl"; "Value"]))
-                            paramz),
-                    None,
-                    loc fn),
-                None,
+                SynSimplePats.SimplePats([], loc fn),
                 body,
-                loc fn,
-                SequencePointInfoForBinding.SequencePointAtBinding(loc fn))],
-            loc fn)
+                loc fn)
+        | [s, synType] ->
+            SynExpr.Lambda(
+                false,
+                false,
+                SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
+                body,
+                loc fn)
+        | (s, synType) :: paramz ->
+            SynExpr.Lambda(
+                false,
+                false,
+                SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
+                lambdaExpr fn paramz body,
+                loc fn)
+    let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
+    let letDecl fn bindings = SynModuleDecl.Let(false, bindings, loc fn)
     let parsedFile fn decls =
         ParsedInput.ImplFile(
             ParsedImplFileInput.ParsedImplFileInput(

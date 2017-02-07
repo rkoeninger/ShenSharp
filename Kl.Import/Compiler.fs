@@ -5,6 +5,7 @@ open Microsoft.FSharp.Compiler.Range
 open Kl
 open Kl.Values
 open Kl.Expressions
+open Kl.Import.Reader
 open Kl.Import.Syntax
 
 module Compiler =
@@ -89,28 +90,35 @@ module Compiler =
         | DoExpr _ as doExpr -> failwith "can't compile"
             //dos (List.map (build context) (flattenDo doExpr))
         | LambdaExpr(param, body) ->
-            let param = rename param
             parens fn
                 (appExpr fn
                     (idExpr fn "Func")
-                    (appExpr fn
-                        (idExpr fn "Lambda")
+                    (parens fn
                         (appExpr fn
-                            (idExpr fn "CompiledLambda")
-                            (lambdaExpr fn
-                                ["globals", shortType fn "Globals"; param, shortType fn "Value"]
-                                (build (fn, globals, Set.union (Set.ofList ["globals"; param]) locals) body |>> KlValue))))), KlValue
+                            (idExpr fn "Lambda")
+                            (parens fn
+                                (appExpr fn
+                                    (idExpr fn "CompiledLambda")
+                                    (parens fn
+                                        (lambdaExpr fn
+                                            ["globals", shortType fn "Globals"
+                                             rename param, shortType fn "Value"]
+                                            (build (fn, globals, Set.add param locals)
+                                                body |>> KlValue)))))))), KlValue
         | FreezeExpr body ->
             parens fn
                 (appExpr fn
                     (idExpr fn "Func")
-                    (appExpr fn
-                        (idExpr fn "Lambda")
+                    (parens fn
                         (appExpr fn
-                            (idExpr fn "CompiledLambda")
-                            (lambdaExpr fn
-                                ["globals", shortType fn "Globals"]
-                                (build (fn, globals, Set.add "globals" locals) body |>> KlValue))))), KlValue
+                            (idExpr fn "Freeze")
+                            (parens fn
+                                (appExpr fn
+                                    (idExpr fn "CompiledFreeze")
+                                    (parens fn
+                                        (lambdaExpr fn
+                                            ["globals", shortType fn "Globals"]
+                                            (build context body |>> KlValue)))))))), KlValue
         | TrapExpr(body, LambdaExpr(param, handler)) ->
             tryWithExpr fn
                 (build context body |>> KlValue)
@@ -127,8 +135,7 @@ module Compiler =
                     (listExpr fn [idExpr fn "e"])), KlValue // TODO: need to get Message from exception
         | TrapExpr(body, handler) -> failwith "can't compile" // try...with, need to join branch types
             //tryWith (build body)  (build (globals, Set.add "e" locals) handler)
-        | DefunExpr _ -> failwith "can't compile defun in expr position" // or can we?
-
+        | DefunExpr _ -> failwith "Can't compile defun not at top level"
         | AppExpr(Sym s, args) ->
             appExpr fn
                 (appExpr fn
@@ -143,20 +150,21 @@ module Compiler =
     let buildExpr context klExpr = build context klExpr |> fst
 
     let compileDefun fn globals name paramz body =
-        letDecl fn
-            name
-            paramz
-            (build (fn, globals, Set.empty) body |> fst)
+        letDecl fn [
+            letBinding fn
+                name
+                paramz
+                (build (fn, globals, Set.empty) body |>> KlValue)]
 
     let compile fn globals =
         parsedFile fn [
             openDecl fn ["Kl"]
             openDecl fn ["Kl"; "Values"]
             openDecl fn ["Kl"; "Builtins"]
-            letDecl fn
-               "hi"
-               ["kl_X"]
-               (build (fn, globals, Set.singleton "X")
-                   (OrExpr(
-                       AndExpr(Sym "X", Sym "X"),
-                       AndExpr(Sym "X", Sym "X"))) |>> KlValue)]
+            letDecl fn [
+                letBinding fn
+                    "hi"
+                    ["globals", shortType fn "Globals"
+                     rename "X", shortType fn "Value"]
+                    (build (fn, globals, Set.singleton "X")
+                        (read "(lambda Y (+ X Y))") |>> KlValue)]]

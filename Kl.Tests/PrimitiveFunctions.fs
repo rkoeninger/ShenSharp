@@ -46,7 +46,7 @@ type ``Primitive Functions``() =
         assertError "(tl ())"
         assertNoError "(hd (cons 0 ()))"
         assertNoError "(tl (cons 0 ()))"
-   
+
     [<Test>]
     member this.``eval-kl evaluating a constant should equal that constant``() =
         assertEq (Int 5) (run "(eval-kl 5)")
