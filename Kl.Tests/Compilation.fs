@@ -22,7 +22,7 @@ open Kl.Evaluator
 //let ``kl_shen.posint?`` globals = function
 //    | [kl_V14609] -> Bool(isTrue(``kl_integer?`` globals [kl_V14609]) && isTrue(``kl_>=`` globals [kl_V14609; 0]))
 //    | args -> argsErr \"shen.posint?\" [\"value\"] args
-let f x = if true then () else ()
+let f (x: Exception) = e.Message
 "
         let ast = CodeFormatter.Parse("./test.fs", text)
         Assert.IsTrue(CodeFormatter.IsValidAST ast)

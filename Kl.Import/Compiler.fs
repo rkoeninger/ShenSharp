@@ -14,6 +14,20 @@ module Compiler =
         | SynExpr.Paren _ as e -> e
         | e -> parenExpr fn e
 
+    let private appIdExpr fn s arg = parens fn (appExpr fn (idExpr fn s) arg)
+
+    let private infixIdExpr fn s left right = parens fn (infixExpr fn (idExpr fn s) left right)
+
+    let private buildKlLambda fn lExpr =
+        appIdExpr fn "Func"
+            (appIdExpr fn "Lambda"
+                (appIdExpr fn "CompiledLambda" lExpr))
+
+    let private buildKlFreeze fn fExpr =
+        appIdExpr fn "Func"
+            (appIdExpr fn "Freeze"
+                (appIdExpr fn "CompiledFreeze" fExpr))
+
     type private ExprType =
         | Bottom
         | KlValue
@@ -27,10 +41,10 @@ module Compiler =
         match currentType, targetType with
         | x, y when x = y -> fsExpr
         | Bottom, _ -> fsExpr
-        | FsBoolean, KlValue -> parens fn (appExpr fn (idExpr fn "Bool") fsExpr)
+        | FsBoolean, KlValue -> appIdExpr fn "Bool" fsExpr
         | FsUnit, KlValue -> idExpr fn "Empty"
-        | KlValue, FsBoolean -> parens fn (appExpr fn (idExpr fn "isTrue") fsExpr)
-        | _, FsUnit -> infixExpr fn (idExpr fn "op_PipeRight") fsExpr (idExpr fn "ignore")
+        | KlValue, FsBoolean -> appIdExpr fn "isTrue" fsExpr
+        | _, FsUnit -> infixIdExpr fn "op_PipeRight" fsExpr (idExpr fn "ignore")
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
     let private (|>>) fsExprWithType targetType = convert targetType fsExprWithType
@@ -48,22 +62,22 @@ module Compiler =
     //       needs application context for this
     let rec private build ((fn, globals, locals) as context) = function
         | Empty -> idExpr fn "Empty", KlValue
-        | Num x -> appExpr fn (idExpr fn "Num") (decimalExpr fn x), KlValue
-        | Str s -> appExpr fn (idExpr fn "Str") (stringExpr fn s), KlValue
+        | Num x -> appIdExpr fn "Num" (decimalExpr fn x), KlValue
+        | Str s -> appIdExpr fn "Str" (stringExpr fn s), KlValue
         | Sym "true" -> boolExpr fn true, FsBoolean
         | Sym "false" -> boolExpr fn false, FsBoolean
         | Sym s ->
             if Set.contains s locals
                 then idExpr fn (rename s), KlValue
-                else appExpr fn (idExpr fn "Sym") (stringExpr fn s), KlValue
+                else appIdExpr fn "Sym" (stringExpr fn s), KlValue
         | AndExpr(left, right) ->
-            infixExpr fn
-                (idExpr fn "op_BooleanAnd")
+            infixIdExpr fn
+                "op_BooleanAnd"
                 (parens fn (build context left  |>> FsBoolean))
                 (parens fn (build context right |>> FsBoolean)), FsBoolean
         | OrExpr(left, right) ->
-            infixExpr fn
-                 (idExpr fn "op_BooleanOr")
+            infixIdExpr fn
+                 "op_BooleanOr"
                  (parens fn (build context left  |>> FsBoolean))
                  (parens fn (build context right |>> FsBoolean)), FsBoolean
         | IfExpr(condition, consequent, alternative) ->
@@ -86,7 +100,7 @@ module Compiler =
             // TODO: might be able to put let on its own line instead of part of expr, depends on context
             // TODO: need to optimize types
             letExpr fn
-                (namePat fn param)
+                (rename param)
                 (build context binding |>> KlValue)
                 (build (fn, globals, Set.add param locals) body |>> KlValue), KlValue
         | DoExpr _ as expr ->
@@ -94,40 +108,24 @@ module Compiler =
             let exprs = List.mapi (fun i e -> if i < List.length exprs0 - 1 then e |>> FsUnit else fst e) exprs0
             sequentialExpr fn exprs, snd (List.last exprs0)
         | LambdaExpr(param, body) ->
-            parens fn
-                (appExpr fn
-                    (idExpr fn "Func")
-                    (parens fn
-                        (appExpr fn
-                            (idExpr fn "Lambda")
-                            (parens fn
-                                (appExpr fn
-                                    (idExpr fn "CompiledLambda")
-                                    (parens fn
-                                        (lambdaExpr fn
-                                            ["globals", shortType fn "Globals"
-                                             rename param, shortType fn "Value"]
-                                            (build (fn, globals, Set.add param locals)
-                                                body |>> KlValue)))))))), KlValue
+            buildKlLambda fn
+                (lambdaExpr fn
+                    ["globals", shortType fn "Globals"; rename param, shortType fn "Value"]
+                    (build (fn, globals, Set.add param locals)
+                        body |>> KlValue)), KlValue
         | FreezeExpr body ->
-            parens fn
-                (appExpr fn
-                    (idExpr fn "Func")
-                    (parens fn
-                        (appExpr fn
-                            (idExpr fn "Freeze")
-                            (parens fn
-                                (appExpr fn
-                                    (idExpr fn "CompiledFreeze")
-                                    (parens fn
-                                        (lambdaExpr fn
-                                            ["globals", shortType fn "Globals"]
-                                            (build context body |>> KlValue)))))))), KlValue
+            buildKlFreeze fn
+                (lambdaExpr fn
+                    ["globals", shortType fn "Globals"]
+                    (build context body |>> KlValue)), KlValue
         | TrapExpr(body, LambdaExpr(param, handler)) ->
             tryWithExpr fn
                 (build context body |>> KlValue)
-                (rename param)
-                (build (fn, globals, Set.add param locals) handler |>> KlValue), KlValue
+                "e"
+                (letExpr fn
+                    (rename param)
+                    (appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"]))
+                    (build (fn, globals, Set.add param locals) handler |>> KlValue)), KlValue
         | TrapExpr(body, Sym handler) ->
             tryWithExpr fn
                 (build context body |>> KlValue)
@@ -136,9 +134,9 @@ module Compiler =
                     (appExpr fn
                         (idExpr fn (rename handler))
                         (idExpr fn "globals"))
-                    (listExpr fn [idExpr fn "e"])), KlValue // TODO: need to get Message from exception
-        | TrapExpr(body, handler) -> failwith "can't compile" // try...with, need to join branch types
-            //tryWith (build body)  (build (globals, Set.add "e" locals) handler)
+                    (listExpr fn [appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])])), KlValue
+        | TrapExpr(body, handler) -> failwith "can't compile"
+            // need (Evaluator.apply: Globals -> Function -> Value list -> Value) for this?
         | DefunExpr _ -> failwith "Can't compile defun not at top level"
         | AppExpr(Sym s, args) ->
             appExpr fn
@@ -154,32 +152,44 @@ module Compiler =
     let buildExpr context klExpr = build context klExpr |> fst
 
     let compileDefun fn globals name paramz body =
-        letDecl fn [
-            letBinding fn
-                name
-                paramz
-                (build (fn, globals, Set.empty) body |>> KlValue)]
+        letBinding fn
+            (rename name)
+            ["globals", shortType fn "Globals"
+             "args", listType fn (shortType fn "Value")]
+            (build (fn, globals, Set.ofList paramz) body |>> KlValue)
 
     let compile fn globals =
         parsedFile fn [
             openDecl fn ["Kl"]
             openDecl fn ["Kl"; "Values"]
             openDecl fn ["Kl"; "Builtins"]
-            letDecl fn [
+            letMultiDecl fn [
                 letBinding fn
-                    (rename "hi")
+                    (rename "lambda-body")
                     ["globals", shortType fn "Globals"
                      rename "X", shortType fn "Value"]
                     (build (fn, globals, Set.singleton "X")
                         (read "(lambda Y (+ X Y))") |>> KlValue)
                 letBinding fn
-                    (rename "whatever")
+                    (rename "trap-error-lambda")
                     ["globals", shortType fn "Globals"
                      "args", listType fn (shortType fn "Value")]
                     (build (fn, globals, Set.ofList ["X"; "Y"])
                         (read "(trap-error (cn X Y) (lambda E (error-to-string E)))") |>> KlValue)
                 letBinding fn
-                    (rename "another+?")
+                    (rename "trap-error-sym")
+                    ["globals", shortType fn "Globals"
+                     "args", listType fn (shortType fn "Value")]
+                    (build (fn, globals, Set.ofList ["X"; "Y"])
+                        (read "(trap-error (cn X Y) error-to-string)") |>> KlValue)
+                letBinding fn
+                    (rename "nested-do")
                     ["globals", shortType fn "Globals"]
                     (build (fn, globals, Set.empty)
-                        (read "(do (do X Y) (do Z Q))") |>> KlValue)]]
+                        (read "(do (do X Y) (do Z Q))") |>> KlValue)
+                letBinding fn
+                    (rename "count-down")
+                    ["globals", shortType fn "Globals"
+                     "args", listType fn (shortType fn "Value")]
+                    (build (fn, globals, Set.empty)
+                        (read "(if (= 0 X) true (count-down (- X 1)))") |>> KlValue)]]

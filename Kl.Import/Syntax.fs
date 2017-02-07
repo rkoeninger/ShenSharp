@@ -18,6 +18,7 @@ module Syntax =
         LongIdentWithDots.LongIdentWithDots(
             List.map (ident fn) parts,
             List.replicate (List.length parts - 1) (loc fn))
+    let anonType fn = SynType.Anon(loc fn)
     let longType fn parts = SynType.LongIdent(longIdentWithDots fn parts)
     let shortType fn s = longType fn [s]
     let listType fn t = SynType.App(shortType fn "list", None, [t], [], None, true, loc fn)
@@ -73,10 +74,12 @@ module Syntax =
             body,
             loc fn,
             SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
+    let unitExpr fn = SynExpr.Const(SynConst.Unit, loc fn)
     let boolExpr fn b = SynExpr.Const(SynConst.Bool b, loc fn)
     let decimalExpr fn n = SynExpr.Const(SynConst.Decimal n, loc fn)
     let stringExpr fn s = SynExpr.Const(SynConst.String(s, loc fn), loc fn)
     let idExpr fn s = SynExpr.Ident(ident fn s)
+    let longIdExpr fn parts = SynExpr.LongIdent(false, longIdentWithDots fn parts, None, loc fn)
     let parenExpr fn expr = SynExpr.Paren(expr, loc fn, None, loc fn)
     let listExpr fn vals = SynExpr.ArrayOrList(false, vals, loc fn)
     let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc fn)
@@ -100,7 +103,7 @@ module Syntax =
         SynExpr.LetOrUse(
             false,
             false,
-            [simpleBinding fn symbol value],
+            [simpleBinding fn (namePat fn symbol) value],
             body,
             loc fn)
     let tryWithExpr fn body e handler =
@@ -152,7 +155,12 @@ module Syntax =
                 lambdaExpr fn paramz body,
                 loc fn)
     let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
-    let letDecl fn bindings = SynModuleDecl.Let(true, bindings, loc fn)
+    let letDecl fn name paramz body =
+        SynModuleDecl.Let(
+            false,
+            [letBinding fn name paramz body],
+            loc fn)
+    let letMultiDecl fn bindings = SynModuleDecl.Let(true, bindings, loc fn)
     let parsedFile fn decls =
         ParsedInput.ImplFile(
             ParsedImplFileInput.ParsedImplFileInput(
