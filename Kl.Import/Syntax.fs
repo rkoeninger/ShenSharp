@@ -20,6 +20,7 @@ module Syntax =
             List.replicate (List.length parts - 1) (loc fn))
     let longType fn parts = SynType.LongIdent(longIdentWithDots fn parts)
     let shortType fn s = longType fn [s]
+    let listType fn t = SynType.App(shortType fn "list", None, [t], [], None, true, loc fn)
     let namePat fn s = SynPat.Named(SynPat.Wild(loc fn), ident fn s, false, None, loc fn)
     let typedPat fn pat synType = SynPat.Paren(SynPat.Typed(pat, synType, loc fn), loc fn)
     let nameTypeSimplePat fn s synType =

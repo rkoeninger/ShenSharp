@@ -173,6 +173,6 @@ module Compiler =
                 letBinding fn
                     (rename "whatever")
                     ["globals", shortType fn "Globals"
-                     rename "args", shortType fn "Value list"]
+                     "args", listType fn (shortType fn "Value")]
                     (build (fn, globals, Set.ofList ["X"; "Y"])
                         (read "(trap-error (cn X Y) (lambda E (error-to-string E)))") |>> KlValue)]]
