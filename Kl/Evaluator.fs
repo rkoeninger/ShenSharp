@@ -20,7 +20,7 @@ module Evaluator =
     let private resolveGlobalFunction globals id =
         match globals.Functions.GetMaybe id with
         | Some f -> f
-        | None -> errf "Function not defined: %s" id
+        | None -> failwithf "Function not defined: %s" id
 
     // Symbols in operator position are either:
     //   * A local variable whose value is a function.
@@ -30,7 +30,7 @@ module Evaluator =
         match Map.tryFind id locals with
         | Some(Func f) -> f
         | Some(Sym id) -> resolveGlobalFunction globals id
-        | Some _ -> errf "Function not defined: %s" id
+        | Some _ -> failwithf "Function not defined: %s" id
         | None -> resolveGlobalFunction globals id
 
     // Applies function to arguments.
@@ -46,7 +46,7 @@ module Evaluator =
                 match impl with
                 | InterpretedFreeze(locals, body) -> defer locals body
                 | CompiledFreeze native -> Done(native globals)
-            | _ -> errf "%O expected 0 arguments, given %i" f args.Length
+            | _ -> failwithf "%O expected 0 arguments, given %i" f args.Length
 
         // Each lambda only takes exactly 1 argument.
         // Applying a lambda to 0 arguments is an error.
@@ -56,7 +56,7 @@ module Evaluator =
         // Lambdas evaluate their body with local scope captured when they were formed.
         | Lambda impl ->
             match args with
-            | [] -> errf "%O expected 1 arguments, given 0" f
+            | [] -> failwithf "%O expected 1 arguments, given 0" f
             | [arg0] ->
                 match impl with
                 | InterpretedLambda(locals, param, body) -> defer (Map.add param arg0 locals) body
@@ -75,7 +75,7 @@ module Evaluator =
                         | CompiledLambda _ -> Map.empty
                     let f = resolveFunction (globals, locals) s
                     apply globals f args1
-                | _ -> errf "%O expected 1 arguments, given %i" f args.Length
+                | _ -> failwithf "%O expected 1 arguments, given %i" f args.Length
 
         // Defuns can be applied to anywhere between 0 and the their full parameter list.
         // An error is raised if a Defun is applied to more arguments than it takes.
@@ -90,7 +90,7 @@ module Evaluator =
                 match impl with
                 | InterpretedDefun(paramz, body) ->
                     if args.Length > arity
-                        then errf "%O expected %i arguments, given %i" f arity args.Length
+                        then failwithf "%O expected %i arguments, given %i" f arity args.Length
                         else defer (Map(List.zip paramz args)) body
                 | CompiledDefun native -> Done(native globals args)
 
@@ -188,7 +188,7 @@ module Evaluator =
             match evalv env expr with
             | Func f -> f
             | Sym s -> resolveFunction env s
-            | _ -> err "Operator expression must evaluate to a function"
+            | _ -> failwith "Operator expression must evaluate to a function"
 
     // Evaluates an expression, running all deferred work.
     // Must be tail recursive. This is where tail call optimization happens.

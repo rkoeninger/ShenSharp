@@ -67,7 +67,7 @@ type Equality() =
         assertEq (Func d) (Func d)
         let inc _ = function
             | [Int x] -> Int(x + 1)
-            | _ -> err "Must be integer"
+            | _ -> failwith "Must be integer"
         let n = Defun("inc", 1, CompiledDefun inc)
         assertEq (Func n) (Func n)
         assertNotEq (Func(Freeze(InterpretedFreeze(Map.empty, Empty))))

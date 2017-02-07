@@ -120,8 +120,6 @@ module Values =
         | Num x when x % 1.0m = 0.0m -> Some(int x)
         | _ -> None
     let inRange min max value = min <= value && value < max
-    let err s = failwith s
-    let errf format = failwithf format
     let newGlobals() = {
         Symbols = new Dictionary<string, Value>()
         Functions = new Dictionary<string, Function>()
@@ -140,4 +138,4 @@ module Values =
         | _ -> None
     let isTrue = function
         | Bool b -> b
-        | _ -> err "Conditional must evaluate to boolean"
+        | _ -> failwith "Conditional must evaluate to boolean"

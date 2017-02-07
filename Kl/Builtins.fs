@@ -11,8 +11,8 @@ module Builtins =
 
     let private argsErr name types args =
         if List.length types <> List.length args
-            then errf "%s expected %i arguments, given %i" name types.Length args.Length
-            else errf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
+            then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
+            else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
     let kl_if _ = function
         | [Bool c; x; y] -> if c then x else y
@@ -32,11 +32,11 @@ module Builtins =
 
     let kl_pos _ = function
         | [Str s; Int index] when inRange 0 s.Length index -> Str(string s.[index])
-        | [Str s; Int index] -> errf "Index %i out of bounds for string of length %i" index s.Length
+        | [Str s; Int index] -> failwithf "Index %i out of bounds for string of length %i" index s.Length
         | args -> argsErr "pos" ["string"; "integer"] args
 
     let kl_tlstr _ = function
-        | [Str ""] -> err "tlstr expects a non-empty string"
+        | [Str ""] -> failwithf "tlstr expects a non-empty string"
         | [Str s] -> Str(s.Substring 1)
         | args -> argsErr "tlstr" ["string"] args
 
@@ -71,11 +71,11 @@ module Builtins =
         | [Sym s] ->
             match globals.Symbols.GetMaybe s with
             | Some x -> x
-            | None -> errf "Symbol \"%s\" is undefined" s
+            | None -> failwithf "Symbol \"%s\" is undefined" s
         | args -> argsErr "value" ["symbol"] args
 
     let ``kl_simple-error`` _ = function
-        | [Str s] -> err s
+        | [Str s] -> failwith s
         | args -> argsErr "simple-error" ["string"] args
 
     let ``kl_error-to-string`` _ = function
@@ -117,14 +117,14 @@ module Builtins =
 
     let ``kl_<-address`` _ = function
         | [Vec array; Int index] when inRange 0 array.Length index -> array.[index]
-        | [Vec array; Int index] -> errf "Index %i out of bounds for vector of length %i" index array.Length
+        | [Vec array; Int index] -> failwithf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "<-address" ["vector"; "integer"] args
 
     let ``kl_address->`` _ = function
         | [Vec array as vector; Int index; value] when inRange 0 array.Length index ->
             array.[index] <- value
             vector
-        | [Vec array; Int index] -> errf "Index %i out of bounds for vector of length %i" index array.Length
+        | [Vec array; Int index] -> failwithf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "address->" ["vector"; "integer"; "value"] args
 
     let ``kl_absvector?`` _ = function
@@ -137,7 +137,7 @@ module Builtins =
             let b = byte x
             io.Write b
             Int(int b)
-        | [Int x; Pipe _] -> errf "integer value %i is exceeds the range of a byte" x
+        | [Int x; Pipe _] -> failwithf "integer value %i is exceeds the range of a byte" x
         | args -> argsErr "write-byte" ["byte"; "stream"] args
 
     let ``kl_read-byte`` _ = function
@@ -147,12 +147,11 @@ module Builtins =
     let kl_open _ = function
         | [Str path; Sym s] ->
             let stream =
-                try match s with
-                    | "in" -> File.OpenRead path
-                    | "out" -> File.OpenWrite path
-                    | "append" -> File.Open(path, FileMode.Append)
-                    | _ -> errf "open expects symbol 'in, 'out or 'append as 2nd argument, not '%s" s
-                with e -> err e.Message
+                match s with
+                | "in" -> File.OpenRead path
+                | "out" -> File.OpenWrite path
+                | "append" -> File.Open(path, FileMode.Append)
+                | _ -> failwithf "open expects symbol 'in, 'out or 'append as 2nd argument, not '%s" s
             Pipe {
                 Name = "File: " + path
                 Read = stream.ReadByte
@@ -174,7 +173,7 @@ module Builtins =
     let ``kl_get-time`` _ = function
         | [Sym "run"] | [Sym "real"] -> Num(decimal stopwatch.Elapsed.TotalSeconds)
         | [Sym "unix"] -> Num(decimal (DateTime.UtcNow - epoch).TotalSeconds)
-        | [Sym s] -> errf "get-time expects symbols 'run or 'unix as argument, not %s" s
+        | [Sym s] -> failwithf "get-time expects symbols 'run or 'unix as argument, not %s" s
         | args -> argsErr "get-time" ["symbol"] args
 
     let ``kl_+`` _ = function
@@ -190,7 +189,6 @@ module Builtins =
         | args -> argsErr "*" ["number"; "number"] args
 
     let ``kl_/`` _ = function
-        | [_; Num 0m] -> err "Division by zero"
         | [Num x; Num y] -> Num(x / y)
         | args -> argsErr "/" ["number"; "number"] args
 
@@ -219,7 +217,7 @@ module Builtins =
             Name = "Console"
             Read = (new ConsoleReader()).ReadByte
             Write = Console.OpenStandardOutput().WriteByte
-            Close = fun () -> err "Can't close Console"
+            Close = fun () -> failwith "Can't close Console"
         }
 
     let ``kl_shen.fillvector`` _ = function
@@ -229,7 +227,6 @@ module Builtins =
         | args -> argsErr "shen.fillvector" ["vector"; "integer"; "integer"; "value"] args
 
     let ``kl_shen.mod`` _ = function
-        | [_; Num 0m] -> err "Modulus by zero"
         | [Num x; Num y] -> Num(x % y)
         | args -> argsErr "shen.mod" ["number"; "number"] args
 
@@ -251,8 +248,7 @@ module Builtins =
                 | Str s -> s
                 | _ -> ""
             let fullPath = Path.GetFullPath(Path.Combine(current, path))
-            try Environment.CurrentDirectory <- fullPath
-            with e -> err e.Message
+            Environment.CurrentDirectory <- fullPath
             globals.Symbols.["*home-directory*"] <- Str fullPath
             Str fullPath
         | args -> argsErr "cd" ["string"] args
