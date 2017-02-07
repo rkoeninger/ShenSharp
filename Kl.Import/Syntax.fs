@@ -151,7 +151,7 @@ module Syntax =
                 lambdaExpr fn paramz body,
                 loc fn)
     let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
-    let letDecl fn bindings = SynModuleDecl.Let(false, bindings, loc fn)
+    let letDecl fn bindings = SynModuleDecl.Let(true, bindings, loc fn)
     let parsedFile fn decls =
         ParsedInput.ImplFile(
             ParsedImplFileInput.ParsedImplFileInput(

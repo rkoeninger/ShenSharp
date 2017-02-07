@@ -35,6 +35,8 @@ module Compiler =
 
     let private (|>>) fsExprWithType targetType = convert targetType fsExprWithType
 
+    // Any symbols from KL code need to be renamed so
+    // they don't conflict with generated identifiers
     let private rename s = "kl_" + s
 
     let rec private flattenDo = function
@@ -122,7 +124,7 @@ module Compiler =
         | TrapExpr(body, LambdaExpr(param, handler)) ->
             tryWithExpr fn
                 (build context body |>> KlValue)
-                param
+                (rename param)
                 (build (fn, globals, Set.add param locals) handler |>> KlValue), KlValue
         | TrapExpr(body, Sym handler) ->
             tryWithExpr fn
@@ -163,8 +165,14 @@ module Compiler =
             openDecl fn ["Kl"; "Builtins"]
             letDecl fn [
                 letBinding fn
-                    "hi"
+                    (rename "hi")
                     ["globals", shortType fn "Globals"
                      rename "X", shortType fn "Value"]
                     (build (fn, globals, Set.singleton "X")
-                        (read "(lambda Y (+ X Y))") |>> KlValue)]]
+                        (read "(lambda Y (+ X Y))") |>> KlValue)
+                letBinding fn
+                    (rename "whatever")
+                    ["globals", shortType fn "Globals"
+                     rename "args", shortType fn "Value list"]
+                    (build (fn, globals, Set.ofList ["X"; "Y"])
+                        (read "(trap-error (cn X Y) (lambda E (error-to-string E)))") |>> KlValue)]]
