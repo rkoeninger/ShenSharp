@@ -30,7 +30,7 @@ module Compiler =
         | FsBoolean, KlValue -> parens fn (appExpr fn (idExpr fn "Bool") fsExpr)
         | FsUnit, KlValue -> idExpr fn "Empty"
         | KlValue, FsBoolean -> parens fn (appExpr fn (idExpr fn "isTrue") fsExpr)
-        | _, FsUnit -> infixExpr fn (idExpr fn "|>") fsExpr (idExpr fn "ignore")
+        | _, FsUnit -> infixExpr fn (idExpr fn "op_PipeRight") fsExpr (idExpr fn "ignore")
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
     let private (|>>) fsExprWithType targetType = convert targetType fsExprWithType
@@ -89,8 +89,10 @@ module Compiler =
                 (namePat fn param)
                 (build context binding |>> KlValue)
                 (build (fn, globals, Set.add param locals) body |>> KlValue), KlValue
-        | DoExpr _ as doExpr -> failwith "can't compile"
-            //dos (List.map (build context) (flattenDo doExpr))
+        | DoExpr _ as expr ->
+            let exprs0 = List.map (build context) (flattenDo expr)
+            let exprs = List.mapi (fun i e -> if i < List.length exprs0 - 1 then e |>> FsUnit else fst e) exprs0
+            sequentialExpr fn exprs, snd (List.last exprs0)
         | LambdaExpr(param, body) ->
             parens fn
                 (appExpr fn
@@ -175,4 +177,9 @@ module Compiler =
                     ["globals", shortType fn "Globals"
                      "args", listType fn (shortType fn "Value")]
                     (build (fn, globals, Set.ofList ["X"; "Y"])
-                        (read "(trap-error (cn X Y) (lambda E (error-to-string E)))") |>> KlValue)]]
+                        (read "(trap-error (cn X Y) (lambda E (error-to-string E)))") |>> KlValue)
+                letBinding fn
+                    (rename "another+?")
+                    ["globals", shortType fn "Globals"]
+                    (build (fn, globals, Set.empty)
+                        (read "(do (do X Y) (do Z Q))") |>> KlValue)]]
