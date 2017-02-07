@@ -7,6 +7,11 @@ open Microsoft.FSharp.Compiler.Range
 /// A collection of helper functions to simplify
 /// syntax for building F# ASTs.
 /// </summary>
+/// <remarks>
+/// Trying not to add anything specific to ShenSharp here so
+/// there is a clear separation between AST helpers and
+/// making decisions about transpiling KL to F#.
+/// </remarks>
 module Syntax =
 
     // Picked large values for line, col because there will be an unpredictable
@@ -81,6 +86,9 @@ module Syntax =
     let idExpr fn s = SynExpr.Ident(ident fn s)
     let longIdExpr fn parts = SynExpr.LongIdent(false, longIdentWithDots fn parts, None, loc fn)
     let parenExpr fn expr = SynExpr.Paren(expr, loc fn, None, loc fn)
+    let parens fn = function
+        | SynExpr.Paren _ as e -> e
+        | e -> parenExpr fn e
     let listExpr fn vals = SynExpr.ArrayOrList(false, vals, loc fn)
     let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc fn)
     let infixExpr fn op left right =
@@ -90,6 +98,8 @@ module Syntax =
             SynExpr.App(ExprAtomicFlag.NonAtomic, true, op, left, loc fn),
             right,
             loc fn)
+    let appIdExpr fn s arg = parens fn (appExpr fn (idExpr fn s) arg)
+    let infixIdExpr fn s left right = parens fn (infixExpr fn (idExpr fn s) left right)
     let ifExpr fn condition consequent alternative =
         SynExpr.IfThenElse(
             condition,
