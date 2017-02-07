@@ -150,8 +150,7 @@ module Builtins =
                 match s with
                 | "in" -> File.OpenRead path
                 | "out" -> File.OpenWrite path
-                | "append" -> File.Open(path, FileMode.Append)
-                | _ -> failwithf "open expects symbol 'in, 'out or 'append as 2nd argument, not '%s" s
+                | _ -> failwithf "open expects symbol 'in or 'out as 2nd argument, not '%s" s
             Pipe {
                 Name = "File: " + path
                 Read = stream.ReadByte
