@@ -4,7 +4,6 @@ open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.Range
 open Kl
 open Kl.Values
-open Kl.Expressions
 open Kl.Import.Reader
 open Kl.Import.Syntax
 
@@ -93,9 +92,13 @@ module Compiler =
                 (build context binding >@ KlValue)
                 (build (fn, globals, Set.add param locals) body >@ KlValue), KlValue
         | DoExpr _ as expr ->
-            let exprs0 = List.map (build context) (flattenDo expr)
-            let exprs = List.mapi (fun i e -> if i < List.length exprs0 - 1 then e >@ FsUnit else fst e) exprs0
-            sequentialExpr fn exprs, snd (List.last exprs0)
+            let flatExpr = List.map (build context) (flattenDo expr)
+            let ignoreButLast i e =
+                if i < List.length flatExpr - 1
+                    then e >@ FsUnit
+                    else fst e
+            let ignoredExpr = List.mapi ignoreButLast flatExpr
+            sequentialExpr fn ignoredExpr, snd (List.last flatExpr)
         | LambdaExpr(param, body) ->
             buildKlLambda fn
                 (lambdaExpr fn

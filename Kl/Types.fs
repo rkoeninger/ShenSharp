@@ -5,7 +5,6 @@ open System.Collections.Generic
 open System.Diagnostics
 open System.IO
 open System.Text
-open FSharp.Core.Printf
 
 /// <summary>
 /// A wrapper around a stream. Has a Name property
@@ -113,29 +112,3 @@ module Extensions =
         | x, y when x > y -> Greater
         | x, y when x < y -> Lesser
         | _ -> Equal
-
-module Values =
-    let Int = decimal >> Num
-    let (|Int|_|) = function
-        | Num x when x % 1.0m = 0.0m -> Some(int x)
-        | _ -> None
-    let inRange min max value = min <= value && value < max
-    let newGlobals() = {
-        Symbols = new Dictionary<string, Value>()
-        Functions = new Dictionary<string, Function>()
-    }
-    let rec toCons = function
-        | [] -> Empty
-        | x :: xs -> Cons(x, toCons xs)
-
-    // Booleans are just these two particular symbols.
-    let True = Sym "true"
-    let False = Sym "false"
-    let Bool b = if b then True else False
-    let (|Bool|_|) = function
-        | x when x = True -> Some true
-        | x when x = False -> Some false
-        | _ -> None
-    let isTrue = function
-        | Bool b -> b
-        | _ -> failwith "Conditional must evaluate to boolean"

@@ -56,7 +56,7 @@
   <ItemGroup>
     <None Include="App.config" />
     <Compile Include="Types.fs" />
-    <Compile Include="Expressions.fs" />
+    <Compile Include="Values.fs" />
     <Compile Include="Evaluator.fs" />
     <Compile Include="Builtins.fs" />
     <Compile Include="Startup.fs" />

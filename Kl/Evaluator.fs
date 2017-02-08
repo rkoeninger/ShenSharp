@@ -2,7 +2,6 @@
 
 open Extensions
 open Values
-open Expressions
 
 module Evaluator =
 

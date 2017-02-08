@@ -2,7 +2,6 @@
 
 open NUnit.Framework
 open Kl.Values
-open Kl.Expressions
 open Kl.Import.Reader
 open Assertions
 
