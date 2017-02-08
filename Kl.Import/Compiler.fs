@@ -17,12 +17,14 @@ module Compiler =
     let private buildKlLambda fn lExpr =
         appIdExpr fn "Func"
             (appIdExpr fn "Lambda"
-                (appIdExpr fn "CompiledLambda" lExpr))
+                (appIdExpr fn "CompiledLambda"
+                    (parens fn lExpr)))
 
     let private buildKlFreeze fn fExpr =
         appIdExpr fn "Func"
             (appIdExpr fn "Freeze"
-                (appIdExpr fn "CompiledFreeze" fExpr))
+                (appIdExpr fn "CompiledFreeze"
+                    (parens fn fExpr)))
 
     type private ExprType =
         | Bottom
