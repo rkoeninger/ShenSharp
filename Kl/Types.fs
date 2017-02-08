@@ -3,8 +3,6 @@
 open System
 open System.Collections.Generic
 open System.Diagnostics
-open System.IO
-open System.Text
 
 /// <summary>
 /// A wrapper around a stream. Has a Name property
@@ -87,28 +85,3 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Err s   -> sprintf "<Error \"%s\">" s
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream %s>" io.Name
-
-// Console reader is an adapter that buffers input by line to provide
-// character stream to Shen REPL in expected format.
-type internal ConsoleReader() =
-    let reader = new StreamReader(Console.OpenStandardInput())
-    let mutable line: byte[] = [||]
-    let mutable index = 0
-    member this.ReadByte() =
-        if index >= line.Length then
-            line <- Encoding.ASCII.GetBytes(reader.ReadLine() + Environment.NewLine)
-            index <- 0
-        index <- index + 1
-        int (line.[index - 1])
-
-module Extensions =
-    type IDictionary<'a, 'b> with
-        member this.GetMaybe(key: 'a) =
-            match this.TryGetValue(key) with
-            | true, x -> Some x
-            | false, _ -> None
-
-    let (|Greater|Equal|Lesser|) = function
-        | x, y when x > y -> Greater
-        | x, y when x < y -> Lesser
-        | _ -> Equal

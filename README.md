@@ -4,11 +4,18 @@
 
 ShenSharp is a port of the [Shen language](http://shenlanguage.org/) to the CLR.
 
-Shen is a portable, functional programming language by [Mark Tarver](http://www.shenlanguage.org/lambdassociates/htdocs/index.htm). It is a descendant of the LISP family of languages which also includes features commonly found in ML family languages. Shen offers pattern matching, a unique macro system, optional lazy evaluation, configurable static type checking, logic programming and a built-in compiler-compiler.
+Shen is a portable, functional programming language by
+[Mark Tarver](http://www.shenlanguage.org/lambdassociates/htdocs/index.htm).
+It is a descendant of the LISP family of languages which also includes features
+commonly found in ML family languages. Shen offers pattern matching, a unique
+macro system, optional lazy evaluation, configurable static type checking,
+logic programming and a built-in compiler-compiler.
 
-Currently implemented as an interpreter, ShenSharp loads and runs Shen code on demand. The interpreter approach suffers from poor performance, but optimizations are forthcoming.
+Currently implemented as an interpreter, ShenSharp loads and runs Shen code on demand.
+The interpreter approach suffers from poor performance, but optimizations are forthcoming.
 
-This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/2f29ca2f6d5ab88c8f4dccacc4def3fc), making this a certifiable implementation.
+This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/2f29ca2f6d5ab88c8f4dccacc4def3fc),
+making this a certifiable implementation.
 
 ### CI Builds
 
@@ -30,10 +37,18 @@ This port [passes all tests in the Shen standard test suite](https://gist.github
   * [.NET Core](https://www.microsoft.com/net/core#windowsvs2015) - Unknown/not yet supported
 
 ### Guided Tour of the Code
-  * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs) - Defines types for Kλ Values, Functions, Environment, Errors and some helpers
-  * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Evaluator.fs) - Interprets Kλ code in the form of a Kλ data structure, rendering a Kλ value
-  * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Builtins.fs) - All the primitive functions needed to interpret Kλ
-  * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs) - Builds a primitive Kλ environment
-  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Reader.fs) - Parses Kλ code
-  * [Generator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Generator.fs) - Generates F# code to restore a Kλ environment
-  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Loader.fs) - Reads and evaluates the Shen runtime from Kλ distribution or loads runtime from code generated on previous run
+  * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs) -
+    Defines types for Kλ Values, Functions, Environment and IO
+  * [Evaluator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Evaluator.fs) -
+    Interprets Kλ syntax trees, rendering Kλ values and performing side effects
+  * [Builtins](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Builtins.fs) -
+    Primitive functions required by Kλ
+  * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs) -
+    Builds a primitive Kλ environment
+  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Reader.fs) -
+    Parses Kλ code
+  * [Generator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Generator.fs) -
+    Generates F# code to restore a Kλ environment
+  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Loader.fs) -
+    Reads and evaluates the Shen runtime from Kλ distribution or loads runtime from code
+	generated on previous run
