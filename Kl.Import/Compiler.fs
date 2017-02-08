@@ -27,7 +27,6 @@ module Compiler =
                     (parens fn fExpr)))
 
     type private ExprType =
-        | Bottom
         | KlValue
         | FsBoolean
         | FsUnit
@@ -39,7 +38,6 @@ module Compiler =
         let fn = "file" // TODO: pass filename in
         match currentType, targetType with
         | x, y when x = y -> fsExpr
-        | Bottom, _ -> fsExpr
         | FsBoolean, KlValue -> appIdExpr fn "Bool" fsExpr
         | FsUnit, KlValue -> idExpr fn "Empty"
         | KlValue, FsBoolean -> appIdExpr fn "isTrue" fsExpr
