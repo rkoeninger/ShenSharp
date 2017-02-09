@@ -89,7 +89,6 @@ module Syntax =
     let parens fn = function
         | SynExpr.Paren _ as e -> e
         | e -> parenExpr fn e
-    let listExpr fn vals = SynExpr.ArrayOrList(false, vals, loc fn)
     let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc fn)
     let infixExpr fn op left right =
         SynExpr.App(
@@ -136,11 +135,20 @@ module Syntax =
         | expr :: rest ->
             SynExpr.Sequential(
                 SequencePointInfoForSeq.SequencePointsAtSeq,
-                false,
+                true,
                 expr,
                 sequentialExpr fn rest,
                 loc fn)
     let doExpr fn expr = SynExpr.Do(expr, loc fn)
+    let listExpr fn vals =
+        SynExpr.ArrayOrListOfSeqExpr(
+            false,
+            SynExpr.CompExpr(
+                true,
+                ref true,
+                sequentialExpr fn vals,
+                loc fn),
+            loc fn)
     let rec lambdaExpr fn paramz body =
         match paramz with
         | [] ->

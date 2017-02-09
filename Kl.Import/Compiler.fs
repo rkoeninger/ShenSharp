@@ -110,26 +110,31 @@ module Compiler =
                 (lambdaExpr fn
                     ["globals", shortType fn "Globals"]
                     (build context body >@ KlValue)), KlValue
-        | TrapExpr(body, LambdaExpr(param, handler)) ->
-            tryWithExpr fn
-                (build context body >@ KlValue)
-                "e"
-                (letExpr fn
-                    (rename param)
-                    (appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"]))
-                    (build (fn, globals, Set.add param locals) handler >@ KlValue)), KlValue
-        | TrapExpr(body, Sym handler) ->
-            tryWithExpr fn
-                (build context body >@ KlValue)
-                "e"
-                (appExpr fn
+
+        | TrapExpr(body, handler) ->
+            let handlerExpr =
+                match handler with
+                | LambdaExpr(param, f) ->
+                    (letExpr fn
+                        (rename param)
+                        (appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"]))
+                        (build (fn, globals, Set.add param locals) f >@ KlValue))
+                | Sym s ->
                     (appExpr fn
-                        (idExpr fn (rename handler))
-                        (idExpr fn "globals"))
-                    (listExpr fn [appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])])), KlValue
+                        (appExpr fn
+                            (idExpr fn (rename s))
+                            (idExpr fn "globals"))
+                        (listExpr fn [appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])]))
+                | _ -> failwith "can't compile trap-error handler"
+            tryWithExpr fn (build context body >@ KlValue) "e" handlerExpr, KlValue
         | TrapExpr(body, handler) -> failwith "can't compile"
             // need (Evaluator.apply: Globals -> Function -> Value list -> Value) for this?
         | DefunExpr _ -> failwith "Can't compile defun not at top level"
+
+        // TODO: depending on whether sym is in globals.Functions,
+        //       emit application of native function
+        //       or Evaluator.apply
+        // TODO: same for TrapExpr
         | AppExpr(Sym s, args) ->
             appExpr fn
                 (appExpr fn
