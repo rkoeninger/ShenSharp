@@ -70,6 +70,9 @@ module Startup =
         ]
         List.iter globals.Symbols.Add symbols
         List.iter globals.Functions.Add functions
+        List.iter
+            (globals.Primitives.Add >> ignore)
+            (List.map fst functions)
         globals
 
     /// <summary>

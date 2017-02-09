@@ -18,10 +18,13 @@ type [<ReferenceEquality>] IO = {
 /// <summary>
 /// A global, mutable set of symbol definitions that contains separate
 /// symbol and function namespaces.
+/// Primitives is a list of symbols that bootstrap the KL environment
+/// which should not be re-defined.
 /// </summary>
 type Globals = {
     Symbols: Dictionary<string, Value>
     Functions: Dictionary<string, Function>
+    Primitives: HashSet<string>
 }
 
 /// <summary>

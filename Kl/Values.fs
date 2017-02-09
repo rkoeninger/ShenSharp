@@ -31,6 +31,7 @@ module Values =
     let newGlobals() = {
         Symbols = new Dictionary<string, Value>()
         Functions = new Dictionary<string, Function>()
+        Primitives = new HashSet<string>()
     }
 
     let rec toCons = function

@@ -161,9 +161,11 @@ module Evaluator =
 
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
+        // Ignore attempts to redefine a primitive.
         | DefunExpr(name, paramz, body) ->
-            globals.Functions.[name] <-
-                Defun(name, List.length paramz, InterpretedDefun(paramz, body))
+            if not(globals.Primitives.Contains name) then
+                globals.Functions.[name] <-
+                    Defun(name, List.length paramz, InterpretedDefun(paramz, body))
             Done(Sym name)
 
         // Expression in operator position must evaluate to a Function.
