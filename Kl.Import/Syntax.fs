@@ -107,6 +107,10 @@ module Syntax =
         | SynExpr.Paren _ as e -> e
         | e -> parenExpr fn e
     let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc fn)
+    let rec appExprN fn f = function
+        | [] -> appExpr fn f (unitExpr fn)
+        | [arg] -> appExpr fn f arg
+        | arg :: args -> appExprN fn (appExpr fn f arg) args
     let infixExpr fn op left right =
         SynExpr.App(
             ExprAtomicFlag.NonAtomic,
@@ -115,6 +119,7 @@ module Syntax =
             right,
             loc fn)
     let appIdExpr fn s arg = parens fn (appExpr fn (idExpr fn s) arg)
+    let appIdExprN fn s args = appExprN fn (idExpr fn s) args
     let infixIdExpr fn s left right = parens fn (infixExpr fn (idExpr fn s) left right)
     let ifExpr fn condition consequent alternative =
         SynExpr.IfThenElse(

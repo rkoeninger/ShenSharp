@@ -54,20 +54,24 @@ module Compiler =
         | Sym "true" -> boolExpr fn true, FsBoolean
         | Sym "false" -> boolExpr fn false, FsBoolean
         | Sym s ->
+            // ``kl_symbol-name`` OR Sym "symbol-name"
             if Set.contains s locals
                 then idExpr fn (rename s), KlValue
                 else appIdExpr fn "Sym" (stringExpr fn s), KlValue
         | AndExpr(left, right) ->
+            // ~left && ~right
             infixIdExpr fn
                 "op_BooleanAnd"
                 (parens fn (build context left  >@ FsBoolean))
                 (parens fn (build context right >@ FsBoolean)), FsBoolean
         | OrExpr(left, right) ->
+            // ~left || ~right
             infixIdExpr fn
                  "op_BooleanOr"
                  (parens fn (build context left  >@ FsBoolean))
                  (parens fn (build context right >@ FsBoolean)), FsBoolean
         | IfExpr(condition, consequent, alternative) ->
+            // if ~condition then ~consequent else ~alternative
             ifExpr fn
                 (build context condition   >@ FsBoolean)
                 (build context consequent  >@ KlValue)
@@ -84,6 +88,7 @@ module Compiler =
                         (compileClauses rest)
             compileClauses clauses, KlValue
         | LetExpr(param, binding, body) ->
+            // let ~param = ~binding in ~body
             letExpr fn
                 (rename param)
                 (build context binding >@ KlValue)
@@ -97,12 +102,14 @@ module Compiler =
             let ignoredExpr = List.mapi ignoreButLast flatExpr
             sequentialExpr fn ignoredExpr, snd (List.last flatExpr)
         | LambdaExpr(param, body) ->
+            // Func(Lambda(CompiledLambda(fun (globals: Globals) (~param: Value) -> ~body)))
             buildKlLambda fn
                 (lambdaExpr fn
                     ["globals", shortType fn "Globals"; rename param, shortType fn "Value"]
                     (build (fn, globals, Set.add param locals)
                         body >@ KlValue)), KlValue
         | FreezeExpr body ->
+            // Func(Freeze(CompiledFreeze(fun (globals: Globals) -> ~body)))
             buildKlFreeze fn
                 (lambdaExpr fn
                     ["globals", shortType fn "Globals"]
@@ -112,59 +119,70 @@ module Compiler =
             let handlerExpr =
                 match handler with
                 | LambdaExpr(param, f) ->
+                    // e -> let ~(rename param) = Err e.Message in ~fExpr
                     (letExpr fn
                         (rename param)
                         errExpr
                         (build (fn, globals, Set.add param locals) f >@ KlValue))
                 | Sym s ->
                     if globals.Functions.ContainsKey s then
-                        appExpr fn
-                            (appExpr fn
-                                (idExpr fn (rename s)) (idExpr fn "globals"))
-                                (listExpr fn [errExpr])
+                        // apply ~(rename s) globals [~errExpr]
+                        appIdExprN fn
+                            (rename s)
+                            [idExpr fn "globals"
+                             (listExpr fn [errExpr])]
                     else
-                        (appExpr fn
-                            (appExpr fn
-                                (appIdExpr fn "apply" (idExpr fn "globals"))
-                                (parens fn
-                                    (appExpr fn
-                                        (appIdExpr fn "resolveGlobalFunction" (idExpr fn "globals"))
-                                        (stringExpr fn s))))
-                            (listExpr fn [errExpr]))
+                        // apply globals (resolveGlobalFunction globals ~s) [~errExpr]
+                        appIdExprN fn
+                            "apply"
+                            [idExpr fn "globals"
+                             (parens fn
+                                (appExprN fn
+                                    (idExpr fn "resolveGlobalFunction")
+                                    [idExpr fn "globals"
+                                     (stringExpr fn s)]))
+                             listExpr fn [errExpr]]
                 | f ->
-                    appExpr fn
-                        (appExpr fn
-                            (appIdExpr fn "vapply" (idExpr fn "globals"))
-                            (build context f >@ KlValue))
-                        (listExpr fn [errExpr])
+                    // vapply globals ~fExpr [~errExpr]
+                    appIdExprN fn
+                        "vapply"
+                        [idExpr fn "globals"
+                         (build context f >@ KlValue)
+                         listExpr fn [errExpr]]
             tryWithExpr fn (build context body >@ KlValue) "e" handlerExpr, KlValue
         | DefunExpr _ -> failwith "Can't compile defun not at top level"
         | AppExpr(Sym "not", [arg]) ->
             appIdExpr fn "not" (build context arg >@ FsBoolean), FsBoolean
         | AppExpr(Sym s, args) ->
+            let argsExpr = listExpr fn (List.map (build context >> convert KlValue) args)
             if globals.Functions.ContainsKey s then
-                appExpr fn
-                    (appExpr fn
-                        (idExpr fn (rename s)) (idExpr fn "globals"))
-                        (listExpr fn (List.map (build context >> convert KlValue) args)), KlValue
+                // ~(rename s) globals ~argsExpr
+                appIdExprN fn (rename s) [idExpr fn "globals"; argsExpr], KlValue
             else
-                (appExpr fn
-                    (appExpr fn
-                        (appIdExpr fn "apply" (idExpr fn "globals"))
-                        (parens fn
-                            (appExpr fn
-                                (appIdExpr fn "resolveGlobalFunction" (idExpr fn "globals"))
-                                (stringExpr fn s))))
-                    (listExpr fn (List.map (build context >> convert KlValue) args))), KlValue
+                // apply globals (resolveGlobalFunction globals ~s) ~argsExpr
+                appIdExprN fn
+                    "apply"
+                    [idExpr fn "globals"
+                     (parens fn
+                        (appIdExprN fn
+                            "resolveGlobalFunction"
+                            [idExpr fn "globals"
+                             (stringExpr fn s)]))
+                     argsExpr], KlValue
         | AppExpr(f, args) ->
-            appExpr fn
-                (appExpr fn
-                    (appIdExpr fn "vapply" (idExpr fn "globals"))
-                    (build context f >@ KlValue))
-                (listExpr fn (List.map (build context >> convert KlValue) args)), KlValue
+            // vapply globals ~fExpr ~argsExpr
+            appIdExprN fn
+                "vapply"
+                [idExpr fn "globals"
+                 build context f >@ KlValue
+                 listExpr fn (List.map (build context >> convert KlValue) args)], KlValue
         | klExpr -> failwithf "Unable to compile: %O" klExpr
 
-    let compileDefun fn globals name paramz body =
+    let private compileDefun fn globals name paramz body =
+        // and ~(rename name) (globals : Globals) =
+        //     function
+        //     | [~@(map rename paramz)] -> ~body
+        //     | args -> argsErr ~name ~(replicate args.Length "value") args
         letBinding fn
             (rename name)
             ["globals", shortType fn "Globals"]
@@ -189,6 +207,7 @@ module Compiler =
             openDecl fn ["Kl"; "Values"]
             openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
+            // TODO: refer to Evaluator.resolveGlobalFunction or move it elsewhere and refer
             letDecl fn
                 "resolveGlobalFunction"
                 ["globals", shortType fn "Globals"
@@ -205,6 +224,7 @@ module Compiler =
                         (appExpr fn
                             (appIdExpr fn "failwithf" (stringExpr fn "Function not defined: %s"))
                             (idExpr fn "id"))])
+            // TODO: put this in Kl.dll somewhere and refer?
             letDecl fn
                 "vapply"
                 ["globals", shortType fn "Globals"
