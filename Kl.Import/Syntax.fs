@@ -27,8 +27,25 @@ module Syntax =
     let longType fn parts = SynType.LongIdent(longIdentWithDots fn parts)
     let shortType fn s = longType fn [s]
     let listType fn t = SynType.App(shortType fn "list", None, [t], [], None, true, loc fn)
-    let namePat fn s = SynPat.Named(SynPat.Wild(loc fn), ident fn s, false, None, loc fn)
+    let wildPat fn = SynPat.Wild(loc fn)
+    let namePat fn s = SynPat.Named(wildPat fn, ident fn s, false, None, loc fn)
     let typedPat fn pat synType = SynPat.Paren(SynPat.Typed(pat, synType, loc fn), loc fn)
+    let listPat fn pats = SynPat.ArrayOrList(false, pats, loc fn)
+    let caseIdPat fn f args =
+        SynPat.LongIdent(
+            longIdentWithDots fn [f],
+            None,
+            None,
+            SynConstructorArgs.Pats(args),
+            None,
+            loc fn)
+    let matchClause fn pat body =
+        SynMatchClause.Clause(
+            pat,
+            None,
+            body,
+            loc fn,
+            SequencePointInfoForTarget.SequencePointAtTarget)
     let nameTypeSimplePat fn s synType =
         SynSimplePat.Typed(
             SynSimplePat.Id(ident fn s, None, true, false, false, loc fn),
@@ -172,6 +189,20 @@ module Syntax =
                 SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
                 lambdaExpr fn paramz body,
                 loc fn)
+    let matchLambdaExpr fn clauses =
+        SynExpr.MatchLambda(
+            false,
+            loc fn,
+            clauses,
+            SequencePointInfoForBinding.SequencePointAtBinding(loc fn),
+            loc fn)
+    let matchExpr fn key clauses =
+        SynExpr.Match(
+            SequencePointInfoForBinding.SequencePointAtBinding(loc fn),
+            key,
+            clauses,
+            false,
+            loc fn)
     let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
     let letDecl fn name paramz body =
         SynModuleDecl.Let(

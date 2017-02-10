@@ -31,9 +31,6 @@ module Compiler =
         | FsBoolean
         | FsUnit
 
-    // TODO: needs application context to know for which function there
-    //       is an argument type error
-    // TODO: Values.isTrue needs to take context name
     let private convert targetType (fsExpr, currentType) =
         let fn = "file" // TODO: pass filename in
         match currentType, targetType with
@@ -110,57 +107,121 @@ module Compiler =
                 (lambdaExpr fn
                     ["globals", shortType fn "Globals"]
                     (build context body >@ KlValue)), KlValue
-
         | TrapExpr(body, handler) ->
+            let errExpr = appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])
             let handlerExpr =
                 match handler with
                 | LambdaExpr(param, f) ->
                     (letExpr fn
                         (rename param)
-                        (appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"]))
+                        errExpr
                         (build (fn, globals, Set.add param locals) f >@ KlValue))
                 | Sym s ->
-                    (appExpr fn
+                    if globals.Functions.ContainsKey s then
+                        appExpr fn
+                            (appExpr fn
+                                (idExpr fn (rename s)) (idExpr fn "globals"))
+                                (listExpr fn [errExpr])
+                    else
                         (appExpr fn
-                            (idExpr fn (rename s))
-                            (idExpr fn "globals"))
-                        (listExpr fn [appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])]))
-                | _ -> failwith "can't compile trap-error handler"
+                            (appExpr fn
+                                (appIdExpr fn "apply" (idExpr fn "globals"))
+                                (parens fn
+                                    (appExpr fn
+                                        (appIdExpr fn "resolveGlobalFunction" (idExpr fn "globals"))
+                                        (stringExpr fn s))))
+                            (listExpr fn [errExpr]))
+                | f ->
+                    appExpr fn
+                        (appExpr fn
+                            (appIdExpr fn "vapply" (idExpr fn "globals"))
+                            (build context f >@ KlValue))
+                        (listExpr fn [errExpr])
             tryWithExpr fn (build context body >@ KlValue) "e" handlerExpr, KlValue
-        | TrapExpr(body, handler) -> failwith "can't compile"
-            // need (Evaluator.apply: Globals -> Function -> Value list -> Value) for this?
         | DefunExpr _ -> failwith "Can't compile defun not at top level"
-
-        // TODO: depending on whether sym is in globals.Functions,
-        //       emit application of native function
-        //       or Evaluator.apply
-        // TODO: same for TrapExpr
+        | AppExpr(Sym "not", [arg]) ->
+            appIdExpr fn "not" (build context arg >@ FsBoolean), FsBoolean
         | AppExpr(Sym s, args) ->
+            if globals.Functions.ContainsKey s then
+                appExpr fn
+                    (appExpr fn
+                        (idExpr fn (rename s)) (idExpr fn "globals"))
+                        (listExpr fn (List.map (build context >> convert KlValue) args)), KlValue
+            else
+                (appExpr fn
+                    (appExpr fn
+                        (appIdExpr fn "apply" (idExpr fn "globals"))
+                        (parens fn
+                            (appExpr fn
+                                (appIdExpr fn "resolveGlobalFunction" (idExpr fn "globals"))
+                                (stringExpr fn s))))
+                    (listExpr fn (List.map (build context >> convert KlValue) args))), KlValue
+        | AppExpr(f, args) ->
             appExpr fn
                 (appExpr fn
-                    (idExpr fn (rename s)) (idExpr fn "globals"))
-                    (listExpr fn (List.map (build context >> convert KlValue) args)), KlValue
+                    (appIdExpr fn "vapply" (idExpr fn "globals"))
+                    (build context f >@ KlValue))
+                (listExpr fn (List.map (build context >> convert KlValue) args)), KlValue
+        | klExpr -> failwithf "Unable to compile: %O" klExpr
 
-        // TODO: if it's some other expression, we need Evaluator.apply
-        | AppExpr(f, args) -> failwith "can't compile"
-
-        | _ -> failwith "Unable to compile"
-
-    let buildExpr context klExpr = build context klExpr |> fst
-
-    // TODO: use Builtins.argsErr to get the same error messages
     let compileDefun fn globals name paramz body =
         letBinding fn
             (rename name)
-            ["globals", shortType fn "Globals"
-             "args", listType fn (shortType fn "Value")]
-            (build (fn, globals, Set.ofList paramz) body >@ KlValue)
+            ["globals", shortType fn "Globals"]
+            (matchLambdaExpr fn
+                [matchClause fn
+                    (listPat fn (List.map (rename >> namePat fn) paramz))
+                    (build (fn, globals, Set.ofList paramz) body >@ KlValue)
+                 matchClause fn
+                    (namePat fn "args")
+                    (appExpr fn
+                        (appExpr fn
+                            (appIdExpr fn "argsErr" (stringExpr fn name))
+                            (listExpr fn
+                                (List.replicate
+                                    (List.length paramz)
+                                    (stringExpr fn "value"))))
+                        (idExpr fn "args"))])
 
     let compile fn globals =
         parsedFile fn [
             openDecl fn ["Kl"]
             openDecl fn ["Kl"; "Values"]
+            openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
+            letDecl fn
+                "resolveGlobalFunction"
+                ["globals", shortType fn "Globals"
+                 "id",      shortType fn "string"]
+                (matchExpr fn
+                    (appExpr fn
+                        (longIdExpr fn ["globals"; "Functions"; "GetMaybe"])
+                        (idExpr fn "id"))
+                    [matchClause fn
+                        (caseIdPat fn "Func" [namePat fn "f"])
+                        (idExpr fn "f")
+                     matchClause fn
+                        (wildPat fn)
+                        (appExpr fn
+                            (appIdExpr fn "failwithf" (stringExpr fn "Function not defined: %s"))
+                            (idExpr fn "id"))])
+            letDecl fn
+                "vapply"
+                ["globals", shortType fn "Globals"
+                 "f",       shortType fn "Value"
+                 "args",    listType fn (shortType fn "Value")]
+                (matchExpr fn
+                    (idExpr fn "f")
+                    [matchClause fn
+                        (caseIdPat fn "Func" [namePat fn "f"])
+                        (appExpr fn
+                            (appExpr fn
+                                (appIdExpr fn "apply" (idExpr fn "globals"))
+                                (idExpr fn "f"))
+                            (idExpr fn "args"))
+                     matchClause fn
+                        (wildPat fn)
+                        (unitExpr fn)])
             letMultiDecl fn [
                 letBinding fn
                     (rename "lambda-body")
@@ -190,4 +251,9 @@ module Compiler =
                     ["globals", shortType fn "Globals"
                      "args", listType fn (shortType fn "Value")]
                     (build (fn, globals, Set.empty)
-                        (read "(if (= 0 X) true (count-down (- X 1)))") >@ KlValue)]]
+                        (read "(if (= 0 X) true (count-down (- X 1)))") >@ KlValue)
+                compileDefun fn
+                    globals
+                    "defun-xor"
+                    ["X"; "Y"]
+                    (read "(and (not (and X Y)) (or X Y))")]]

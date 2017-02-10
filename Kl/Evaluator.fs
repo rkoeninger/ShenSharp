@@ -34,7 +34,7 @@ module Evaluator =
 
     // Applies function to arguments.
     // Could return deferred work or a partial function.
-    let rec private apply globals f args =
+    let rec private applyw globals f args =
         match f with
 
         // Freezes can only be applied to 0 arguments.
@@ -66,14 +66,14 @@ module Evaluator =
                     | InterpretedLambda(locals, param, body) -> evalv (globals, Map.add param arg0 locals) body
                     | CompiledLambda native -> native globals arg0
                 match result with
-                | Func f -> apply globals f args1
+                | Func f -> applyw globals f args1
                 | Sym s ->
                     let locals =
                         match impl with
                         | InterpretedLambda(locals, _, _) -> locals
                         | CompiledLambda _ -> Map.empty
                     let f = resolveFunction (globals, locals) s
-                    apply globals f args1
+                    applyw globals f args1
                 | _ -> failwithf "%O expected 1 arguments, given %i" f args.Length
 
         // Defuns can be applied to anywhere between 0 and the their full parameter list.
@@ -98,7 +98,7 @@ module Evaluator =
         | Partial(f, previousArgs) as partial ->
             match args with
             | [] -> Done(Func(partial))
-            | _ -> apply globals f (previousArgs @ args)
+            | _ -> applyw globals f (previousArgs @ args)
 
     // Evaluates expression, deferring work in tail position.
     and private evalw ((globals, locals) as env) = function
@@ -152,7 +152,7 @@ module Evaluator =
                 Done(evalv env body)
             with e ->
                 let operator = evalf env handler
-                apply globals operator [Err e.Message]
+                applyw globals operator [Err e.Message]
 
         // Second expression is in tail position.
         | DoExpr(first, second) ->
@@ -172,7 +172,7 @@ module Evaluator =
         | AppExpr(f, args) ->
             let operator = evalf env f
             let operands = List.map (evalv env) args
-            apply globals operator operands
+            applyw globals operator operands
 
         // All other expressions/values are self-evaluating.
         | expr -> Done expr
@@ -203,3 +203,12 @@ module Evaluator =
     /// </summary>
     [<CompiledName "Eval">]
     let eval globals expr = evalv (globals, Map.empty) expr
+
+    /// <summary>
+    /// Applies a function to a list of values.
+    /// </summary>
+    [<CompiledName "Apply">]
+    let apply globals f args =
+        match applyw globals f args with
+        | Done value -> value
+        | Pending(locals, expr) -> evalv (globals, locals) expr

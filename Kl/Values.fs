@@ -28,6 +28,11 @@ module Values =
 
     let inRange min max value = min <= value && value < max
 
+    let argsErr name types args =
+        if List.length types <> List.length args
+            then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
+            else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
+
     let newGlobals() = {
         Symbols = new Dictionary<string, Value>()
         Functions = new Dictionary<string, Function>()

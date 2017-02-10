@@ -9,11 +9,6 @@ open Kl.Evaluator
 
 module Builtins =
 
-    let private argsErr name types args =
-        if List.length types <> List.length args
-            then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
-            else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
-
     let kl_if _ = function
         | [Bool c; x; y] -> if c then x else y
         | args -> argsErr "if" ["boolean"; "value"; "value"] args

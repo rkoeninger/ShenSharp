@@ -15,9 +15,9 @@ type Compilation() =
     member this.``test parse``() =
         let text = "
 module ShenRuntime
-let f = [0; 1]
-let g = [0
-         1]
+let g = function
+        | Func f -> ()
+        | _ -> ()
 "
         let ast = CodeFormatter.Parse("./test.fs", text)
         Assert.IsTrue(CodeFormatter.IsValidAST ast)
