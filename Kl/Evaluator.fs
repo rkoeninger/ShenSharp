@@ -16,7 +16,7 @@ module Evaluator =
     let private resolveSymbol locals id =
         defaultArg (Map.tryFind id locals) (Sym id)
 
-    let private resolveGlobalFunction globals id =
+    let resolveGlobalFunction globals id =
         match globals.Functions.GetMaybe id with
         | Some f -> f
         | None -> failwithf "Function not defined: %s" id
@@ -212,3 +212,8 @@ module Evaluator =
         match applyw globals f args with
         | Done value -> value
         | Pending(locals, expr) -> evalv (globals, locals) expr
+
+    let vapply globals f args =
+        match f with
+        | Func f -> apply globals f args
+        | _ -> failwith "Operator expression must evaluate to a function"
