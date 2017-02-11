@@ -98,10 +98,19 @@ module Syntax =
             SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
     let unitExpr fn = SynExpr.Const(SynConst.Unit, loc fn)
     let boolExpr fn b = SynExpr.Const(SynConst.Bool b, loc fn)
+    let intExpr fn n = SynExpr.Const(SynConst.Int32 n, loc fn)
     let decimalExpr fn n = SynExpr.Const(SynConst.Decimal n, loc fn)
     let stringExpr fn s = SynExpr.Const(SynConst.String(s, loc fn), loc fn)
     let idExpr fn s = SynExpr.Ident(ident fn s)
     let longIdExpr fn parts = SynExpr.LongIdent(false, longIdentWithDots fn parts, None, loc fn)
+    let indexSetExpr fn obj index value =
+        SynExpr.DotIndexedSet(
+            obj,
+            [SynIndexerArg.One index],
+            value,
+            loc fn,
+            loc fn,
+            loc fn)
     let parenExpr fn expr = SynExpr.Paren(expr, loc fn, None, loc fn)
     let parens fn = function
         | SynExpr.Paren _ as e -> e
@@ -162,6 +171,12 @@ module Syntax =
                 sequentialExpr fn rest,
                 loc fn)
     let doExpr fn expr = SynExpr.Do(expr, loc fn)
+    let tupleExpr fn vals =
+        parens fn
+            (SynExpr.Tuple(
+                vals,
+                List.replicate (List.length vals - 1) (loc fn),
+                loc fn))
     let listExpr fn vals =
         SynExpr.ArrayOrListOfSeqExpr(
             false,

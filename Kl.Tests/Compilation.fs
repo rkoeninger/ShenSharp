@@ -19,9 +19,7 @@ type Compilation() =
     member this.``test parse``() =
         let text = "
 module ShenRuntime
-let g = function
-        | Func f -> ()
-        | _ -> ()
+let g = globals.Functions.[\"xor\"] <- ()
 "
         let ast = CodeFormatter.Parse("./test.fs", text)
         Assert.IsTrue(CodeFormatter.IsValidAST ast)
@@ -31,6 +29,7 @@ let g = function
     member this.``test build``() =
         let globals = baseGlobals()
         fn globals "xor" ["X"; "Y"] "(and (not (and X Y)) (or X Y))"
+        fn globals "factorial" ["N"] "(if (= N 0) 1 (* N (factorial (- N 1))))"
         let ast = compile "ShenRuntime" globals
         let format = {FormatConfig.Default with PageWidth = 1024}
         printfn "%s" (CodeFormatter.FormatAST(ast, "file", None, format))

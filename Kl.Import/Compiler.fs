@@ -146,8 +146,13 @@ module Compiler =
                 | f -> buildApp context f [errExpr]
             tryWithExpr fn (build context body |> toType fn KlValue) "e" handlerExpr, KlValue
         | DefunExpr _ -> failwith "Can't compile defun not at top level"
-        | AppExpr(Sym "not", [arg]) ->
-            appIdExpr fn "not" (build context arg |> toType fn FsBoolean), FsBoolean
+        | AppExpr(Sym "not", [x]) ->
+            appIdExpr fn "not" (build context x |> toType fn FsBoolean), FsBoolean
+        | AppExpr(Sym "=", [x; y]) ->
+            // TODO: don't coerce to KlValue is they're already the same type
+            infixIdExpr fn "op_Equality"
+                (build context x |> toType fn KlValue)
+                (build context y |> toType fn KlValue), FsBoolean
         | AppExpr(f, args) ->
             buildApp context f (List.map (build context >> toType fn KlValue) args), KlValue
         | klExpr -> failwithf "Unable to compile: %O" klExpr
@@ -172,20 +177,34 @@ module Compiler =
                              idExpr fn "args"])])
         | _ -> failwith "Can't compile functions other than interpreted defuns"
 
+    let rec private defunArity = function
+        | Defun(_, arity, _) -> arity
+        | Lambda _ -> 1
+        | Freeze _ -> 0
+        | Partial(f, _) -> defunArity f
+
+    let private installDefun fn (name, f) =
+        indexSetExpr fn
+            (longIdExpr fn ["globals"; "Functions"])
+            (stringExpr fn name)
+            (appIdExpr fn "Defun"
+                (tupleExpr fn
+                    [stringExpr fn name
+                     intExpr fn (defunArity f)
+                     appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))
+
     let compile fn globals =
         let nonPrimitives =
             globals.Functions
             |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
             |> Seq.filter (fst >> globals.Primitives.Contains >> not)
-            |> Seq.map (snd >> compileDefun fn globals)
-            |> Seq.toList
         parsedFile fn [
             openDecl fn ["Kl"]
             openDecl fn ["Kl"; "Values"]
             openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
-            letMultiDecl fn nonPrimitives
+            letMultiDecl fn (Seq.toList(Seq.map (snd >> compileDefun fn globals) nonPrimitives))
             letDecl fn
                 "installer"
                 ["globals", shortType fn "Globals"]
-                (unitExpr fn)]
+                (sequentialExpr fn (Seq.toList(Seq.map (installDefun fn) nonPrimitives)))]
