@@ -5,8 +5,9 @@ open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.Range
 open Kl
 open Kl.Values
-open Kl.Import.Reader
-open Kl.Import.Syntax
+open Reader
+open Analysis
+open Syntax
 
 module Compiler =
 
@@ -20,6 +21,8 @@ module Compiler =
         | FsBoolean
         | FsUnit
 
+    let private simplestCommonType t0 t1 = if t0 = t1 then t0 else KlValue
+
     let private toType fn targetType (fsExpr, currentType) =
         match currentType, targetType with
         | x, y when x = y -> fsExpr
@@ -29,11 +32,15 @@ module Compiler =
         | _, FsUnit -> infixIdExpr fn "op_PipeRight" fsExpr (idExpr fn "ignore")
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
-    let rec private flattenDo = function
-        | DoExpr(first, second) -> flattenDo first @ flattenDo second
-        | klExpr -> [klExpr]
+    let rec private buildDo ((fn, globals, locals) as context) expr =
+        let flatExpr = List.map (build context) (flattenDo expr)
+        let ignoreButLast i e =
+            if i < List.length flatExpr - 1
+                then e |> toType fn FsUnit
+                else fst e
+        sequentialExpr fn (List.mapi ignoreButLast flatExpr), snd (List.last flatExpr)
 
-    let rec private buildApp ((fn, globals, locals) as context) f args =
+    and private buildApp ((fn, globals, locals) as context) f args =
         match f with
         | Sym s ->
             if globals.Functions.ContainsKey s then
@@ -100,39 +107,24 @@ module Compiler =
                 (rename param)
                 (build context binding |> toType fn KlValue)
                 (build (fn, globals, Set.add param locals) body |> toType fn KlValue), KlValue
-        | DoExpr _ as expr ->
-            let flatExpr = List.map (build context) (flattenDo expr)
-            let ignoreButLast i e =
-                if i < List.length flatExpr - 1
-                    then e |> toType fn FsUnit
-                    else fst e
-            sequentialExpr fn (List.mapi ignoreButLast flatExpr), snd (List.last flatExpr)
         | LambdaExpr(param, body) ->
             // Func(Lambda(CompiledLambda(fun (globals: Globals) (~param: Value) -> ~body)))
-            parens fn
-                (appIdExpr fn "Func"
-                    (parens fn
-                        (appIdExpr fn "Lambda"
-                            (parens fn
-                                (appIdExpr fn "CompiledLambda"
-                                    (parens fn 
-                                        (lambdaExpr fn
-                                            ["globals",    shortType fn "Globals"
-                                             rename param, shortType fn "Value"]
-                                            (build (fn, globals, Set.add param locals)
-                                                body |> toType fn KlValue)))))))), KlValue
+            nestedAppIdExpr fn
+                ["Func"; "Lambda"; "CompiledLambda"]
+                (parens fn
+                    (lambdaExpr fn
+                        ["globals",    shortType fn "Globals"
+                         rename param, shortType fn "Value"]
+                        (build (fn, globals, Set.add param locals)
+                            body |> toType fn KlValue))), KlValue
         | FreezeExpr body ->
             // Func(Freeze(CompiledFreeze(fun (globals: Globals) -> ~body)))
-            parens fn
-                (appIdExpr fn "Func"
-                    (parens fn
-                        (appIdExpr fn "Freeze"
-                            (parens fn
-                                (appIdExpr fn "CompiledFreeze"
-                                    (parens fn 
-                                        (lambdaExpr fn
-                                            ["globals", shortType fn "Globals"]
-                                            (build context body |> toType fn KlValue)))))))), KlValue
+            nestedAppIdExpr fn
+                ["Func"; "Freeze"; "CompiledFreeze"]
+                (parens fn 
+                    (lambdaExpr fn
+                        ["globals", shortType fn "Globals"]
+                        (build context body |> toType fn KlValue))), KlValue
         | TrapExpr(body, handler) ->
             let errExpr = appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])
             let handlerExpr =
@@ -145,14 +137,15 @@ module Compiler =
                         (build (fn, globals, Set.add param locals) body |> toType fn KlValue))
                 | f -> buildApp context f [errExpr]
             tryWithExpr fn (build context body |> toType fn KlValue) "e" handlerExpr, KlValue
+        | DoExpr _ as expr -> buildDo context expr
         | DefunExpr _ -> failwith "Can't compile defun not at top level"
         | AppExpr(Sym "not", [x]) ->
             appIdExpr fn "not" (build context x |> toType fn FsBoolean), FsBoolean
         | AppExpr(Sym "=", [x; y]) ->
-            // TODO: don't coerce to KlValue is they're already the same type
-            infixIdExpr fn "op_Equality"
-                (build context x |> toType fn KlValue)
-                (build context y |> toType fn KlValue), FsBoolean
+            let xExpr = build context x
+            let yExpr = build context y
+            let t = simplestCommonType (snd xExpr) (snd yExpr)
+            infixIdExpr fn "op_Equality" (xExpr |> toType fn t) (yExpr |> toType fn t), FsBoolean
         | AppExpr(f, args) ->
             buildApp context f (List.map (build context >> toType fn KlValue) args), KlValue
         | klExpr -> failwithf "Unable to compile: %O" klExpr
@@ -177,12 +170,6 @@ module Compiler =
                              idExpr fn "args"])])
         | _ -> failwith "Can't compile functions other than interpreted defuns"
 
-    let rec private defunArity = function
-        | Defun(_, arity, _) -> arity
-        | Lambda _ -> 1
-        | Freeze _ -> 0
-        | Partial(f, _) -> defunArity f
-
     let private installDefun fn (name, f) =
         indexSetExpr fn
             (longIdExpr fn ["globals"; "Functions"])
@@ -190,21 +177,18 @@ module Compiler =
             (appIdExpr fn "Defun"
                 (tupleExpr fn
                     [stringExpr fn name
-                     intExpr fn (defunArity f)
+                     intExpr fn (functionArity f)
                      appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))
 
     let compile fn globals =
-        let nonPrimitives =
-            globals.Functions
-            |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
-            |> Seq.filter (fst >> globals.Primitives.Contains >> not)
+        let defuns = nonPrimitives globals
         parsedFile fn [
             openDecl fn ["Kl"]
             openDecl fn ["Kl"; "Values"]
             openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
-            letMultiDecl fn (Seq.toList(Seq.map (snd >> compileDefun fn globals) nonPrimitives))
+            letMultiDecl fn (Seq.toList(Seq.map (snd >> compileDefun fn globals) defuns))
             letDecl fn
                 "installer"
                 ["globals", shortType fn "Globals"]
-                (sequentialExpr fn (Seq.toList(Seq.map (installDefun fn) nonPrimitives)))]
+                (sequentialExpr fn (Seq.toList(Seq.map (installDefun fn) defuns)))]

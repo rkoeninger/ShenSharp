@@ -3,17 +3,9 @@
 open System
 open System.Text
 open Kl
+open Analysis
 
 module Generator =
-
-    let private genId() = "array" + Guid.NewGuid().ToString().Substring(0, 8)
-
-    let rec private findArrays = function
-        | Cons(x, y) -> findArrays x @ findArrays y
-        | Vec array -> List.collect findArrays (Array.toList array) @ [array]
-        | _ -> []
-
-    let private buildRefs arrays = List.map (fun a -> (a, genId())) arrays
 
     let rec private encode arrayRefs = function
         | Empty -> "Empty"

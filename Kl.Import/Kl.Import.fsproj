@@ -53,6 +53,7 @@
   <ItemGroup>
     <Content Include="packages.config" />
     <Compile Include="Reader.fs" />
+    <Compile Include="Analysis.fs" />
     <Compile Include="Generator.fs" />
     <Compile Include="Syntax.fs" />
     <Compile Include="Compiler.fs" />

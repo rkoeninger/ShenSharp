@@ -130,6 +130,11 @@ module Syntax =
     let appIdExpr fn s arg = parens fn (appExpr fn (idExpr fn s) arg)
     let appIdExprN fn s args = appExprN fn (idExpr fn s) args
     let infixIdExpr fn s left right = parens fn (infixExpr fn (idExpr fn s) left right)
+    let rec nestedAppIdExpr fn ss args =
+        match ss with
+        | [] -> failwith "nested call can't be empty"
+        | [s] -> parens fn (appIdExpr fn s args)
+        | s :: ss -> parens fn (appIdExpr fn s (nestedAppIdExpr fn ss args))
     let ifExpr fn condition consequent alternative =
         SynExpr.IfThenElse(
             condition,

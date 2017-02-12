@@ -7,8 +7,8 @@ open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 open Kl.Evaluator
 open Kl.Startup
-open Kl.Import.Reader
-open Kl.Import.Generator
+open Reader
+open Generator
 
 module Loader =
 
@@ -50,6 +50,7 @@ module Loader =
             printfn ""
             globals
         else
+            // TODO: method name should be Shen.Runtime.Install
             let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, "Installer.dll"))
             let installation = assembly.GetType("Kl.Installation.Installer")
             let install = installation.GetMethod("Install")

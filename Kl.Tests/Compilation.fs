@@ -30,6 +30,7 @@ let g = globals.Functions.[\"xor\"] <- ()
         let globals = baseGlobals()
         fn globals "xor" ["X"; "Y"] "(and (not (and X Y)) (or X Y))"
         fn globals "factorial" ["N"] "(if (= N 0) 1 (* N (factorial (- N 1))))"
+        fn globals "inc-all" ["Xs"] "(map (lambda X (+ 1 X)) Xs)"
         let ast = compile "ShenRuntime" globals
         let format = {FormatConfig.Default with PageWidth = 1024}
         printfn "%s" (CodeFormatter.FormatAST(ast, "file", None, format))
