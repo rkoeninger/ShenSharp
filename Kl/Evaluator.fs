@@ -163,7 +163,7 @@ module Evaluator =
         // and stores them in the global function scope.
         // Ignore attempts to redefine a primitive.
         | DefunExpr(name, paramz, body) ->
-            if not(globals.Primitives.Contains name) then
+            if not(globals.PrimitiveFunctions.Contains name) then
                 globals.Functions.[name] <-
                     Defun(name, List.length paramz, InterpretedDefun(paramz, body))
             Done(Sym name)

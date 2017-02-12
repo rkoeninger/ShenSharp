@@ -26,7 +26,14 @@ module Analysis =
         | Freeze _ -> 0
         | Partial(f, _) -> functionArity f
 
-    let nonPrimitives globals =
+    let nonPrimitiveSymbols globals =
+        globals.Symbols
+        |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
+        |> Seq.filter (fst >> globals.PrimitiveSymbols.Contains >> not)
+        |> Seq.toList
+
+    let nonPrimitiveFunctions globals =
         globals.Functions
         |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
-        |> Seq.filter (fst >> globals.Primitives.Contains >> not)
+        |> Seq.filter (fst >> globals.PrimitiveFunctions.Contains >> not)
+        |> Seq.toList

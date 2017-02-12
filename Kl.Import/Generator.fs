@@ -53,7 +53,7 @@ module Generator =
                             line <| sprintf "%s.[%i] <- %s" arrayName index (encode arrayRefs item)
                 encodeSymbol line arrayRefs kv.Key kv.Value
         for kv in globals.Functions do
-            if not(Seq.contains kv.Key excludeFunctions || List.contains kv.Key ["exit"]) then
+            if not(Seq.contains kv.Key excludeFunctions) then
                 encodeFunction line [] kv.Key kv.Value
         line "()"
         string buffer

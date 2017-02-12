@@ -51,8 +51,7 @@ module Compiler =
                 appIdExprN fn "apply"
                     [idExpr fn "globals"
                      parens fn
-                        (appIdExprN fn
-                            "resolveGlobalFunction"
+                        (appIdExprN fn "resolveGlobalFunction"
                             [idExpr fn "globals"
                              stringExpr fn s])
                      listExpr fn args]
@@ -75,17 +74,14 @@ module Compiler =
                 then idExpr fn (rename s), KlValue
                 else appIdExpr fn "Sym" (stringExpr fn s), KlValue
         | AndExpr(left, right) ->
-            // ~left && ~right
             infixIdExpr fn "op_BooleanAnd"
                 (parens fn (build context left  |> toType fn FsBoolean))
                 (parens fn (build context right |> toType fn FsBoolean)), FsBoolean
         | OrExpr(left, right) ->
-            // ~left || ~right
             infixIdExpr fn "op_BooleanOr"
                  (parens fn (build context left  |> toType fn FsBoolean))
                  (parens fn (build context right |> toType fn FsBoolean)), FsBoolean
         | IfExpr(condition, consequent, alternative) ->
-            // if ~condition then ~consequent else ~alternative
             ifExpr fn
                 (build context condition   |> toType fn FsBoolean)
                 (build context consequent  |> toType fn KlValue)
@@ -102,29 +98,23 @@ module Compiler =
                         (compileClauses rest)
             compileClauses clauses, KlValue
         | LetExpr(param, binding, body) ->
-            // let ~param = ~binding in ~body
             letExpr fn
                 (rename param)
                 (build context binding |> toType fn KlValue)
                 (build (fn, globals, Set.add param locals) body |> toType fn KlValue), KlValue
         | LambdaExpr(param, body) ->
             // Func(Lambda(CompiledLambda(fun (globals: Globals) (~param: Value) -> ~body)))
-            nestedAppIdExpr fn
-                ["Func"; "Lambda"; "CompiledLambda"]
-                (parens fn
-                    (lambdaExpr fn
-                        ["globals",    shortType fn "Globals"
-                         rename param, shortType fn "Value"]
-                        (build (fn, globals, Set.add param locals)
-                            body |> toType fn KlValue))), KlValue
+            nestedAppIdExpr fn ["Func"; "Lambda"; "CompiledLambda"]
+                (lambdaExpr fn
+                    ["globals",    shortType fn "Globals"
+                     rename param, shortType fn "Value"]
+                    (build (fn, globals, Set.add param locals) body |> toType fn KlValue)), KlValue
         | FreezeExpr body ->
             // Func(Freeze(CompiledFreeze(fun (globals: Globals) -> ~body)))
-            nestedAppIdExpr fn
-                ["Func"; "Freeze"; "CompiledFreeze"]
-                (parens fn 
-                    (lambdaExpr fn
-                        ["globals", shortType fn "Globals"]
-                        (build context body |> toType fn KlValue))), KlValue
+            nestedAppIdExpr fn ["Func"; "Freeze"; "CompiledFreeze"]
+                (lambdaExpr fn
+                    ["globals", shortType fn "Globals"]
+                    (build context body |> toType fn KlValue)), KlValue
         | TrapExpr(body, handler) ->
             let errExpr = appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])
             let handlerExpr =
@@ -180,15 +170,31 @@ module Compiler =
                      intExpr fn (functionArity f)
                      appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))
 
+    let private installSymbol fn globals (name, value) =
+        unitExpr fn
+//        let arrayRefs = buildRefs (findArrays value)
+//        List.append
+//            (List.collect
+//                (fun (array, id) ->
+//                    List.map (build (fn, globals, Set.empty)) array)
+//                arrayRefs)
+//            [indexSetExpr fn
+//                (longIdExpr fn ["globals"; "Symbols"])
+//                (stringExpr fn name)]
+
     let compile fn globals =
-        let defuns = nonPrimitives globals
+        let symbols = nonPrimitiveSymbols globals
+        let defuns = nonPrimitiveFunctions globals
         parsedFile fn [
             openDecl fn ["Kl"]
             openDecl fn ["Kl"; "Values"]
             openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
-            letMultiDecl fn (Seq.toList(Seq.map (snd >> compileDefun fn globals) defuns))
+            letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
             letDecl fn
                 "installer"
                 ["globals", shortType fn "Globals"]
-                (sequentialExpr fn (Seq.toList(Seq.map (installDefun fn) defuns)))]
+                (sequentialExpr fn
+                    (List.append
+                        (List.map (installSymbol fn globals) symbols)
+                        (List.map (installDefun fn) defuns)))]

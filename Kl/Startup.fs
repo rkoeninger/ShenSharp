@@ -8,9 +8,6 @@ module Startup =
 
     let private fn name arity f = name, Defun(name, arity, CompiledDefun f)
 
-    // TODO: need to be able to mark these as primitives
-    //       that do not get overriden when running the KL setup
-
     let private installBase globals =
         let onMono = Type.GetType "Mono.Runtime" <> null
         let platform = if onMono then "Mono" else "Microsoft.NET"
@@ -71,7 +68,10 @@ module Startup =
         List.iter globals.Symbols.Add symbols
         List.iter globals.Functions.Add functions
         List.iter
-            (globals.Primitives.Add >> ignore)
+            (globals.PrimitiveSymbols.Add >> ignore)
+            (List.map fst symbols)
+        List.iter
+            (globals.PrimitiveFunctions.Add >> ignore)
             (List.map fst functions)
         globals
 

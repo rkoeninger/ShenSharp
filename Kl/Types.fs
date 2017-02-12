@@ -24,7 +24,8 @@ type [<ReferenceEquality>] IO = {
 type Globals = {
     Symbols: Dictionary<string, Value>
     Functions: Dictionary<string, Function>
-    Primitives: HashSet<string>
+    PrimitiveSymbols: HashSet<string>
+    PrimitiveFunctions: HashSet<string>
 }
 
 /// <summary>

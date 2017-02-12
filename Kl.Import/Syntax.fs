@@ -192,28 +192,29 @@ module Syntax =
                 loc fn),
             loc fn)
     let rec lambdaExpr fn paramz body =
-        match paramz with
-        | [] ->
-            SynExpr.Lambda(
-                false,
-                false,
-                SynSimplePats.SimplePats([], loc fn),
-                body,
-                loc fn)
-        | [s, synType] ->
-            SynExpr.Lambda(
-                false,
-                false,
-                SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
-                body,
-                loc fn)
-        | (s, synType) :: paramz ->
-            SynExpr.Lambda(
-                false,
-                false,
-                SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
-                lambdaExpr fn paramz body,
-                loc fn)
+        parens fn
+            (match paramz with
+             | [] ->
+                SynExpr.Lambda(
+                    false,
+                    false,
+                    SynSimplePats.SimplePats([], loc fn),
+                    body,
+                    loc fn)
+             | [s, synType] ->
+                SynExpr.Lambda(
+                    false,
+                    false,
+                    SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
+                    body,
+                    loc fn)
+             | (s, synType) :: paramz ->
+                SynExpr.Lambda(
+                    false,
+                    false,
+                    SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
+                    lambdaExpr fn paramz body,
+                    loc fn))
     let matchLambdaExpr fn clauses =
         SynExpr.MatchLambda(
             false,
