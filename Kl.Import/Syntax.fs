@@ -182,15 +182,18 @@ module Syntax =
                 vals,
                 List.replicate (List.length vals - 1) (loc fn),
                 loc fn))
-    let listExpr fn vals =
-        SynExpr.ArrayOrListOfSeqExpr(
-            false,
-            SynExpr.CompExpr(
-                true,
-                ref true,
-                sequentialExpr fn vals,
-                loc fn),
-            loc fn)
+    let listExpr fn = function
+        | [] -> SynExpr.ArrayOrList(false, [], loc fn)
+        | vals ->
+            SynExpr.ArrayOrListOfSeqExpr(
+                false,
+                SynExpr.CompExpr(
+                    true,
+                    ref true,
+                    sequentialExpr fn vals,
+                    loc fn),
+                loc fn)
+    let arrayExpr fn vals = SynExpr.ArrayOrList(true, vals, loc fn)
     let rec lambdaExpr fn paramz body =
         parens fn
             (match paramz with

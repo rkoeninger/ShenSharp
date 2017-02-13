@@ -14,10 +14,10 @@ module Generator =
         | Sym s -> sprintf "Sym \"%s\"" s
         | Cons(x, y) -> sprintf "Cons(%s, %s)" (encode arrayRefs x) (encode arrayRefs y)
         | Vec array -> sprintf "Vec %s" (snd (List.find (fun (a, _) -> obj.ReferenceEquals(a, array)) arrayRefs))
-        | Func(Freeze(InterpretedFreeze(locals, body))) ->
-            sprintf "Func(Freeze(InterpretedFreeze(%s, %s)))" (encodeLocals arrayRefs locals) (encode arrayRefs body)
         | Func(Lambda(InterpretedLambda(locals, param, body))) ->
-            sprintf "Func(Lambda(InterpretedLambda(%s, \"%s\", %s)))" (encodeLocals arrayRefs locals) param (encode arrayRefs body)
+            if not(Map.isEmpty locals) then
+                failwith "Can't encode non-empty locals"
+            sprintf "Func(Lambda(InterpretedLambda(Map [], \"%s\", %s)))" param (encode arrayRefs body)
         | x -> failwithf "%O can't be encoded" x
 
     and private encodeLocals arrayRefs locals =

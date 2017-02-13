@@ -170,17 +170,29 @@ module Compiler =
                      intExpr fn (functionArity f)
                      appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))
 
-    let private installSymbol fn globals (name, value) =
-        unitExpr fn
-//        let arrayRefs = buildRefs (findArrays value)
-//        List.append
-//            (List.collect
-//                (fun (array, id) ->
-//                    List.map (build (fn, globals, Set.empty)) array)
-//                arrayRefs)
-//            [indexSetExpr fn
-//                (longIdExpr fn ["globals"; "Symbols"])
-//                (stringExpr fn name)]
+    let rec private buildValue ((fn, globals) as context) = function
+        | Empty -> idExpr fn "Empty"
+        | Num x -> appIdExpr fn "Dec" (decimalExpr fn x)
+        | Str s -> appIdExpr fn "Str" (stringExpr fn s)
+        | Sym s -> appIdExpr fn "Sym" (stringExpr fn s)
+        | Cons(x, y) -> appIdExpr fn "Cons" (tupleExpr fn [buildValue context x; buildValue context y])
+        | Vec array -> arrayExpr fn (List.map (buildValue context) (Seq.toList array))
+        | Err s -> appIdExpr fn "Err" (stringExpr fn s)
+        | Func(Lambda(InterpretedLambda(locals, param, body))) ->
+            if not(Map.isEmpty locals) then
+                failwith "Can't build non-empty Locals"
+            nestedAppIdExpr fn ["Func"; "Lambda"; "CompiledLambda"]
+                (lambdaExpr fn
+                    ["globals",    shortType fn "Globals"
+                     rename param, shortType fn "Value"]
+                    (build (fn, globals, Set [param]) body |> toType fn KlValue))
+        | value -> failwithf "Can't build value: %A" value
+
+    let private installSymbol ((fn, globals) as context) (name, value) =
+        indexSetExpr fn
+            (longIdExpr fn ["globals"; "Symbols"])
+            (stringExpr fn name)
+            (buildValue context value)
 
     let compile fn globals =
         let symbols = nonPrimitiveSymbols globals
@@ -196,5 +208,5 @@ module Compiler =
                 ["globals", shortType fn "Globals"]
                 (sequentialExpr fn
                     (List.append
-                        (List.map (installSymbol fn globals) symbols)
+                        (List.map (installSymbol (fn, globals)) symbols)
                         (List.map (installDefun fn) defuns)))]
