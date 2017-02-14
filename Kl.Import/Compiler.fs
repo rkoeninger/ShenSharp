@@ -172,11 +172,11 @@ module Compiler =
 
     let rec private buildValue ((fn, globals) as context) = function
         | Empty -> idExpr fn "Empty"
-        | Num x -> appIdExpr fn "Dec" (decimalExpr fn x)
+        | Num x -> appIdExpr fn "Num" (decimalExpr fn x)
         | Str s -> appIdExpr fn "Str" (stringExpr fn s)
         | Sym s -> appIdExpr fn "Sym" (stringExpr fn s)
         | Cons(x, y) -> appIdExpr fn "Cons" (tupleExpr fn [buildValue context x; buildValue context y])
-        | Vec array -> arrayExpr fn (List.map (buildValue context) (Seq.toList array))
+        | Vec array -> appIdExpr fn "Vec" (arrayExpr fn (List.map (buildValue context) (Seq.toList array)))
         | Err s -> appIdExpr fn "Err" (stringExpr fn s)
         | Func(Lambda(InterpretedLambda(locals, param, body))) ->
             if not(Map.isEmpty locals) then
@@ -203,11 +203,10 @@ module Compiler =
             openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
             letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
-            ]
-//            letDecl fn
-//                "installer"
-//                ["globals", shortType fn "Globals"]
-//                (sequentialExpr fn
-//                    (List.append
-//                        (List.map (installSymbol (fn, globals)) symbols)
-//                        (List.map (installDefun fn) defuns)))]
+            letDecl fn
+                "Install"
+                ["globals", shortType fn "Globals"]
+                (sequentialExpr fn
+                    (List.append
+                        (List.map (installSymbol (fn, globals)) symbols)
+                        (List.map (installDefun fn) defuns)))]

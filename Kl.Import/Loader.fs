@@ -70,11 +70,7 @@ module Loader =
         if not(File.Exists "ShenRuntime.dll") then
             printfn "Generating installation code..."
             let ast = compile "ShenRuntime" globals
-            //let format = {FormatConfig.Default with PageWidth = 4096}
-            //let syntax = CodeFormatter.FormatAST(ast, "ShenRuntime", None, format)
-            //File.WriteAllText("ShenRuntime.fs", syntax)
             printfn "Compiling installation code..."
-            //emitDll "ShenRuntime"
             outputDll "ShenRuntime" ast
             printfn "Installation code cached."
             printfn ""
