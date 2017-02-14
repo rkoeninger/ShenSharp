@@ -1,5 +1,6 @@
 ﻿namespace Kl.Import
 
+open System
 open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.Range
 
@@ -17,6 +18,13 @@ module Syntax =
     // Picked large values for line, col because there will be an unpredictable
     // ArrayIndexOutOfBoundsException if the numbers are too small
     let private loc fn = mkRange fn (mkPos 512 512) (mkPos 1024 1024)
+    let attr fn name value : SynAttribute =  {
+        TypeName = name
+        ArgExpr = SynExpr.Paren(value, loc fn, None, loc fn)
+        Target = None
+        AppliesToGetterAndSetter = false
+        Range = loc fn
+    }
     let ident fn s = new Ident(s, loc fn)
     let longIdent fn parts = List.map (ident fn) parts
     let longIdentWithDots fn parts =
@@ -39,6 +47,7 @@ module Syntax =
             SynConstructorArgs.Pats(args),
             None,
             loc fn)
+    let unitPat fn = SynPat.Paren(SynPat.Const(SynConst.Unit, loc fn), loc fn)
     let matchClause fn pat body =
         SynMatchClause.Clause(
             pat,
@@ -68,13 +77,13 @@ module Syntax =
             value,
             loc fn,
             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
-    let letBinding fn name paramz body =
+    let letBindingAccessWithAttrs fn attrs access name paramz body =
         SynBinding.Binding(
-            None,
+            access,
             SynBindingKind.NormalBinding,
             false,
             false,
-            [],
+            attrs,
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
@@ -90,6 +99,32 @@ module Syntax =
                 None,
                 SynConstructorArgs.Pats(
                     List.map (fun (s, synType) -> typedPat fn (namePat fn s) synType) paramz),
+                None,
+                loc fn),
+            None,
+            body,
+            loc fn,
+            SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
+    let letBindingWithAttrs fn attrs = letBindingAccessWithAttrs fn attrs None
+    let letBinding fn = letBindingWithAttrs fn []
+    let letBindingPrivate fn = letBindingAccessWithAttrs fn [] (Some SynAccess.Private)
+    let letUnitBinding fn attrs name body =
+        SynBinding.Binding(
+            None,
+            SynBindingKind.NormalBinding,
+            false,
+            false,
+            attrs,
+            PreXmlDoc.Empty,
+            SynValData.SynValData(
+                None,
+                SynValInfo.SynValInfo([[]], SynArgInfo.SynArgInfo([], false, None)),
+                None),
+            SynPat.LongIdent(
+                longIdentWithDots fn [name],
+                None,
+                None,
+                SynConstructorArgs.Pats([unitPat fn]),
                 None,
                 loc fn),
             None,
@@ -224,22 +259,33 @@ module Syntax =
             false,
             loc fn)
     let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
+    let letDeclWithAttrs fn attrs name paramz body =
+        SynModuleDecl.Let(
+            false,
+            [letBindingWithAttrs fn attrs name paramz body],
+            loc fn)
     let letDecl fn name paramz body =
         SynModuleDecl.Let(
             false,
             [letBinding fn name paramz body],
             loc fn)
+    let letUnitDeclWithAttrs fn attrs name body =
+        SynModuleDecl.Let(
+            false,
+            [letUnitBinding fn attrs name body],
+            loc fn)
     let letMultiDecl fn bindings = SynModuleDecl.Let(true, bindings, loc fn)
-    let parsedFile fn decls =
+    let sjoin sep (parts: string list) = String.Join(sep, parts)
+    let moduleFile fn nameParts decls =
         ParsedInput.ImplFile(
             ParsedImplFileInput.ParsedImplFileInput(
                 fn + ".fs",
                 false,
-                QualifiedNameOfFile.QualifiedNameOfFile(ident fn fn),
+                QualifiedNameOfFile.QualifiedNameOfFile(ident fn (sjoin "." nameParts)),
                 [],
                 [],
                 [SynModuleOrNamespace.SynModuleOrNamespace(
-                    [ident fn fn],
+                    (List.map (ident fn) nameParts),
                     false,
                     true,
                     decls,

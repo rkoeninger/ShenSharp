@@ -33,6 +33,7 @@ module Values =
             then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
             else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
+    [<CompiledName "NewGlobals">]
     let newGlobals() = {
         Symbols = new Dictionary<string, Value>()
         Functions = new Dictionary<string, Function>()

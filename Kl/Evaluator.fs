@@ -216,4 +216,5 @@ module Evaluator =
     let vapply globals f args =
         match f with
         | Func f -> apply globals f args
+        | Sym s -> apply globals (resolveGlobalFunction globals s) args
         | _ -> failwith "Operator expression must evaluate to a function"

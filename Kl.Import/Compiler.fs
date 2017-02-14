@@ -1,5 +1,6 @@
 ﻿namespace Kl.Import
 
+open System
 open System.Collections.Generic
 open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.Range
@@ -45,7 +46,15 @@ module Compiler =
         | Sym s ->
             if globals.Functions.ContainsKey s then
                 // ~(rename s) globals ~args
-                appIdExprN fn (rename s) [idExpr fn "globals"; listExpr fn args]
+                appIdExprN fn (rename s)
+                    [idExpr fn "globals"
+                     listExpr fn args]
+            elif Set.contains s locals then
+                // vapply globals ~s ~args
+                appIdExprN fn "vapply"
+                    [idExpr fn "globals"
+                     idExpr fn (rename s)
+                     listExpr fn args]
             else
                 // apply globals (resolveGlobalFunction ~s) ~args
                 appIdExprN fn "apply"
@@ -145,7 +154,7 @@ module Compiler =
         //     | [~@(map rename paramz)] -> ~body
         //     | args -> argsErr ~name ~(replicate arity "value") args
         | Defun(name, arity, InterpretedDefun(paramz, body)) ->
-            letBinding fn
+            letBindingPrivate fn
                 (rename name)
                 ["globals", shortType fn "Globals"]
                 (matchLambdaExpr fn
@@ -194,19 +203,31 @@ module Compiler =
             (stringExpr fn name)
             (buildValue context value)
 
-    let compile fn globals =
+    let compile nameParts globals =
+        let fn = sjoin "" nameParts
         let symbols = nonPrimitiveSymbols globals
         let defuns = nonPrimitiveFunctions globals
-        parsedFile fn [
+        let compiledNameAttr name =
+            attr fn
+                (longIdentWithDots fn ["CompiledName"])
+                (stringExpr fn name)
+        moduleFile fn nameParts [
             openDecl fn ["Kl"]
             openDecl fn ["Kl"; "Values"]
             openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
+            openDecl fn ["Kl"; "Startup"]
             letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
-            letDecl fn
-                "Install"
+            letDeclWithAttrs fn
+                [compiledNameAttr "Install"]
+                "install"
                 ["globals", shortType fn "Globals"]
                 (sequentialExpr fn
-                    (List.append
-                        (List.map (installSymbol (fn, globals)) symbols)
-                        (List.map (installDefun fn) defuns)))]
+                    (List.concat
+                        [List.map (installSymbol (fn, globals)) symbols
+                         List.map (installDefun fn) defuns
+                         [idExpr fn "globals"]]))
+            letUnitDeclWithAttrs fn
+                [compiledNameAttr "NewRuntime"]
+                "newRuntime"
+                (nestedAppIdExpr fn ["install"; "baseGlobals"] (unitExpr fn))]

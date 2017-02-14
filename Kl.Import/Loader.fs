@@ -69,7 +69,7 @@ module Loader =
     let cacheCompile globals =
         if not(File.Exists "ShenRuntime.dll") then
             printfn "Generating installation code..."
-            let ast = compile "ShenRuntime" globals
+            let ast = compile ["Shen"; "Runtime"] globals
             printfn "Compiling installation code..."
             outputDll "ShenRuntime" ast
             printfn "Installation code cached."
