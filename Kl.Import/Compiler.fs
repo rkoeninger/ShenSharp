@@ -203,10 +203,11 @@ module Compiler =
             openDecl fn ["Kl"; "Evaluator"]
             openDecl fn ["Kl"; "Builtins"]
             letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
-            letDecl fn
-                "installer"
-                ["globals", shortType fn "Globals"]
-                (sequentialExpr fn
-                    (List.append
-                        (List.map (installSymbol (fn, globals)) symbols)
-                        (List.map (installDefun fn) defuns)))]
+            ]
+//            letDecl fn
+//                "installer"
+//                ["globals", shortType fn "Globals"]
+//                (sequentialExpr fn
+//                    (List.append
+//                        (List.map (installSymbol (fn, globals)) symbols)
+//                        (List.map (installDefun fn) defuns)))]

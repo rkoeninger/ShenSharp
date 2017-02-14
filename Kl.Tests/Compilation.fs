@@ -38,7 +38,6 @@ let g = globals.Functions.[\"xor\"] <- ()
         sy globals "array-value" (Vec [|Int 1; Int 2; Int 3|])
         sy globals "cons-test" (Cons(Int 1, Int 2))
         sy globals "lambda-test" (Func(Lambda(InterpretedLambda(Map.empty, "X", toCons [Sym "+"; Sym "X"; Int 1]))))
-        //TODO: sy globals "lambda-2" (Func(Lambda(InterpretedLambda(Map.empty, "X", Func(Lambda(InterpretedLambda(Map.empty, "Y", toCons [Sym "+"; Sym "X"; Sym "Y"])))))))
         let ast = compile "ShenRuntime" globals
         let format = {FormatConfig.Default with PageWidth = 1024}
         printfn "%s" (CodeFormatter.FormatAST(ast, "file", None, format))

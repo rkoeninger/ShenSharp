@@ -96,6 +96,10 @@ module Syntax =
             body,
             loc fn,
             SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
+    let parenExpr fn expr = SynExpr.Paren(expr, loc fn, None, loc fn)
+    let parens fn = function
+        | SynExpr.Paren _ as e -> e
+        | e -> parenExpr fn e
     let unitExpr fn = SynExpr.Const(SynConst.Unit, loc fn)
     let boolExpr fn b = SynExpr.Const(SynConst.Bool b, loc fn)
     let intExpr fn n = SynExpr.Const(SynConst.Int32 n, loc fn)
@@ -111,10 +115,6 @@ module Syntax =
             loc fn,
             loc fn,
             loc fn)
-    let parenExpr fn expr = SynExpr.Paren(expr, loc fn, None, loc fn)
-    let parens fn = function
-        | SynExpr.Paren _ as e -> e
-        | e -> parenExpr fn e
     let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc fn)
     let rec appExprN fn f = function
         | [] -> appExpr fn f (unitExpr fn)
@@ -136,14 +136,15 @@ module Syntax =
         | [s] -> parens fn (appIdExpr fn s args)
         | s :: ss -> parens fn (appIdExpr fn s (nestedAppIdExpr fn ss args))
     let ifExpr fn condition consequent alternative =
-        SynExpr.IfThenElse(
-            condition,
-            consequent,
-            Some alternative,
-            SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
-            false,
-            loc fn,
-            loc fn)
+        parens fn
+            (SynExpr.IfThenElse(
+                condition,
+                consequent,
+                Some alternative,
+                SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
+                false,
+                loc fn,
+                loc fn))
     let letExpr fn symbol value body =
         SynExpr.LetOrUse(
             false,
@@ -182,17 +183,7 @@ module Syntax =
                 vals,
                 List.replicate (List.length vals - 1) (loc fn),
                 loc fn))
-    let listExpr fn = function
-        | [] -> SynExpr.ArrayOrList(false, [], loc fn)
-        | vals ->
-            SynExpr.ArrayOrListOfSeqExpr(
-                false,
-                SynExpr.CompExpr(
-                    true,
-                    ref true,
-                    sequentialExpr fn vals,
-                    loc fn),
-                loc fn)
+    let listExpr fn vals = SynExpr.ArrayOrList(false, vals, loc fn)
     let arrayExpr fn vals = SynExpr.ArrayOrList(true, vals, loc fn)
     let rec lambdaExpr fn paramz body =
         parens fn

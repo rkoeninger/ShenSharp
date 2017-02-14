@@ -60,6 +60,10 @@
     <Compile Include="Loader.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="FantomasLib">
+      <HintPath>..\packages\Fantomas.2.4.0\lib\FantomasLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FParsec">
       <HintPath>..\packages\FParsec.1.0.2\lib\net40-client\FParsec.dll</HintPath>
       <Private>True</Private>

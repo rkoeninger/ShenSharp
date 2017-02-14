@@ -5,10 +5,13 @@ open System.IO
 open System.Reflection
 open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
+open Fantomas
+open Fantomas.FormatConfig
 open Kl.Evaluator
 open Kl.Startup
 open Reader
 open Generator
+open Compiler
 
 module Loader =
 
@@ -50,9 +53,35 @@ module Loader =
             printfn ""
             globals
         else
-            // TODO: method name should be Shen.Runtime.Install
             let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, "Installer.dll"))
             let installation = assembly.GetType("Kl.Installation.Installer")
+            let install = installation.GetMethod("Install")
+            let globals = baseGlobals()
+            install.Invoke(null, [|globals|]) |> ignore
+            globals
+
+    let outputDll name ast =
+        let service = new SimpleSourceCodeServices()
+        let (errors, returnCode) = service.Compile([ast], "ShenRuntime", "ShenRuntime.dll", ["Kl.dll"])
+        if returnCode <> 0 then
+            raise <| new Exception(String.Join("\r\n\r\n", Seq.map (fun (e: FSharpErrorInfo) -> e.ToString()) errors))
+
+    let cacheCompile globals =
+        if not(File.Exists "ShenRuntime.dll") then
+            printfn "Generating installation code..."
+            let ast = compile "ShenRuntime" globals
+            //let format = {FormatConfig.Default with PageWidth = 4096}
+            //let syntax = CodeFormatter.FormatAST(ast, "ShenRuntime", None, format)
+            //File.WriteAllText("ShenRuntime.fs", syntax)
+            printfn "Compiling installation code..."
+            //emitDll "ShenRuntime"
+            outputDll "ShenRuntime" ast
+            printfn "Installation code cached."
+            printfn ""
+            globals
+        else
+            let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, "ShenRuntime.dll"))
+            let installation = assembly.GetType("ShenRuntime")
             let install = installation.GetMethod("Install")
             let globals = baseGlobals()
             install.Invoke(null, [|globals|]) |> ignore
