@@ -13,7 +13,7 @@ open Microsoft.FSharp.Compiler.Range
 /// there is a clear separation between AST helpers and
 /// making decisions about transpiling KL to F#.
 /// </remarks>
-module Syntax =
+module internal Syntax =
 
     // Picked large values for line, col because there will be an unpredictable
     // ArrayIndexOutOfBoundsException if the numbers are too small
