@@ -10,7 +10,7 @@ open Kl.Import.Reader
 open Kl.Import.Compiler
 open Assertions
 
-[<TestFixture; Ignore "Not for CI">]
+[<TestFixture>]
 type Compilation() =
 
     let fn globals name args body =
@@ -23,7 +23,8 @@ type Compilation() =
     member this.``test parse``() =
         let text = "
 module Shen.Runtime
-let f () = install(baseGlobals())
+    type Kl.Globals with
+        member this.Eval(syntax: string) = ()
 "
         let ast = CodeFormatter.Parse("./test.fs", text)
         Assert.IsTrue(CodeFormatter.IsValidAST ast)

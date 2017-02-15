@@ -77,11 +77,11 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="FSharp.Compiler.Service">
-      <HintPath>..\packages\FSharp.Compiler.Service.10.0.1\lib\net45\FSharp.Compiler.Service.dll</HintPath>
+      <HintPath>..\packages\FSharp.Compiler.Service.8.0.0\lib\net45\FSharp.Compiler.Service.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="FSharp.Compiler.Service.MSBuild.v12">
-      <HintPath>..\packages\FSharp.Compiler.Service.10.0.1\lib\net45\FSharp.Compiler.Service.MSBuild.v12.dll</HintPath>
+      <HintPath>..\packages\FSharp.Compiler.Service.8.0.0\lib\net45\FSharp.Compiler.Service.MSBuild.v12.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />

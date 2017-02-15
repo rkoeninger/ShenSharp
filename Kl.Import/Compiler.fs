@@ -22,13 +22,16 @@ module Compiler =
 
     let private simplestCommonType t0 t1 = if t0 = t1 then t0 else KlValue
 
+    let private appIgnore fn expr =
+        infixIdExpr fn "op_PipeRight" expr (idExpr fn "ignore")
+
     let private toType fn targetType (fsExpr, currentType) =
         match currentType, targetType with
         | x, y when x = y -> fsExpr
         | FsBoolean, KlValue -> appIdExpr fn "Bool" fsExpr
         | FsUnit, KlValue -> sequentialExpr fn [fsExpr; idExpr fn "Empty"]
         | KlValue, FsBoolean -> appIdExpr fn "isTrue" fsExpr
-        | _, FsUnit -> infixIdExpr fn "op_PipeRight" fsExpr (idExpr fn "ignore")
+        | _, FsUnit -> appIgnore fn fsExpr
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
     let rec private buildDo ((fn, globals, locals) as context) expr =
@@ -216,7 +219,7 @@ module Compiler =
             openDecl fn ["Kl"; "Builtins"]
             openDecl fn ["Kl"; "Startup"]
             letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
-            letDeclWithAttrs fn
+            letAttrsDecl fn
                 [compiledNameAttr "Install"]
                 "install"
                 ["globals", shortType fn "Globals"]
@@ -225,7 +228,16 @@ module Compiler =
                         [List.map (installSymbol (fn, globals)) symbols
                          List.map (installDefun fn) defuns
                          [idExpr fn "globals"]]))
-            letUnitDeclWithAttrs fn
+            letUnitAttrsDecl fn
                 [compiledNameAttr "NewRuntime"]
                 "newRuntime"
-                (nestedAppIdExpr fn ["install"; "baseGlobals"] (unitExpr fn))]
+                (nestedAppIdExpr fn ["install"; "baseGlobals"] (unitExpr fn))
+            extnMethodDecl fn ["Globals"] "Eval"
+                [typedPat fn (namePat fn "syntax") (shortType fn "string")]
+                (unitExpr fn)
+            extnMethodDecl fn ["Globals"] "Load"
+                [typedPat fn (namePat fn "path") (shortType fn "string")]
+                (appIgnore fn
+                    (appIdExprN fn (rename "load")
+                        [idExpr fn "globals"
+                         listExpr fn [appIdExpr fn "Str" (idExpr fn "path")]]))]

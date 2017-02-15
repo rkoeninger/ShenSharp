@@ -39,9 +39,9 @@ module internal Syntax =
     let namePat fn s = SynPat.Named(wildPat fn, ident fn s, false, None, loc fn)
     let typedPat fn pat synType = SynPat.Paren(SynPat.Typed(pat, synType, loc fn), loc fn)
     let listPat fn pats = SynPat.ArrayOrList(false, pats, loc fn)
-    let caseIdPat fn f args =
+    let appPat fn parts args =
         SynPat.LongIdent(
-            longIdentWithDots fn [f],
+            longIdentWithDots fn parts,
             None,
             None,
             SynConstructorArgs.Pats(args),
@@ -259,7 +259,7 @@ module internal Syntax =
             false,
             loc fn)
     let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
-    let letDeclWithAttrs fn attrs name paramz body =
+    let letAttrsDecl fn attrs name paramz body =
         SynModuleDecl.Let(
             false,
             [letBindingWithAttrs fn attrs name paramz body],
@@ -269,12 +269,56 @@ module internal Syntax =
             false,
             [letBinding fn name paramz body],
             loc fn)
-    let letUnitDeclWithAttrs fn attrs name body =
+    let letUnitAttrsDecl fn attrs name body =
         SynModuleDecl.Let(
             false,
             [letUnitBinding fn attrs name body],
             loc fn)
     let letMultiDecl fn bindings = SynModuleDecl.Let(true, bindings, loc fn)
+    let extnMethodDecl fn typeNameParts methodName args body =
+        SynModuleDecl.Types(
+            [SynTypeDefn.TypeDefn(
+                SynComponentInfo.ComponentInfo(
+                    [],
+                    [],
+                    [],
+                    longIdent fn typeNameParts,
+                    PreXmlDoc.Empty,
+                    false,
+                    None,
+                    loc fn),
+                SynTypeDefnRepr.ObjectModel(
+                    SynTypeDefnKind.TyconAugmentation,
+                    [],
+                    loc fn),
+                [SynMemberDefn.Member(
+                    SynBinding.Binding(
+                        None,
+                        SynBindingKind.NormalBinding,
+                        false,
+                        false,
+                        [],
+                        PreXmlDoc.Empty,
+                        SynValData.SynValData(
+                            Some {
+                                IsInstance = true
+                                IsDispatchSlot = false
+                                IsOverrideOrExplicitImpl = false
+                                IsFinal = false
+                                MemberKind = MemberKind.Member
+                            },
+                            SynValInfo.SynValInfo(
+                                [[]],
+                                SynArgInfo([], false, None)),
+                            None),
+                        appPat fn ["this"; methodName] args,
+                        None,
+                        body,
+                        loc fn,
+                        SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding),
+                    loc fn)],
+                loc fn)],
+            loc fn)
     let sjoin sep (parts: string list) = String.Join(sep, parts)
     let moduleFile fn nameParts decls =
         ParsedInput.ImplFile(
