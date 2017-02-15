@@ -23,7 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\kli.xml</DocumentationFile>
+    <DocumentationFile>bin\Debug\Kl.xml</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -34,7 +34,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\Kl.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\Kl.xml</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
@@ -55,6 +55,9 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <None Include="App.config" />
+    <Compile Include="$(SolutionDir)SharedAssemblyInfo.fs">
+      <Link>SharedAssemblyInfo.fs</Link>
+    </Compile>
     <Compile Include="Types.fs" />
     <Compile Include="Values.fs" />
     <Compile Include="Evaluator.fs" />

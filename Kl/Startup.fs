@@ -1,6 +1,7 @@
 ﻿namespace Kl
 
 open System
+open System.Reflection
 open Values
 open Builtins
 
@@ -11,11 +12,12 @@ module Startup =
     let private installBase globals =
         let onMono = Type.GetType "Mono.Runtime" <> null
         let platform = if onMono then "Mono" else "Microsoft.NET"
+        let ver = Assembly.GetExecutingAssembly().GetName().Version
         let symbols = [
             "*language*",       Str "F# 4.0"
             "*implementation*", Str(sprintf "CLR/%s" platform)
             "*release*",        Str(string Environment.Version)
-            "*port*",           Str "0.4"
+            "*port*",           Str(sprintf "%i.%i" ver.Major ver.Minor)
             "*porters*",        Str "Robert Koeninger"
             "*stinput*",        console
             "*stoutput*",       console

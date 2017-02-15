@@ -52,6 +52,9 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Content Include="packages.config" />
+    <Compile Include="$(SolutionDir)SharedAssemblyInfo.fs">
+      <Link>SharedAssemblyInfo.fs</Link>
+    </Compile>
     <Compile Include="Reader.fs" />
     <Compile Include="Analysis.fs" />
     <Compile Include="Generator.fs" />

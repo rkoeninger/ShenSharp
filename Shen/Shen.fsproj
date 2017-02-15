@@ -48,6 +48,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <Compile Include="$(SolutionDir)SharedAssemblyInfo.fs">
+      <Link>SharedAssemblyInfo.fs</Link>
+    </Compile>
     <Compile Include="RunRepl.fs" />
   </ItemGroup>
   <ItemGroup>

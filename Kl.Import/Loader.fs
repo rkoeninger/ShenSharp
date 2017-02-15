@@ -7,6 +7,7 @@ open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 open Fantomas
 open Fantomas.FormatConfig
+open Kl
 open Kl.Evaluator
 open Kl.Startup
 open Reader
@@ -77,8 +78,6 @@ module Loader =
             globals
         else
             let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, "ShenRuntime.dll"))
-            let installation = assembly.GetType("ShenRuntime")
-            let install = installation.GetMethod("Install")
-            let globals = baseGlobals()
-            install.Invoke(null, [|globals|]) |> ignore
-            globals
+            let installation = assembly.GetType("Shen.Runtime")
+            let install = installation.GetMethod("NewRuntime")
+            install.Invoke(null, [||]) :?> Globals
