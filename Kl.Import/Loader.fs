@@ -11,7 +11,6 @@ open Kl
 open Kl.Evaluator
 open Kl.Startup
 open Reader
-open Generator
 open Compiler
 
 module Loader =
@@ -29,55 +28,30 @@ module Loader =
         printfn ""
         globals
 
-    let private emitDll name =
+    let nameParts = ["Shen"; "Runtime"]
+    let joinedName = String.Join(".", nameParts)
+    let fileName = sprintf "%s.dll" joinedName
+    let deps = ["Kl.dll"]
+
+    let errorsToString (errors: FSharpErrorInfo seq) =
+        String.Join("\r\n\r\n", Seq.map (fun (e: FSharpErrorInfo) -> e.ToString()) errors)
+
+    let emitDll ast =
         let service = new SimpleSourceCodeServices()
-        let options = [|
-            "fsc.exe"
-            "-o"; name + ".dll"
-            "-a"; name + ".fs"
-            "-r"; "Kl.dll"
-        |]
-        let (errors, returnCode) = service.Compile options
+        let (errors, returnCode) = service.Compile([ast], joinedName, fileName, deps)
         if returnCode <> 0 then
-            raise <| new Exception(String.Join(", ", Seq.map (fun (e: FSharpErrorInfo) -> e.Message) errors))
+            raise <| new Exception(errorsToString errors)
 
     let cache klFolder klFiles =
-        if not(File.Exists "Installer.dll") then
+        if not(File.Exists fileName) then
             let globals = load klFolder klFiles
             printfn "Generating installation code..."
-            let origGlobals = baseGlobals()
-            let syntax = generateInstallerCode origGlobals.Symbols.Keys origGlobals.Functions.Keys globals
-            File.WriteAllText("Installer.fs", syntax)
+            let ast = compile nameParts globals
             printfn "Compiling installation code..."
-            emitDll "Installer"
+            emitDll ast
             printfn "Installation code cached."
             printfn ""
-            globals
-        else
-            let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, "Installer.dll"))
-            let installation = assembly.GetType("Kl.Installation.Installer")
-            let install = installation.GetMethod("Install")
-            let globals = baseGlobals()
-            install.Invoke(null, [|globals|]) |> ignore
-            globals
-
-    let outputDll name ast =
-        let service = new SimpleSourceCodeServices()
-        let (errors, returnCode) = service.Compile([ast], "ShenRuntime", "ShenRuntime.dll", ["Kl.dll"])
-        if returnCode <> 0 then
-            raise <| new Exception(String.Join("\r\n\r\n", Seq.map (fun (e: FSharpErrorInfo) -> e.ToString()) errors))
-
-    let cacheCompile globals =
-        if not(File.Exists "ShenRuntime.dll") then
-            printfn "Generating installation code..."
-            let ast = compile ["Shen"; "Runtime"] globals
-            printfn "Compiling installation code..."
-            outputDll "ShenRuntime" ast
-            printfn "Installation code cached."
-            printfn ""
-            globals
-        else
-            let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, "ShenRuntime.dll"))
-            let installation = assembly.GetType("Shen.Runtime")
-            let install = installation.GetMethod("NewRuntime")
-            install.Invoke(null, [||]) :?> Globals
+        let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, fileName))
+        let installation = assembly.GetType(joinedName)
+        let install = installation.GetMethod("NewRuntime")
+        install.Invoke(null, [||]) :?> Globals

@@ -27,7 +27,6 @@ let klFiles = [
 
 let runRepl files =
     let globals = cache klFolder klFiles
-    let globals = cacheCompile globals
 
     if Array.isEmpty files then
         eval globals (toCons [Sym "shen.shen"]) |> ignore

@@ -28,7 +28,6 @@ let klFiles = [
 
 let runTestSuite () =
     let globals = cache klFolder klFiles
-    let globals = cacheCompile globals
     eval globals (toCons [Sym "cd"; Str testFolder]) |> ignore
     eval globals (toCons [Sym "load"; Str "README.shen"]) |> ignore
     eval globals (toCons [Sym "load"; Str "tests.shen"]) |> ignore
