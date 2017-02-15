@@ -5,8 +5,6 @@ open System.IO
 open System.Reflection
 open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
-open Fantomas
-open Fantomas.FormatConfig
 open Kl
 open Kl.Evaluator
 open Kl.Startup

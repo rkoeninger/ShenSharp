@@ -10,7 +10,7 @@ open Kl.Import.Reader
 open Kl.Import.Compiler
 open Assertions
 
-[<TestFixture>]
+[<TestFixture; Ignore "Not for CI">]
 type Compilation() =
 
     let fn globals name args body =

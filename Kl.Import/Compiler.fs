@@ -2,8 +2,6 @@
 
 open System
 open System.Collections.Generic
-open Microsoft.FSharp.Compiler.Ast
-open Microsoft.FSharp.Compiler.Range
 open Kl
 open Kl.Values
 open Reader
