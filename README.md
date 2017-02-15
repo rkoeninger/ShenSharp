@@ -14,7 +14,7 @@ logic programming and a built-in compiler-compiler.
 Currently implemented as an interpreter, ShenSharp loads and runs Shen code on demand.
 The interpreter approach suffers from poor performance, but optimizations are forthcoming.
 
-This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/2f29ca2f6d5ab88c8f4dccacc4def3fc),
+This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/da80b7aec177820891ec70a09dc94fef),
 making this a certifiable implementation.
 
 ### CI Builds
