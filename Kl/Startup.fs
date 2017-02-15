@@ -20,7 +20,7 @@ module Startup =
         let fsVersion = fsAssembly.GetName().Version
         let symbols = [
             "*language*",       Str(sprintf "F# %i.%i" fsVersion.Minor fsVersion.MajorRevision)
-            "*implementation*", Str(sprintf "CLR/%s" platform)
+            "*implementation*", Str platform
             "*release*",        Str(string Environment.Version)
             "*port*",           Str(sprintf "%i.%i" klVersion.Major klVersion.Minor)
             "*porters*",        Str author
