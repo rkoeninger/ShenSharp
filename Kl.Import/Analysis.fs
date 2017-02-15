@@ -5,16 +5,7 @@ open System.Collections.Generic
 open Kl
 open Kl.Values
 
-module Analysis =
-
-    let private genId() = "array" + Guid.NewGuid().ToString().Substring(0, 8)
-
-    let buildRefs arrays = List.map (fun a -> (a, genId())) arrays
-
-    let rec findArrays = function
-        | Cons(x, y) -> findArrays x @ findArrays y
-        | Vec array -> List.collect findArrays (Array.toList array) @ [array]
-        | _ -> []
+module internal Analysis =
 
     let rec flattenDo = function
         | DoExpr(first, second) -> flattenDo first @ flattenDo second
