@@ -12,13 +12,18 @@ module Startup =
     let private installBase globals =
         let onMono = Type.GetType "Mono.Runtime" <> null
         let platform = if onMono then "Mono" else "Microsoft.NET"
-        let ver = Assembly.GetExecutingAssembly().GetName().Version
+        let klAssembly = typedefof<Value>.Assembly
+        let klVersion = klAssembly.GetName().Version
+        let companyAttribute = klAssembly.GetCustomAttribute<AssemblyCompanyAttribute>()
+        let author = if companyAttribute <> null then companyAttribute.Company else "Unknown"
+        let fsAssembly = typedefof<unit>.Assembly
+        let fsVersion = fsAssembly.GetName().Version
         let symbols = [
-            "*language*",       Str "F# 4.0"
+            "*language*",       Str(sprintf "F# %i.%i" fsVersion.Minor fsVersion.MajorRevision)
             "*implementation*", Str(sprintf "CLR/%s" platform)
             "*release*",        Str(string Environment.Version)
-            "*port*",           Str(sprintf "%i.%i" ver.Major ver.Minor)
-            "*porters*",        Str "Robert Koeninger"
+            "*port*",           Str(sprintf "%i.%i" klVersion.Major klVersion.Minor)
+            "*porters*",        Str author
             "*stinput*",        console
             "*stoutput*",       console
             "*home-directory*", Str Environment.CurrentDirectory
@@ -80,5 +85,4 @@ module Startup =
     /// <summary>
     /// Creates a new global scope with the KL primitives installed.
     /// </summary>
-    [<CompiledName "BaseGlobals">]
     let baseGlobals() = installBase(newGlobals())

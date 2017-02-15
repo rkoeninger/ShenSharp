@@ -16,6 +16,10 @@ module Evaluator =
     let private resolveSymbol locals id =
         defaultArg (Map.tryFind id locals) (Sym id)
 
+    /// <summary>
+    /// Looks up id in the global function namespace.
+    /// Raises an error if function not defined.
+    /// </summary>
     let resolveGlobalFunction globals id =
         match globals.Functions.GetMaybe id with
         | Some f -> f
@@ -201,20 +205,21 @@ module Evaluator =
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    [<CompiledName "Eval">]
     let eval globals expr = evalv (globals, Map.empty) expr
 
     /// <summary>
     /// Applies a function to a list of values.
     /// </summary>
-    [<CompiledName "Apply">]
     let apply globals f args =
         match applyw globals f args with
         | Done value -> value
         | Pending(locals, expr) -> evalv (globals, locals) expr
 
-    let vapply globals f args =
-        match f with
+    /// <summary>
+    /// Interprets a value as a function and applies it to a list of values.
+    /// </summary>
+    let vapply globals value args =
+        match value with
         | Func f -> apply globals f args
         | Sym s -> apply globals (resolveGlobalFunction globals s) args
         | _ -> failwith "Operator expression must evaluate to a function"
