@@ -55,8 +55,8 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <None Include="App.config" />
-    <Compile Include="$(SolutionDir)SharedAssemblyInfo.fs">
-      <Link>SharedAssemblyInfo.fs</Link>
+    <Compile Include="$(SolutionDir)Shared.fs">
+      <Link>Shared.fs</Link>
     </Compile>
     <Compile Include="Types.fs" />
     <Compile Include="Values.fs" />
