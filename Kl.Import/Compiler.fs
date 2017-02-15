@@ -26,7 +26,7 @@ module Compiler =
         match currentType, targetType with
         | x, y when x = y -> fsExpr
         | FsBoolean, KlValue -> appIdExpr fn "Bool" fsExpr
-        | FsUnit, KlValue -> idExpr fn "Empty" // TODO: this will ignore fsExpr
+        | FsUnit, KlValue -> sequentialExpr fn [fsExpr; idExpr fn "Empty"]
         | KlValue, FsBoolean -> appIdExpr fn "isTrue" fsExpr
         | _, FsUnit -> infixIdExpr fn "op_PipeRight" fsExpr (idExpr fn "ignore")
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
