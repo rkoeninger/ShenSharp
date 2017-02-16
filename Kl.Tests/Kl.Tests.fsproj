@@ -53,8 +53,9 @@
     <None Include="App.config" />
     <None Include="packages.config" />
     <Compile Include="$(SolutionDir)Shared.fs">
-      <Link>Shared.fs</Link>
+      <Link>Properties\Shared.fs</Link>
     </Compile>
+    <Compile Include="Properties\Metadata.fs" />
     <Compile Include="Assertions.fs" />
     <Compile Include="PrintDebugInfo.fs" />
     <Compile Include="Equality.fs" />

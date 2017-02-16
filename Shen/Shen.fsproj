@@ -49,8 +49,9 @@
   <ItemGroup>
     <None Include="App.config" />
     <Compile Include="$(SolutionDir)Shared.fs">
-      <Link>Shared.fs</Link>
+      <Link>Properties\Shared.fs</Link>
     </Compile>
+    <Compile Include="Properties\Metadata.fs" />
     <Compile Include="RunRepl.fs" />
   </ItemGroup>
   <ItemGroup>
