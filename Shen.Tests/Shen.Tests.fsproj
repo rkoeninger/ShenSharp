@@ -69,8 +69,8 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\Kl.Import\Kl.Import.fsproj">
-      <Name>Kl.Import</Name>
+    <ProjectReference Include="..\Kl.Make\Kl.Make.fsproj">
+      <Name>Kl.Make</Name>
       <Project>{5ea0dbc2-329b-4075-bee2-ef83186c5529}</Project>
       <Private>True</Private>
     </ProjectReference>

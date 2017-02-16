@@ -4,7 +4,6 @@ open NUnit.Framework
 open Kl
 open Kl.Values
 open Kl.Startup
-open Kl.Import.Reader
 open Assertions
 
 [<TestFixture>]

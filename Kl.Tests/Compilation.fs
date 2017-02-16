@@ -6,8 +6,8 @@ open NUnit.Framework
 open Kl
 open Kl.Values
 open Kl.Startup
-open Kl.Import.Reader
-open Kl.Import.Compiler
+open Kl.Make.Reader
+open Kl.Make.Compiler
 open Assertions
 
 [<TestFixture>]

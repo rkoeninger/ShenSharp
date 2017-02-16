@@ -1,4 +1,4 @@
-﻿namespace Kl.Import
+﻿namespace Kl.Make
 
 open System
 open Microsoft.FSharp.Compiler.Ast

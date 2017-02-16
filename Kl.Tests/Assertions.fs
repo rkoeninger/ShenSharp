@@ -6,7 +6,7 @@ open Kl.Values
 open Kl.Extensions
 open Kl.Evaluator
 open Kl.Startup
-open Kl.Import.Reader
+open Kl.Make.Reader
 
 module Assertions =
     

@@ -4,7 +4,7 @@ open System.Threading
 open Kl
 open Kl.Values
 open Kl.Evaluator
-open Kl.Import.Loader
+open Kl.Make.Loader
 
 let stackSize = 16777216
 let testFolder = @"..\..\..\Distribution\Tests"

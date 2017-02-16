@@ -3,7 +3,7 @@
 open NUnit.Framework
 open Kl
 open Kl.Values
-open Kl.Import.Reader
+open Kl.Make.Reader
 open Assertions
 
 [<TestFixture>]

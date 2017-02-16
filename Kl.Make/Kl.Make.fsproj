@@ -8,11 +8,11 @@
     <ProjectGuid>5ea0dbc2-329b-4075-bee2-ef83186c5529</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Kl.Load</RootNamespace>
-    <AssemblyName>Kl.Import</AssemblyName>
+    <AssemblyName>Kl.Make</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Name>Kl.Import</Name>
+    <Name>Kl.Make</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
