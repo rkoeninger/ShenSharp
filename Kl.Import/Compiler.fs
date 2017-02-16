@@ -25,6 +25,9 @@ module Compiler =
     let private appIgnore fn expr =
         infixIdExpr fn "op_PipeRight" expr (idExpr fn "ignore")
 
+    let private appKl fn name args =
+        parens fn (appIdExprN fn (rename name) [idExpr fn "globals"; listExpr fn args])
+
     let private toType fn targetType (fsExpr, currentType) =
         match currentType, targetType with
         | x, y when x = y -> fsExpr
@@ -47,11 +50,9 @@ module Compiler =
         | Sym s ->
             if globals.Functions.ContainsKey s then
                 // ~(rename s) globals ~args
-                appIdExprN fn (rename s)
-                    [idExpr fn "globals"
-                     listExpr fn args]
+                appKl fn s args
             elif Set.contains s locals then
-                // vapply globals ~s ~args
+                // vapply globals ~(rename s) ~args
                 appIdExprN fn "vapply"
                     [idExpr fn "globals"
                      idExpr fn (rename s)
@@ -236,11 +237,12 @@ module Compiler =
              letAttrsMultiParamDecl fn [extnAttr fn] "Eval"
                 ["globals", shortType fn "Globals"
                  "syntax", shortType fn "string"]
-                (unitExpr fn)
+                (appKl fn "eval"
+                    [appKl fn "read"
+                        [appIdExpr fn "pipeString" (idExpr fn "syntax")]])
              letAttrsMultiParamDecl fn [extnAttr fn] "Load"
                 ["globals", shortType fn "Globals"
                  "path", shortType fn "string"]
                 (appIgnore fn
-                    (appIdExprN fn (rename "load")
-                        [idExpr fn "globals"
-                         listExpr fn [appIdExpr fn "Str" (idExpr fn "path")]]))]
+                    (appKl fn "load"
+                        [appIdExpr fn "Str" (idExpr fn "path")]))]

@@ -44,6 +44,15 @@ module Values =
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
 
+    let pipeString (s: string) =
+        let stream = new MemoryStream(Encoding.UTF8.GetBytes s)
+        Pipe {
+            Name = "String"
+            Read = stream.ReadByte
+            Write = stream.WriteByte
+            Close = stream.Close
+        }
+
     let private sequenceOption xs =
         let combine x xs = Option.bind (fun v -> Option.map (fun vs -> v :: vs) xs) x
         List.foldBack combine xs (Some [])
