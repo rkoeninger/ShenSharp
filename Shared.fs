@@ -4,12 +4,18 @@ open System.Reflection
 open System.Runtime.InteropServices
 
 [<Literal>]
+let Author = "Robert Koeninger"
+
+[<Literal>]
 let Version = "0.5.0.0"
 
 [<assembly: AssemblyProduct "ShenSharp">]
 [<assembly: AssemblyDescription "Shen for the Common Language Runtime">]
-[<assembly: AssemblyCompany "Robert Koeninger">]
-[<assembly: AssemblyCopyright "Copyright © 2015-2017 Robert Koeninger">]
+[<assembly: AssemblyCompany(Author)>]
+[<assembly: AssemblyCopyright("Copyright © 2015-2017 " + Author)>]
+[<assembly: AssemblyVersion(Version)>]
+[<assembly: AssemblyFileVersion(Version)>]
+[<assembly: AssemblyInformationalVersion(Version)>]
 
 #if DEBUG
 [<assembly: AssemblyConfiguration "Debug">]
@@ -18,9 +24,5 @@ let Version = "0.5.0.0"
 #endif
 
 [<assembly: ComVisible false>]
-
-[<assembly: AssemblyVersion(Version)>]
-[<assembly: AssemblyFileVersion(Version)>]
-[<assembly: AssemblyInformationalVersion(Version)>]
 
 do ()
