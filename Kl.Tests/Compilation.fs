@@ -22,9 +22,10 @@ type Compilation() =
     [<Test>]
     member this.``test parse``() =
         let text = "
+[<System.Runtime.CompilerServices.Extension>]
 module Shen.Runtime
-    type Kl.Globals with
-        member this.Eval(syntax: string) = ()
+    [<System.Runtime.CompilerServices.Extension>]
+    let Load(globals: Globals, path: string) = kl_load globals [Str path] |> ignore
 "
         let ast = CodeFormatter.Parse("./test.fs", text)
         Assert.IsTrue(CodeFormatter.IsValidAST ast)
@@ -42,3 +43,4 @@ module Shen.Runtime
         let ast = compile ["Shen"; "Runtime"] globals
         let format = {FormatConfig.Default with PageWidth = 1024}
         printfn "%s" (CodeFormatter.FormatAST(ast, "file", None, format))
+        printfn "%A" ast

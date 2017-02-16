@@ -20,7 +20,7 @@ module internal Syntax =
     let private loc fn = mkRange fn (mkPos 512 512) (mkPos 1024 1024)
     let attr fn name value : SynAttribute =  {
         TypeName = name
-        ArgExpr = SynExpr.Paren(value, loc fn, None, loc fn)
+        ArgExpr = value
         Target = None
         AppliesToGetterAndSetter = false
         Range = loc fn
@@ -31,14 +31,18 @@ module internal Syntax =
         LongIdentWithDots.LongIdentWithDots(
             List.map (ident fn) parts,
             List.replicate (List.length parts - 1) (loc fn))
+    let argInfo fn s = SynArgInfo.SynArgInfo([], false, Some(ident fn s))
+    let nullArgInfo() = SynArgInfo.SynArgInfo([], false, None)
     let anonType fn = SynType.Anon(loc fn)
     let longType fn parts = SynType.LongIdent(longIdentWithDots fn parts)
     let shortType fn s = longType fn [s]
     let listType fn t = SynType.App(shortType fn "list", None, [t], [], None, true, loc fn)
     let wildPat fn = SynPat.Wild(loc fn)
     let namePat fn s = SynPat.Named(wildPat fn, ident fn s, false, None, loc fn)
-    let typedPat fn pat synType = SynPat.Paren(SynPat.Typed(pat, synType, loc fn), loc fn)
+    let unparenTypedPat fn pat synType = SynPat.Typed(pat, synType, loc fn)
+    let typedPat fn pat synType = SynPat.Paren(unparenTypedPat fn pat synType, loc fn)
     let listPat fn pats = SynPat.ArrayOrList(false, pats, loc fn)
+    let tuplePat fn pats = SynPat.Paren(SynPat.Tuple(pats, loc fn), loc fn)
     let appPat fn parts args =
         SynPat.LongIdent(
             longIdentWithDots fn parts,
@@ -70,13 +74,40 @@ module internal Syntax =
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
-                SynValInfo.SynValInfo([], SynArgInfo.SynArgInfo([], false, None)),
+                SynValInfo.SynValInfo([], nullArgInfo()),
                 None),
             pat,
             None,
             value,
             loc fn,
             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
+    let letAttrsMultiParamBinding fn attrs name paramz body =
+        SynBinding.Binding(
+            None,
+            SynBindingKind.NormalBinding,
+            false,
+            false,
+            attrs,
+            PreXmlDoc.Empty,
+            SynValData.SynValData(
+                None,
+                SynValInfo.SynValInfo([List.map (fst >> argInfo fn) paramz], nullArgInfo()),
+                None),
+            SynPat.LongIdent(
+                longIdentWithDots fn [name],
+                None,
+                None,
+                SynConstructorArgs.Pats(
+                    [tuplePat fn
+                        (List.map
+                            (fun (s, synType) -> unparenTypedPat fn (namePat fn s) synType)
+                            paramz)]),
+                None,
+                loc fn),
+            None,
+            body,
+            loc fn,
+            SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
     let letBindingAccessWithAttrs fn attrs access name paramz body =
         SynBinding.Binding(
             access,
@@ -87,11 +118,7 @@ module internal Syntax =
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
-                SynValInfo.SynValInfo(
-                    List.map
-                        (fun (s, _) -> [SynArgInfo.SynArgInfo([], false, Some(ident fn s))])
-                        paramz,
-                    SynArgInfo.SynArgInfo([], false, None)),
+                SynValInfo.SynValInfo(List.map (fun (s, _) -> [argInfo fn s]) paramz, nullArgInfo()),
                 None),
             SynPat.LongIdent(
                 longIdentWithDots fn [name],
@@ -105,8 +132,8 @@ module internal Syntax =
             body,
             loc fn,
             SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
-    let letBindingWithAttrs fn attrs = letBindingAccessWithAttrs fn attrs None
-    let letBinding fn = letBindingWithAttrs fn []
+    let letAttrsBinding fn attrs = letBindingAccessWithAttrs fn attrs None
+    let letBinding fn = letAttrsBinding fn []
     let letBindingPrivate fn = letBindingAccessWithAttrs fn [] (Some SynAccess.Private)
     let letUnitBinding fn attrs name body =
         SynBinding.Binding(
@@ -118,7 +145,7 @@ module internal Syntax =
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
-                SynValInfo.SynValInfo([[]], SynArgInfo.SynArgInfo([], false, None)),
+                SynValInfo.SynValInfo([[]], nullArgInfo()),
                 None),
             SynPat.LongIdent(
                 longIdentWithDots fn [name],
@@ -262,7 +289,12 @@ module internal Syntax =
     let letAttrsDecl fn attrs name paramz body =
         SynModuleDecl.Let(
             false,
-            [letBindingWithAttrs fn attrs name paramz body],
+            [letAttrsBinding fn attrs name paramz body],
+            loc fn)
+    let letAttrsMultiParamDecl fn attrs name paramz body =
+        SynModuleDecl.Let(
+            false,
+            [letAttrsMultiParamBinding fn attrs name paramz body],
             loc fn)
     let letDecl fn name paramz body =
         SynModuleDecl.Let(
@@ -275,52 +307,16 @@ module internal Syntax =
             [letUnitBinding fn attrs name body],
             loc fn)
     let letMultiDecl fn bindings = SynModuleDecl.Let(true, bindings, loc fn)
-    let extnMethodDecl fn typeNameParts methodName args body =
-        SynModuleDecl.Types(
-            [SynTypeDefn.TypeDefn(
-                SynComponentInfo.ComponentInfo(
-                    [],
-                    [],
-                    [],
-                    longIdent fn typeNameParts,
-                    PreXmlDoc.Empty,
-                    false,
-                    None,
-                    loc fn),
-                SynTypeDefnRepr.ObjectModel(
-                    SynTypeDefnKind.TyconAugmentation,
-                    [],
-                    loc fn),
-                [SynMemberDefn.Member(
-                    SynBinding.Binding(
-                        None,
-                        SynBindingKind.NormalBinding,
-                        false,
-                        false,
-                        [],
-                        PreXmlDoc.Empty,
-                        SynValData.SynValData(
-                            Some {
-                                IsInstance = true
-                                IsDispatchSlot = false
-                                IsOverrideOrExplicitImpl = false
-                                IsFinal = false
-                                MemberKind = MemberKind.Member
-                            },
-                            SynValInfo.SynValInfo(
-                                [[]],
-                                SynArgInfo([], false, None)),
-                            None),
-                        appPat fn ["this"; methodName] args,
-                        None,
-                        body,
-                        loc fn,
-                        SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding),
-                    loc fn)],
-                loc fn)],
-            loc fn)
+    let extnAttr fn =
+        attr fn
+            (longIdentWithDots fn [
+                "System"
+                "Runtime"
+                "CompilerServices"
+                "Extension"])
+            (unitExpr fn)
     let sjoin sep (parts: string list) = String.Join(sep, parts)
-    let moduleFile fn nameParts decls =
+    let moduleFile fn nameParts attrs decls =
         ParsedInput.ImplFile(
             ParsedImplFileInput.ParsedImplFileInput(
                 fn + ".fs",
@@ -334,7 +330,7 @@ module internal Syntax =
                     true,
                     decls,
                     PreXmlDoc.Empty,
-                    [],
+                    attrs,
                     None,
                     loc fn)],
                 (false, false)))

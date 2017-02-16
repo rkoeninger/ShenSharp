@@ -212,14 +212,15 @@ module Compiler =
             attr fn
                 (longIdentWithDots fn ["CompiledName"])
                 (stringExpr fn name)
-        moduleFile fn nameParts [
-            openDecl fn ["Kl"]
-            openDecl fn ["Kl"; "Values"]
-            openDecl fn ["Kl"; "Evaluator"]
-            openDecl fn ["Kl"; "Builtins"]
-            openDecl fn ["Kl"; "Startup"]
-            letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
-            letAttrsDecl fn
+        moduleFile fn nameParts
+            [extnAttr fn]
+            [openDecl fn ["Kl"]
+             openDecl fn ["Kl"; "Values"]
+             openDecl fn ["Kl"; "Evaluator"]
+             openDecl fn ["Kl"; "Builtins"]
+             openDecl fn ["Kl"; "Startup"]
+             letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
+             letAttrsDecl fn
                 [compiledNameAttr "Install"]
                 "install"
                 ["globals", shortType fn "Globals"]
@@ -228,15 +229,17 @@ module Compiler =
                         [List.map (installSymbol (fn, globals)) symbols
                          List.map (installDefun fn) defuns
                          [idExpr fn "globals"]]))
-            letUnitAttrsDecl fn
+             letUnitAttrsDecl fn
                 [compiledNameAttr "NewRuntime"]
                 "newRuntime"
                 (nestedAppIdExpr fn ["install"; "baseGlobals"] (unitExpr fn))
-            extnMethodDecl fn ["Globals"] "Eval"
-                [typedPat fn (namePat fn "syntax") (shortType fn "string")]
+             letAttrsMultiParamDecl fn [extnAttr fn] "Eval"
+                ["globals", shortType fn "Globals"
+                 "syntax", shortType fn "string"]
                 (unitExpr fn)
-            extnMethodDecl fn ["Globals"] "Load"
-                [typedPat fn (namePat fn "path") (shortType fn "string")]
+             letAttrsMultiParamDecl fn [extnAttr fn] "Load"
+                ["globals", shortType fn "Globals"
+                 "path", shortType fn "string"]
                 (appIgnore fn
                     (appIdExprN fn (rename "load")
                         [idExpr fn "globals"
