@@ -240,7 +240,6 @@ module Compiler =
              letAttrsMultiParamDecl fn [extnAttr fn] "Load"
                 ["globals", shortType fn "Globals"
                  "path", shortType fn "string"]
-                (appIgnore fn
-                    (appIdExprN fn (rename "load")
-                        [idExpr fn "globals"
-                         listExpr fn [appIdExpr fn "Str" (idExpr fn "path")]]))]
+                (appIdExprN fn (rename "load")
+                    [idExpr fn "globals"
+                     listExpr fn [appIdExpr fn "Str" (idExpr fn "path")]])]
