@@ -47,8 +47,8 @@ making this a certifiable implementation.
     Builds a primitive Kλ environment
   * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Reader.fs) -
     Parses Kλ code
-  * [Generator](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Generator.fs) -
-    Generates F# code to restore a Kλ environment
+  * [Compiler](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Compiler.fs) -
+    Translates an environment of KL expressions into a F# module AST
   * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Loader.fs) -
     Reads and evaluates the Shen runtime from Kλ distribution or loads runtime from code
 	generated on previous run
