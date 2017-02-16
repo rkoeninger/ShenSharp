@@ -1,7 +1,10 @@
-namespace ShenSharp.AssemblyInfo
+module ShenSharp.Shared
 
 open System.Reflection
 open System.Runtime.InteropServices
+
+[<Literal>]
+let Version = "0.5.0.0"
 
 [<assembly: AssemblyProduct "ShenSharp">]
 [<assembly: AssemblyDescription "Shen for the Common Language Runtime">]
@@ -15,8 +18,9 @@ open System.Runtime.InteropServices
 #endif
 
 [<assembly: ComVisible false>]
-[<assembly: AssemblyVersion "0.5.0.0">]
-[<assembly: AssemblyFileVersion "0.5.0.0">]
-[<assembly: AssemblyInformationalVersion "0.5.0.0">]
+
+[<assembly: AssemblyVersion(Version)>]
+[<assembly: AssemblyFileVersion(Version)>]
+[<assembly: AssemblyInformationalVersion(Version)>]
 
 do ()
