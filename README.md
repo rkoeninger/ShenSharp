@@ -21,8 +21,6 @@ The interpreter approach suffers from poor performance, but optimizations are fo
 This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/da80b7aec177820891ec70a09dc94fef),
 making this a certifiable implementation.
 
-### CI Builds
-
 ### Shen Resources
   * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
   * [Tutorial](http://www.shenlanguage.org/learn-shen/index.html)
