@@ -1,3 +1,5 @@
+![Shen Version](https://img.shields.io/badge/Shen-19.2-blue.svg)
+
 # ShenSharp
 
 ![神#](https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/Assets/ShenSharp.png)
