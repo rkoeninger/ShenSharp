@@ -108,12 +108,6 @@ module Builtins =
         | [Vec array; Int index] -> failwithf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "address->" ["vector"; "integer"; "value"] args
 
-    let ``kl_shen.fillvector`` _ = function
-        | [Vec array as vector; Int start; Int stop; fillValue] ->
-            Array.fill array start (stop - start) fillValue
-            vector
-        | args -> argsErr "shen.fillvector" ["vector"; "integer"; "integer"; "value"] args
-
     let ``kl_write-byte`` _ = function
         | [Int x; Pipe io] when inRange 0 256 x ->
             let b = byte x
@@ -158,6 +152,21 @@ module Builtins =
             globals.Symbols.["*home-directory*"] <- Str fullPath
             Str fullPath
         | args -> argsErr "cd" ["string"] args
+
+    let kl_pwd globals = function
+        | [] -> globals.Symbols.["*home-directory*"]
+        | args -> argsErr "pwd" [] args
+
+    let kl_ls globals = function
+        | [] ->
+            match globals.Symbols.["*home-directory*"] with
+            | Str s ->
+                Directory.GetFileSystemEntries s
+                |> Array.toList
+                |> List.map (Path.GetFileName >> Str)
+                |> toCons
+            | _ -> Empty
+        | args -> argsErr "ls" [] args
 
     let console = Pipe {
         Name = "Console"
@@ -231,17 +240,6 @@ module Builtins =
         | [Vec _] -> True
         | [_] -> False
         | args -> argsErr "absvector?" ["value"] args
-
-    let ``kl_shen.mod`` _ = function
-        | [Num x; Num y] -> Num(x % y)
-        | args -> argsErr "shen.mod" ["number"; "number"] args
-
-    let kl_hash _ = function
-        | [Str s; Int i] ->
-            match hash s % i with
-            | 0 -> Int 1
-            | h -> Int h
-        | args -> argsErr "hash" ["string"; "integer"] args
 
     let kl_exit _ = function
         | [Int x] -> exit x

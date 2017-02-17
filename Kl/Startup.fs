@@ -71,15 +71,13 @@ module Startup =
             fn "number?"         1 ``kl_number?``
             fn "exit"            1 kl_exit
             fn "cd"              1 kl_cd
+            fn "pwd"             0 kl_pwd
+            fn "ls"              0 kl_ls
         ]
         List.iter globals.Symbols.Add symbols
         List.iter globals.Functions.Add functions
-        List.iter
-            (globals.PrimitiveSymbols.Add >> ignore)
-            (List.map fst symbols)
-        List.iter
-            (globals.PrimitiveFunctions.Add >> ignore)
-            (List.map fst functions)
+        List.map (fst >> globals.PrimitiveSymbols.Add) symbols |> ignore
+        List.map (fst >> globals.PrimitiveFunctions.Add) functions |> ignore
         globals
 
     /// <summary>
