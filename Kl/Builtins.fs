@@ -43,11 +43,6 @@ module Builtins =
         | [x: Value] -> Str(string x)
         | args -> argsErr "str" ["value"] args
 
-    let ``kl_string?`` _ = function
-        | [Str _] -> True
-        | [_] -> False
-        | args -> argsErr "string?" ["value"] args
-
     let ``kl_n->string`` _ = function
         | [Int n] -> Str(string(char n))
         | args -> argsErr "n->string" ["integer"] args
@@ -89,15 +84,6 @@ module Builtins =
         | [Cons (_, y)] -> y
         | args -> argsErr "tl" ["cons"] args
 
-    let ``kl_cons?`` _ = function
-        | [Cons _] -> True
-        | [_] -> False
-        | args -> argsErr "cons?" ["value"] args
-
-    let ``kl_=`` _ = function
-        | [x; y] -> Bool(x = y)
-        | args -> argsErr "=" ["value"; "value"] args
-
     let ``kl_eval-kl`` globals = function
         | [x] -> eval globals x
         | args -> argsErr "eval-kl" ["value"] args
@@ -122,10 +108,11 @@ module Builtins =
         | [Vec array; Int index] -> failwithf "Index %i out of bounds for vector of length %i" index array.Length
         | args -> argsErr "address->" ["vector"; "integer"; "value"] args
 
-    let ``kl_absvector?`` _ = function
-        | [Vec _] -> True
-        | [_] -> False
-        | args -> argsErr "absvector?" ["value"] args
+    let ``kl_shen.fillvector`` _ = function
+        | [Vec array as vector; Int start; Int stop; fillValue] ->
+            Array.fill array start (stop - start) fillValue
+            vector
+        | args -> argsErr "shen.fillvector" ["vector"; "integer"; "integer"; "value"] args
 
     let ``kl_write-byte`` _ = function
         | [Int x; Pipe io] when inRange 0 256 x ->
@@ -159,6 +146,25 @@ module Builtins =
             io.Close()
             Empty
         | args -> argsErr "close" ["stream"] args
+
+    let kl_cd globals = function
+        | [Str path] ->
+            let current =
+                match globals.Symbols.["*home-directory*"] with
+                | Str s -> s
+                | _ -> ""
+            let fullPath = Path.GetFullPath(Path.Combine(current, path))
+            Environment.CurrentDirectory <- fullPath
+            globals.Symbols.["*home-directory*"] <- Str fullPath
+            Str fullPath
+        | args -> argsErr "cd" ["string"] args
+
+    let console = Pipe {
+        Name = "Console"
+        Read = (new ConsoleReader()).ReadByte
+        Write = Console.OpenStandardOutput().WriteByte
+        Close = fun () -> failwith "Can't close Console"
+    }
 
     let private epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     let private startTime = DateTime.UtcNow
@@ -202,23 +208,29 @@ module Builtins =
         | [Num x; Num y] -> Bool(x <= y)
         | args -> argsErr "<=" ["number"; "number"] args
 
+    let ``kl_=`` _ = function
+        | [x; y] -> Bool(x = y)
+        | args -> argsErr "=" ["value"; "value"] args
+
     let ``kl_number?`` _ = function
         | [Num _] -> True
         | [_] -> False
         | args -> argsErr "number?" ["value"] args
 
-    let console = Pipe {
-            Name = "Console"
-            Read = (new ConsoleReader()).ReadByte
-            Write = Console.OpenStandardOutput().WriteByte
-            Close = fun () -> failwith "Can't close Console"
-        }
+    let ``kl_string?`` _ = function
+        | [Str _] -> True
+        | [_] -> False
+        | args -> argsErr "string?" ["value"] args
 
-    let ``kl_shen.fillvector`` _ = function
-        | [Vec array as vector; Int start; Int stop; fillValue] ->
-            Array.fill array start (stop - start) fillValue
-            vector
-        | args -> argsErr "shen.fillvector" ["vector"; "integer"; "integer"; "value"] args
+    let ``kl_cons?`` _ = function
+        | [Cons _] -> True
+        | [_] -> False
+        | args -> argsErr "cons?" ["value"] args
+
+    let ``kl_absvector?`` _ = function
+        | [Vec _] -> True
+        | [_] -> False
+        | args -> argsErr "absvector?" ["value"] args
 
     let ``kl_shen.mod`` _ = function
         | [Num x; Num y] -> Num(x % y)
@@ -234,15 +246,3 @@ module Builtins =
     let kl_exit _ = function
         | [Int x] -> exit x
         | args -> argsErr "exit" ["integer"] args
-
-    let kl_cd globals = function
-        | [Str path] ->
-            let current =
-                match globals.Symbols.["*home-directory*"] with
-                | Str s -> s
-                | _ -> ""
-            let fullPath = Path.GetFullPath(Path.Combine(current, path))
-            Environment.CurrentDirectory <- fullPath
-            globals.Symbols.["*home-directory*"] <- Str fullPath
-            Str fullPath
-        | args -> argsErr "cd" ["string"] args
