@@ -1,4 +1,6 @@
-![Shen Version](https://img.shields.io/badge/Shen-19.2-blue.svg)
+[![Shen Version](https://img.shields.io/badge/Shen_Language-19.2-blue.svg)](https://github.com/Shen-Language)
+[![.Net Build Status](https://img.shields.io/appveyor/ci/rkoeninger/ShenSharp/master.svg?label=.Net%20Build)](https://ci.appveyor.com/project/rkoeninger/shensharp/branch/master)
+[![Mono Build Status](https://img.shields.io/travis/rkoeninger/ShenSharp/master.svg?label=Mono%20Build)](https://travis-ci.org/rkoeninger/ShenSharp)
 
 # ShenSharp
 
@@ -20,11 +22,6 @@ This port [passes all tests in the Shen standard test suite](https://gist.github
 making this a certifiable implementation.
 
 ### CI Builds
-
-|    Platform    |      Status      |
-|----------------|------------------|
-| .NET - Windows | [![Build Status](https://ci.appveyor.com/api/projects/status/dy12w63pi5kqlhyr/branch/master?svg=true)](https://ci.appveyor.com/project/rkoeninger/shensharp/branch/master) |
-| Mono - Ubuntu  | [![Build Status](https://api.travis-ci.org/rkoeninger/ShenSharp.svg?branch=master)](https://travis-ci.org/rkoeninger/ShenSharp) |
 
 ### Shen Resources
   * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
