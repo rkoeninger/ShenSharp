@@ -1,11 +1,11 @@
-﻿namespace Kl.Make
+﻿namespace Kl
 
 open System
 open System.Collections.Generic
 open Kl
 open Kl.Values
 
-module internal Analysis =
+module Analysis =
 
     let rec flattenDo = function
         | DoExpr(first, second) -> flattenDo first @ flattenDo second
