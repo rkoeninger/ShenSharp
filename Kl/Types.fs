@@ -1,6 +1,7 @@
 ﻿namespace Kl
 
 open System
+open System.Collections.Concurrent
 open System.Collections.Generic
 open System.Diagnostics
 
@@ -89,3 +90,34 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Err s   -> sprintf "<Error \"%s\">" s
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream %s>" io.Name
+
+/// <summary>
+/// A symbol binding for both the value and function namespaces.
+/// </summary>
+type SymbolRef = string * Value option ref * Function option ref
+
+/// <summary>
+/// Global dictionary of mutable symbol bindings.
+/// </summary>
+type GlobalRefs = ConcurrentDictionary<string, SymbolRef>
+
+/// <summary>
+/// Integer-indexed collection of local variable values.
+/// </summary>
+type LocalRefs = Value list
+
+/// <summary>
+/// Optimized abstract syntax tree with inlined symbol lookups.
+/// </summary>
+type OptimizedExpr =
+    | Atom of Value // number, string, empty... ? cons, vector, etc.
+    | Local of int
+    | Global of SymbolRef
+    | Conditional of OptimizedExpr * OptimizedExpr * OptimizedExpr // and, or, if, cond
+    | Binding of int * OptimizedExpr * OptimizedExpr // (let LocalVar value body)
+    | F1 of int * OptimizedExpr // (lambda LocalVar body)
+    | F0 of OptimizedExpr // (freeze body)
+    | Catch of OptimizedExpr * OptimizedExpr // (trap-error body handler)
+    // TODO: | CatchLambda of OptimizedExpr * int * OptimizedExpr // (trap-error body (lambda LocalVar handler))
+    | Sequential of OptimizedExpr list // (do (do x y) (do z w))
+    | Application of OptimizedExpr * OptimizedExpr list // (fexpr ...args)

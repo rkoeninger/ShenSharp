@@ -40,6 +40,18 @@ module Values =
         PrimitiveFunctions = new HashSet<string>()
     }
 
+    let internSymbol id (globals: GlobalRefs) =
+        globals.GetOrAdd(id, fun _ -> (id, ref None, ref None))
+
+    let localIndex id locals =
+        List.tryFindIndex ((=) id) locals |> Option.map (fun x -> locals.Length - x - 1)
+
+    let localInsert id locals =
+        List.length locals, (id :: locals)
+
+    let localLookup x (locals: 'a list) =
+        locals.[locals.Length - x - 1]
+
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
@@ -124,7 +136,7 @@ module Values =
 module Extensions =
     type IDictionary<'a, 'b> with
         member this.GetMaybe(key: 'a) =
-            match this.TryGetValue(key) with
+            match this.TryGetValue key with
             | true, x -> Some x
             | false, _ -> None
 

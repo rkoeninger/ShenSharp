@@ -4,6 +4,13 @@ open FParsec
 open Kl
 open Kl.Values
 
+/// <summary>Representation of parsed KL code.</summary>
+type Form =
+    | Numeric of decimal
+    | Textual of string
+    | Identifier of string
+    | Combo of Form list
+
 /// <summary>The Reader parses KL source code into a value.</summary>
 /// <remarks>Reader is strict about some details. It will not handle extra spaces inside of parens.</remarks>
 module Reader =
