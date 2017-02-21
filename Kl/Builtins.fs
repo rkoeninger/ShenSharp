@@ -180,7 +180,7 @@ module Builtins =
     let private stopwatch = Stopwatch.StartNew()
 
     let ``kl_get-time`` _ = function
-        | [Sym "run"] | [Sym "real"] -> Num(decimal stopwatch.Elapsed.TotalSeconds)
+        | [Sym "run"] -> Num(decimal stopwatch.Elapsed.TotalSeconds)
         | [Sym "unix"] -> Num(decimal (DateTime.UtcNow - epoch).TotalSeconds)
         | [Sym s] -> failwithf "get-time expects symbols 'run or 'unix as argument, not %s" s
         | args -> argsErr "get-time" ["symbol"] args
