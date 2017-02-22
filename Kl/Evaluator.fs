@@ -32,7 +32,6 @@ module Evaluator =
     let private resolveFunction (globals, locals) id =
         match Map.tryFind id locals with
         | Some(Func f) -> f
-        | Some(Sym id) -> resolveGlobalFunction globals id
         | Some _ -> failwithf "Function not defined: %s" id
         | None -> resolveGlobalFunction globals id
 
@@ -192,7 +191,6 @@ module Evaluator =
         | _ ->
             match evalv env expr with
             | Func f -> f
-            | Sym s -> resolveFunction env s
             | _ -> failwith "Operator expression must evaluate to a function"
 
     // Evaluates an expression, running all deferred work.

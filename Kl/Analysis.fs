@@ -103,7 +103,7 @@ module Analysis =
         | Sym id ->
             match localIndex id locals with
             | Some x -> Local x
-            | None -> Global(internSymbol id globals)
+            | None -> Atom(Sym id)
         | AndExpr(left, right) ->
             Conditional(optimize env left, optimize env right, Atom False)
         | OrExpr(left, right) ->
@@ -128,6 +128,8 @@ module Analysis =
             Catch(optimize env body, optimize env handler)
         | DoExpr _ as exprs ->
             Sequential (List.map (optimize env) (flattenDo exprs))
+        | AppExpr(Sym id, args) when not(List.contains id locals) ->
+            GlobalApplication(internSymbol id globals, List.map (optimize env) args)
         | AppExpr(f, args) ->
             Application(optimize env f, List.map (optimize env) args)
         | value -> Atom value

@@ -112,12 +112,11 @@ type LocalRefs = Value list
 type OptimizedExpr =
     | Atom of Value // number, string, empty... ? cons, vector, etc.
     | Local of int
-    | Global of SymbolRef
     | Conditional of OptimizedExpr * OptimizedExpr * OptimizedExpr // and, or, if, cond
     | Binding of int * OptimizedExpr * OptimizedExpr // (let LocalVar value body)
     | F1 of int * OptimizedExpr // (lambda LocalVar body)
     | F0 of OptimizedExpr // (freeze body)
     | Catch of OptimizedExpr * OptimizedExpr // (trap-error body handler)
-    // TODO: | CatchLambda of OptimizedExpr * int * OptimizedExpr // (trap-error body (lambda LocalVar handler))
     | Sequential of OptimizedExpr list // (do (do x y) (do z w))
+    | GlobalApplication of SymbolRef * OptimizedExpr list // (fname ...args)
     | Application of OptimizedExpr * OptimizedExpr list // (fexpr ...args)
