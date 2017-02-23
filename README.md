@@ -8,18 +8,11 @@
 
 ShenSharp is a port of the [Shen language](http://shenlanguage.org/) to the CLR.
 
-Shen is a portable, functional programming language by
-[Mark Tarver](http://www.shenlanguage.org/lambdassociates/htdocs/index.htm).
-It is a descendant of the LISP family of languages which also includes features
-commonly found in ML family languages. Shen offers pattern matching, a unique
-macro system, optional lazy evaluation, configurable static type checking,
-logic programming and a built-in compiler-compiler.
+Shen is a portable, functional programming language by [Mark Tarver](http://www.shenlanguage.org/lambdassociates/htdocs/index.htm). It is a descendant of the LISP family of languages which also includes features commonly found in ML family languages. Shen offers pattern matching, a unique macro system, optional lazy evaluation, configurable static type checking, logic programming and a built-in compiler-compiler.
 
-Currently implemented as an interpreter, ShenSharp loads and runs Shen code on demand.
-The interpreter approach suffers from poor performance, but optimizations are forthcoming.
+Currently implemented as an interpreter, ShenSharp loads and runs Shen code on demand. The interpreter approach suffers from poor performance, but optimizations are forthcoming.
 
-This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/da80b7aec177820891ec70a09dc94fef),
-making this a certifiable implementation.
+This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/997a62925f35b5ec61743cf2c8b264de), making this a certifiable implementation. Current test run time is about 75 seconds on a typical machine when built in Release mode and run from the command line.
 
 ### Shen Resources
   * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
