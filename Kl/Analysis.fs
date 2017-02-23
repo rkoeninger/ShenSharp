@@ -24,9 +24,17 @@ module Analysis =
         |> Seq.filter (fst >> globals.PrimitiveSymbols.Contains >> not)
         |> Seq.toList
 
+    let rec private filterSome = function
+        | [] -> []
+        | (y, Some x) :: xs -> (y, x) :: filterSome xs
+        | _ :: xs -> filterSome xs
+
     let nonPrimitiveFunctions globals =
-        globals.Functions
+        globals.Symbols
         |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
+        |> Seq.map (fun (id, (_, _, fref)) -> (id, fref.Value))
+        |> Seq.toList
+        |> filterSome
         |> Seq.filter (fst >> globals.PrimitiveFunctions.Contains >> not)
         |> Seq.toList
 
@@ -155,6 +163,8 @@ module Analysis =
             Catch(parse env body, parse env handler)
         | DoExpr _ as expr ->
             Sequential(List.map (parse env) (flattenDo expr))
+        | DefunExpr(name, paramz, body) ->
+            Definition(intern name globals, paramz, parse (globals, Set.union (Set.ofList paramz) locals) body)
         | AppExpr(Sym "set", [Sym id; value]) when not(Set.contains id locals) ->
             Assignment(intern id globals, parse env value)
         | AppExpr(Sym "value", [Sym id]) when not(Set.contains id locals) ->
@@ -164,3 +174,25 @@ module Analysis =
         | AppExpr(f, args) ->
             Application(parse env f, List.map (parse env) args)
         | value -> Constant value
+
+    let rec unparse = function
+        | Constant value -> value
+        | Conjunction(left, right) -> toCons [Sym "and"; unparse left; unparse right]
+        | Disjunction(left, right) -> toCons [Sym "or"; unparse left; unparse right]
+        | Conditional(condition, consequent, alternative) -> toCons [Sym "if"; unparse condition; unparse consequent; unparse alternative]
+        | Binding(param, value, body) -> toCons [Sym "let"; Sym param; unparse value; unparse body]
+        | Anonymous(Some param, body) -> toCons [Sym "lambda"; Sym param; unparse body]
+        | Anonymous(None, body) -> toCons [Sym "freeze"; unparse body]
+        | Catch(body, handler) -> toCons [Sym "trap-error"; unparse body; unparse handler]
+        | Sequential exprs ->
+            let rec expandDo = function
+                | [] -> failwith "empty do"
+                | [expr] -> unparse expr
+                | expr :: exprs -> toCons [Sym "do"; unparse expr; expandDo exprs]
+            expandDo exprs
+        | Definition _ -> failwith "shouldn't be a definition here"
+        | Assignment((id, _, _), expr) -> toCons [Sym "set"; Sym id; unparse expr]
+        | Retrieval((id, _, _)) -> toCons [Sym "value"; Sym id]
+        | GlobalCall((id, _, _), args) -> toCons(Sym id :: (List.map unparse args))
+        | Application(f, args) -> toCons(unparse f :: (List.map unparse args))
+

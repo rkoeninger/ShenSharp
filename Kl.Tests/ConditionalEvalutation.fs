@@ -14,7 +14,8 @@ type ``Conditional Evalutation``() =
         let globals = baseGlobals()
         runIn globals "(defun effect (X) (do (set *effect* true) X))" |> ignore
         runIn globals syntax |> ignore
-        match globals.Symbols.GetMaybe "*effect*" with
+        let (_, sref, _) = intern "*effect*" globals
+        match sref.Value with
         | None -> if eff then Assert.Fail "Effect did not occurr" else ()
         | _ -> if not eff then Assert.Fail "Effect should not have occurred" else ()
 

@@ -4,6 +4,7 @@ open System.IO
 open NUnit.Framework
 open Kl
 open Kl.Values
+open Kl.Analysis
 open Assertions
 
 [<TestFixture>]
@@ -59,19 +60,20 @@ type Equality() =
 
     [<Test>]
     member this.``Functions can be compared for reference equality``() =
-        let f = Freeze(InterpretedFreeze(Map.empty, Empty))
+        let pars = parse (newGlobals(), Set.empty)
+        let f = Freeze(InterpretedFreeze(Map.empty, Constant Empty))
         assertEq (Func f) (Func f)
-        let l = Lambda(InterpretedLambda(Map.empty, "X", toCons [Sym "+"; Int 1; Sym "X"]))
+        let l = Lambda(InterpretedLambda(Map.empty, "X", pars <| toCons [Sym "+"; Int 1; Sym "X"]))
         assertEq (Func l) (Func l)
-        let d = Defun("inc", 1, InterpretedDefun(["X"], toCons [Sym "+"; Int 1; Sym "X"]))
+        let d = Defun("inc", 1, InterpretedDefun(["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"]))
         assertEq (Func d) (Func d)
         let inc _ = function
             | [Int x] -> Int(x + 1)
             | _ -> failwith "Must be integer"
         let n = Defun("inc", 1, CompiledDefun inc)
         assertEq (Func n) (Func n)
-        assertNotEq (Func(Freeze(InterpretedFreeze(Map.empty, Empty))))
-                    (Func(Freeze(InterpretedFreeze(Map.empty, Empty))))
+        assertNotEq (Func(Freeze(InterpretedFreeze(Map.empty, Constant Empty))))
+                    (Func(Freeze(InterpretedFreeze(Map.empty, Constant Empty))))
 
     [<Test>]
     member this.``Hash codes can be generated for all value types``() =

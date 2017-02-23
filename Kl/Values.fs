@@ -1,6 +1,7 @@
 ﻿namespace Kl
 
 open System
+open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
 open System.Text
@@ -34,14 +35,27 @@ module Values =
             else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
     let newGlobals() = {
-        Symbols = new Dictionary<string, Value>()
-        Functions = new Dictionary<string, Function>()
+        Symbols = new ConcurrentDictionary<string, Symbol>()
         PrimitiveSymbols = new HashSet<string>()
         PrimitiveFunctions = new HashSet<string>()
     }
 
     let intern id (globals: Globals) =
-        "", ref None, ref None
+        globals.Symbols.GetOrAdd(id, fun _ -> id, ref None, ref None)
+
+    let assign globals id value =
+        let (_, sref, _) = intern id globals
+        sref.Value <- Some value
+
+    let retrieve globals id =
+        let (_, sref, _) = intern id globals
+        match sref.Value with
+        | Some value -> value
+        | None -> failwithf "Symbol \"%s\" has no value" id
+
+    let define globals id f =
+        let (_, _, fref) = intern id globals
+        fref.Value <- Some f
 
     let localIndex id locals =
         List.tryFindIndex ((=) id) locals |> Option.map (fun x -> locals.Length - x - 1)

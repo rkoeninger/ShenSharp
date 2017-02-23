@@ -4,8 +4,8 @@ open System
 open System.Collections.Generic
 open Kl
 open Kl.Values
+open Kl.Analysis
 open Reader
-open Analysis
 open Syntax
 
 module Compiler =
@@ -48,7 +48,8 @@ module Compiler =
     and private buildApp ((fn, globals, locals) as context) f args =
         match f with
         | Sym s ->
-            if globals.Functions.ContainsKey s then
+            let (_, _, fref) = intern s globals
+            if Option.isSome fref.Value then
                 // ~(rename s) globals ~args
                 appKl fn s args
             elif Set.contains s locals then
@@ -162,7 +163,7 @@ module Compiler =
                 (matchLambdaExpr fn
                     [matchClause fn
                         (listPat fn (List.map (rename >> namePat fn) paramz))
-                        (build (fn, globals, Set.ofList paramz) body |> toType fn KlValue)
+                        (build (fn, globals, Set.ofList paramz) (unparse body) |> toType fn KlValue)
                      matchClause fn
                         (namePat fn "args")
                         (appIdExprN fn "argsErr"
@@ -172,14 +173,14 @@ module Compiler =
         | _ -> failwith "Can't compile functions other than interpreted defuns"
 
     let private installDefun fn (name, f) =
-        indexSetExpr fn
-            (longIdExpr fn ["globals"; "Functions"])
-            (stringExpr fn name)
-            (appIdExpr fn "Defun"
+        appIdExprN fn "define"
+            [idExpr fn "globals"
+             stringExpr fn name
+             (appIdExpr fn "Defun"
                 (tupleExpr fn
                     [stringExpr fn name
                      intExpr fn (functionArity f)
-                     appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))
+                     appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))]
 
     let rec private buildValue ((fn, globals) as context) = function
         | Empty -> idExpr fn "Empty"
@@ -196,14 +197,23 @@ module Compiler =
                 (lambdaExpr fn
                     ["globals",    shortType fn "Globals"
                      rename param, shortType fn "Value"]
-                    (build (fn, globals, Set [param]) body |> toType fn KlValue))
+                    (build (fn, globals, Set [param]) (unparse body) |> toType fn KlValue))
         | value -> failwithf "Can't build value: %A" value
 
-    let private installSymbol ((fn, globals) as context) (name, value) =
-        indexSetExpr fn
-            (longIdExpr fn ["globals"; "Symbols"])
-            (stringExpr fn name)
-            (buildValue context value)
+    let private installSymbol ((fn, globals) as context) (name, (_, sref: Value option ref, _)) =
+        match sref.Value with
+        | Some value ->
+            Some <|
+                appIdExprN fn "assign"
+                    [idExpr fn "globals"
+                     stringExpr fn name
+                     buildValue context value]
+        | None -> None
+
+    let rec private filterSome = function
+        | [] -> []
+        | Some x :: xs -> x :: filterSome xs
+        | None :: xs -> filterSome xs
 
     let compile nameParts globals =
         let fn = sjoin "" nameParts
@@ -227,7 +237,7 @@ module Compiler =
                 ["globals", shortType fn "Globals"]
                 (sequentialExpr fn
                     (List.concat
-                        [List.map (installSymbol (fn, globals)) symbols
+                        [filterSome <| List.map (installSymbol (fn, globals)) symbols
                          List.map (installDefun fn) defuns
                          [idExpr fn "globals"]]))
              letUnitAttrsDecl fn

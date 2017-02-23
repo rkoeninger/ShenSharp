@@ -23,8 +23,7 @@ type [<ReferenceEquality>] IO = {
 /// which should not be re-defined.
 /// </summary>
 type Globals = {
-    Symbols: Dictionary<string, Value>
-    Functions: Dictionary<string, Function>
+    Symbols: ConcurrentDictionary<string, Symbol>
     PrimitiveSymbols: HashSet<string>
     PrimitiveFunctions: HashSet<string>
 }
@@ -36,15 +35,15 @@ and Locals = Map<string, Value>
 
 and [<ReferenceEquality>] DefunImpl =
     | CompiledDefun of (Globals -> Value list -> Value)
-    | InterpretedDefun of string list * Value
+    | InterpretedDefun of string list * Expr
 
 and [<ReferenceEquality>] LambdaImpl =
     | CompiledLambda of (Globals -> Value -> Value)
-    | InterpretedLambda of Locals * string * Value
+    | InterpretedLambda of Locals * string * Expr
 
 and [<ReferenceEquality>] FreezeImpl =
     | CompiledFreeze of (Globals -> Value)
-    | InterpretedFreeze of Locals * Value
+    | InterpretedFreeze of Locals * Expr
 
 /// <summary>
 /// The different types of functions in KL.
@@ -91,9 +90,9 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream %s>" io.Name
 
-type Symbol = string * Value option ref * Function option ref
+and Symbol = string * Value option ref * Function option ref
 
-type Expr =
+and Expr =
     | Constant    of Value
     | Conjunction of Expr * Expr
     | Disjunction of Expr * Expr
@@ -104,5 +103,6 @@ type Expr =
     | Sequential  of Expr list
     | Assignment  of Symbol * Expr
     | Retrieval   of Symbol
+    | Definition  of Symbol * string list * Expr
     | GlobalCall  of Symbol * Expr list
     | Application of Expr * Expr list

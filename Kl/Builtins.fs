@@ -53,13 +53,15 @@ module Builtins =
 
     let kl_set globals = function
         | [Sym s; x] ->
-            globals.Symbols.[s] <- x
+            let (_, sref, _) = intern s globals
+            sref.Value <- Some x
             x
         | args -> argsErr "set" ["symbol"; "value"] args
 
     let kl_value globals = function
         | [Sym s] ->
-            match globals.Symbols.GetMaybe s with
+            let (_, sref, _) = intern s globals
+            match sref.Value with
             | Some x -> x
             | None -> failwithf "Symbol \"%s\" is undefined" s
         | args -> argsErr "value" ["symbol"] args
@@ -143,24 +145,30 @@ module Builtins =
 
     let kl_cd globals = function
         | [Str path] ->
+            let (_, sref, _) = intern "*home-directory*" globals
             let current =
-                match globals.Symbols.["*home-directory*"] with
-                | Str s -> s
+                match sref.Value with
+                | Some(Str s) -> s
                 | _ -> ""
             let fullPath = Path.GetFullPath(Path.Combine(current, path))
             Environment.CurrentDirectory <- fullPath
-            globals.Symbols.["*home-directory*"] <- Str fullPath
+            sref.Value <- Some(Str fullPath)
             Str fullPath
         | args -> argsErr "cd" ["string"] args
 
     let kl_pwd globals = function
-        | [] -> globals.Symbols.["*home-directory*"]
+        | [] ->
+            let (_, sref, _) = intern "*home-directory*" globals
+            match sref.Value with
+            | Some value -> value
+            | None -> Empty
         | args -> argsErr "pwd" [] args
 
     let kl_ls globals = function
         | [] ->
-            match globals.Symbols.["*home-directory*"] with
-            | Str s ->
+            let (_, sref, _) = intern "*home-directory*" globals
+            match sref.Value with
+            | Some(Str s) ->
                 Directory.GetFileSystemEntries s
                 |> Array.toList
                 |> List.map (Path.GetFileName >> Str)

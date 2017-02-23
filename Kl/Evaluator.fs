@@ -2,13 +2,14 @@
 
 open Extensions
 open Values
+open Analysis
 
 module Evaluator =
 
     // Work that may be deferred. Used as trampolines for tail-call optimization.
     type private Work =
         | Done of Value
-        | Pending of Locals * Value
+        | Pending of Locals * Expr
 
     let inline private defer locals expr = Pending(locals, expr)
 
@@ -21,7 +22,8 @@ module Evaluator =
     /// Raises an error if function not defined.
     /// </summary>
     let resolveGlobalFunction globals id =
-        match globals.Functions.GetMaybe id with
+        let (_, _, fref) = intern id globals
+        match fref.Value with
         | Some f -> f
         | None -> failwithf "Function not defined: %s" id
 
@@ -65,7 +67,7 @@ module Evaluator =
             | arg0 :: args1 ->
                 let result =
                     match impl with
-                    | InterpretedLambda(locals, param, body) -> evalv (globals, Map.add param arg0 locals) body
+                    | InterpretedLambda(locals, param, body) -> eevalv (globals, Map.add param arg0 locals) body
                     | CompiledLambda native -> native globals arg0
                 match result with
                 | Func f -> applyw globals f args1
@@ -102,82 +104,140 @@ module Evaluator =
             | [] -> Done(Func(partial))
             | _ -> applyw globals f (previousArgs @ args)
 
-    // Evaluates expression, deferring work in tail position.
-    and private evalw ((globals, locals) as env) = function
+    and private eevalv ((globals, _) as env) expr =
+        match eevalw env expr with
+        | Done value -> value
+        | Pending(locals, expr) -> eevalv (globals, locals) expr
 
-        // Should only get here in the case of Symbols not in operator position.
-        // In this case, Symbols always evaluate without error.
-        | Sym s -> Done(resolveSymbol locals s)
-
-        // Short-circuit evaluation. Both left and right must eval to Bool.
-        | AndExpr(left, right) ->
-            Done(Bool(isTrue(evalv env left) && isTrue(evalv env right)))
-
-        // Short-circuit evaluation. Both left and right must eval to Bool.
-        | OrExpr(left, right) ->
-            Done(Bool(isTrue(evalv env left) || isTrue(evalv env right)))
-
-        // Condition must evaluate to Bool. Consequent and alternative are in tail position.
-        | IfExpr(condition, consequent, alternative) ->
-            if isTrue(evalv env condition)
+    and private eevalw ((globals, locals) as env) = function
+        | Constant(Sym s) -> Done(resolveSymbol locals s)
+        | Constant value -> Done value
+        | Conjunction(left, right) ->
+            Done(Bool(isTrue(eevalv env left) && isTrue(eevalv env right)))
+        | Disjunction(left, right) ->
+            Done(Bool(isTrue(eevalv env left) || isTrue(eevalv env right)))
+        | Conditional(condition, consequent, alternative) ->
+            if isTrue(eevalv env condition)
                 then defer locals consequent
                 else defer locals alternative
-
-        // Conditions must evaluate to Bool. Consequents are in tail position.
-        | CondExpr clauses ->
-            let rec evalClauses = function
-                | [] -> failwith "No condition was true"
-                | (condition, consequent) :: rest ->
-                    if isTrue(evalv env condition)
-                        then defer locals consequent
-                        else evalClauses rest
-            evalClauses clauses
-
-        // Body expression is in tail position.
-        | LetExpr(symbol, binding, body) ->
-            let value = evalv env binding
-            defer (Map.add symbol value locals) body
-
-        // Lambdas capture local scope.
-        | LambdaExpr(param, body) ->
+        | Binding(param, value, body) ->
+            let binding = eevalv env value
+            defer (Map.add param binding  locals) body
+        | Anonymous(Some param, body) ->
             Done(Func(Lambda(InterpretedLambda(locals, param, body))))
-
-        // Freezes capture local scope.
-        | FreezeExpr body ->
+        | Anonymous(None, body) ->
             Done(Func(Freeze(InterpretedFreeze(locals, body))))
-
-        // Handler expression only evaluated if body results in an error.
-        // Handler expression must evaluate to a Function.
-        // Handler expression is in tail position.
-        | TrapExpr(body, handler) ->
+        | Catch(body, handler) ->
             try
-                Done(evalv env body)
+                Done(eevalv env body)
             with e ->
                 let operator = evalf env handler
                 applyw globals operator [Err e.Message]
-
-        // Second expression is in tail position.
-        | DoExpr(first, second) ->
-            evalv env first |> ignore
-            defer locals second
-
-        // Evaluating a defun just takes the name, param list and body
-        // and stores them in the global function scope.
-        // Ignore attempts to redefine a primitive.
-        | DefunExpr(name, paramz, body) ->
-            if not(globals.PrimitiveFunctions.Contains name) then
-                globals.Functions.[name] <-
-                    Defun(name, List.length paramz, InterpretedDefun(paramz, body))
-            Done(Sym name)
-
-        // Expression in operator position must evaluate to a Function.
-        | AppExpr(f, args) ->
+        | Sequential exprs ->
+            let rec evalSeq = function
+                | [] -> failwith "empty seq"
+                | [last] -> eevalw env last
+                | next :: rest ->
+                    eevalv env next |> ignore
+                    evalSeq rest
+            evalSeq exprs
+        | Assignment((_, sref, _), expr) ->
+            let value = eevalv env expr
+            sref.Value <- Some value
+            Done value
+        | Retrieval((_, sref, _)) ->
+            match sref.Value with
+            | Some value -> Done value
+            | None -> failwith "No value" // TODO: make error messages consistent
+        | Definition((id, _, fref), paramz, body) ->
+            if not(globals.PrimitiveFunctions.Contains id) then
+                fref.Value <- Some(Defun(id, List.length paramz, InterpretedDefun(paramz, body)))
+            Done(Sym id)
+        | GlobalCall((id, _, fref), args) ->
+            match fref.Value with
+            | Some f -> applyw globals f (List.map (eevalv env) args)
+            | None -> failwithf "Function not defined: %s" id
+        | Application(f, args) ->
             let operator = evalf env f
-            let operands = List.map (evalv env) args
+            let operands = List.map (eevalv env) args
             applyw globals operator operands
 
-        // All other expressions/values are self-evaluating.
-        | expr -> Done expr
+    // Evaluates expression, deferring work in tail position.
+//    and private evalw ((globals, locals) as env) = function
+//
+//        // Should only get here in the case of Symbols not in operator position.
+//        // In this case, Symbols always evaluate without error.
+//        | Sym s -> Done(resolveSymbol locals s)
+//
+//        // Short-circuit evaluation. Both left and right must eval to Bool.
+//        | AndExpr(left, right) ->
+//            Done(Bool(isTrue(evalv env left) && isTrue(evalv env right)))
+//
+//        // Short-circuit evaluation. Both left and right must eval to Bool.
+//        | OrExpr(left, right) ->
+//            Done(Bool(isTrue(evalv env left) || isTrue(evalv env right)))
+//
+//        // Condition must evaluate to Bool. Consequent and alternative are in tail position.
+//        | IfExpr(condition, consequent, alternative) ->
+//            if isTrue(evalv env condition)
+//                then defer locals consequent
+//                else defer locals alternative
+//
+//        // Conditions must evaluate to Bool. Consequents are in tail position.
+//        | CondExpr clauses ->
+//            let rec evalClauses = function
+//                | [] -> failwith "No condition was true"
+//                | (condition, consequent) :: rest ->
+//                    if isTrue(evalv env condition)
+//                        then defer locals consequent
+//                        else evalClauses rest
+//            evalClauses clauses
+//
+//        // Body expression is in tail position.
+//        | LetExpr(symbol, binding, body) ->
+//            let value = evalv env binding
+//            defer (Map.add symbol value locals) body
+//
+//        // Lambdas capture local scope.
+//        | LambdaExpr(param, body) ->
+//            Done(Func(Lambda(InterpretedLambda(locals, param, body))))
+//
+//        // Freezes capture local scope.
+//        | FreezeExpr body ->
+//            Done(Func(Freeze(InterpretedFreeze(locals, body))))
+//
+//        // Handler expression only evaluated if body results in an error.
+//        // Handler expression must evaluate to a Function.
+//        // Handler expression is in tail position.
+//        | TrapExpr(body, handler) ->
+//            try
+//                Done(evalv env body)
+//            with e ->
+//                let operator = evalf env handler
+//                applyw globals operator [Err e.Message]
+//
+//        // Second expression is in tail position.
+//        | DoExpr(first, second) ->
+//            evalv env first |> ignore
+//            defer locals second
+//
+//        // Evaluating a defun just takes the name, param list and body
+//        // and stores them in the global function scope.
+//        // Ignore attempts to redefine a primitive.
+//        | DefunExpr(name, paramz, body) ->
+//            if not(globals.PrimitiveFunctions.Contains name) then
+//                globals.Functions.[name] <-
+//                    Defun(name, List.length paramz, InterpretedDefun(paramz, body))
+//            Done(Sym name)
+//
+//        // Expression in operator position must evaluate to a Function.
+//        | AppExpr(f, args) ->
+//            let operator = evalf env f
+//            let operands = List.map (evalv env) args
+//            applyw globals operator operands
+//
+//        // All other expressions/values are self-evaluating.
+//        | expr -> Done expr
 
     // Does a full eval of expr, looking to get a Function.
     // 3 ways this can work:
@@ -185,23 +245,23 @@ module Evaluator =
     //   * expr can eval to function.
     and private evalf env expr =
         match expr with
-        | Sym s -> resolveFunction env s
+        | Constant(Sym s) -> resolveFunction env s
         | _ ->
-            match evalv env expr with
+            match eevalv env expr with
             | Func f -> f
             | _ -> failwith "Operator expression must evaluate to a function"
 
     // Evaluates an expression, running all deferred work.
     // Must be tail recursive. This is where tail call optimization happens.
-    and private evalv ((globals, _) as env) expr =
-        match evalw env expr with
-        | Done value -> value
-        | Pending(locals, expr) -> evalv (globals, locals) expr
+//    and private evalv ((globals, _) as env) expr =
+//        match evalw env expr with
+//        | Done value -> value
+//        | Pending(locals, expr) -> evalv (globals, locals) expr
 
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    let eval globals expr = evalv (globals, Map.empty) expr
+    let eval globals expr = eevalv (globals, Map.empty) (parse (globals, Set.empty) expr)
 
     /// <summary>
     /// Applies a function to a list of values.
@@ -209,7 +269,7 @@ module Evaluator =
     let apply globals f args =
         match applyw globals f args with
         | Done value -> value
-        | Pending(locals, expr) -> evalv (globals, locals) expr
+        | Pending(locals, expr) -> eevalv (globals, locals) expr
 
     /// <summary>
     /// Interprets a value as a function and applies it to a list of values.
