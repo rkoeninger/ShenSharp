@@ -101,6 +101,7 @@ type Expr =
     | Binding     of string * Expr * Expr
     | Anonymous   of string option * Expr
     | Catch       of Expr * Expr
+    | Sequential  of Expr list
     | Assignment  of Symbol * Expr
     | Retrieval   of Symbol
     | GlobalCall  of Symbol * Expr list

@@ -153,6 +153,12 @@ module Analysis =
             Anonymous(None, parse env body)
         | TrapExpr(body, handler) ->
             Catch(parse env body, parse env handler)
+        | DoExpr _ as expr ->
+            Sequential(List.map (parse env) (flattenDo expr))
+        | AppExpr(Sym "set", [Sym id; value]) when not(Set.contains id locals) ->
+            Assignment(intern id globals, parse env value)
+        | AppExpr(Sym "value", [Sym id]) when not(Set.contains id locals) ->
+            Retrieval(intern id globals)
         | AppExpr(Sym id, args) when not(Set.contains id locals) ->
             GlobalCall(intern id globals, List.map (parse env) args)
         | AppExpr(f, args) ->
