@@ -91,32 +91,17 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream %s>" io.Name
 
-/// <summary>
-/// A symbol binding for both the value and function namespaces.
-/// </summary>
-type SymbolRef = string * Value option ref * Function option ref
+type Symbol = string * Value option ref * Function option ref
 
-/// <summary>
-/// Global dictionary of mutable symbol bindings.
-/// </summary>
-type GlobalRefs = ConcurrentDictionary<string, SymbolRef>
-
-/// <summary>
-/// Integer-indexed collection of local variable values.
-/// </summary>
-type LocalRefs = Value list
-
-/// <summary>
-/// Optimized abstract syntax tree with inlined symbol lookups.
-/// </summary>
-type OptimizedExpr =
-    | Atom of Value // number, string, empty... ? cons, vector, etc.
-    | Local of int
-    | Conditional of OptimizedExpr * OptimizedExpr * OptimizedExpr // and, or, if, cond
-    | Binding of int * OptimizedExpr * OptimizedExpr // (let LocalVar value body)
-    | F1 of int * OptimizedExpr // (lambda LocalVar body)
-    | F0 of OptimizedExpr // (freeze body)
-    | Catch of OptimizedExpr * OptimizedExpr // (trap-error body handler)
-    | Sequential of OptimizedExpr list // (do (do x y) (do z w))
-    | GlobalApplication of SymbolRef * OptimizedExpr list // (fname ...args)
-    | Application of OptimizedExpr * OptimizedExpr list // (fexpr ...args)
+type Expr =
+    | Constant    of Value
+    | Conjunction of Expr * Expr
+    | Disjunction of Expr * Expr
+    | Conditional of Expr * Expr * Expr
+    | Binding     of string * Expr * Expr
+    | Anonymous   of string option * Expr
+    | Catch       of Expr * Expr
+    | Assignment  of Symbol * Expr
+    | Retrieval   of Symbol
+    | GlobalCall  of Symbol * Expr list
+    | Application of Expr * Expr list

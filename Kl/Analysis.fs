@@ -79,52 +79,82 @@ module Analysis =
     // TODO: locals can be function scoped since captured variables are substituted.
 
     // ValueExpr -> OptimizedExpr -> OptimizedSubsitutedExpr
-    let rec oPopulate locals = function
-        | Conditional(condition, consequent, alternative) ->
-            Conditional(
-                oPopulate locals condition,
-                oPopulate locals consequent,
-                oPopulate locals alternative)
-        | Binding(x, value, body) ->
-            Binding(
-                x,
-                oPopulate locals value,
-                oPopulate locals body)
-        | Sequential exprs ->
-            Sequential (List.map (oPopulate locals) exprs)
-        | expr -> expr
+//    let rec oPopulate locals = function
+//        | Conditional(condition, consequent, alternative) ->
+//            Conditional(
+//                oPopulate locals condition,
+//                oPopulate locals consequent,
+//                oPopulate locals alternative)
+//        | Binding(x, value, body) ->
+//            Binding(
+//                x,
+//                oPopulate locals value,
+//                oPopulate locals body)
+//        | Sequential exprs ->
+//            Sequential (List.map (oPopulate locals) exprs)
+//        | expr -> expr
+//
+//    let rec optimize ((globals, locals) as env) = function
+//        | Sym id ->
+//            match localIndex id locals with
+//            | Some x -> Local x
+//            | None -> Atom(Sym id)
+//        | AndExpr(left, right) ->
+//            Conditional(optimize env left, optimize env right, Atom False)
+//        | OrExpr(left, right) ->
+//            Conditional(optimize env left, Atom True, optimize env right)
+//        | IfExpr(condition, consequent, alternative) ->
+//            Conditional(optimize env condition, optimize env consequent, optimize env alternative)
+//        | CondExpr clauses ->
+//            let rec optimizeClauses = function
+//                | [] -> Atom Empty
+//                | (condition, consequent) :: rest ->
+//                    Conditional(optimize env condition, optimize env consequent, optimizeClauses rest)
+//            optimizeClauses clauses
+//        | LetExpr(param, value, body) ->
+//            let (x, locals) = localInsert param locals
+//            Binding(x, optimize env value, optimize (globals, locals) body)
+//        | LambdaExpr(param, body) ->
+//            let (x, locals) = localInsert param locals
+//            F1(x, optimize (globals, locals) body)
+//        | FreezeExpr body ->
+//            F0(optimize env body)
+//        | TrapExpr(body, handler) ->
+//            Catch(optimize env body, optimize env handler)
+//        | DoExpr _ as exprs ->
+//            Sequential (List.map (optimize env) (flattenDo exprs))
+//        | AppExpr(Sym id, args) when not(List.contains id locals) ->
+//            GlobalApplication(internSymbol id globals, List.map (optimize env) args)
+//        | AppExpr(f, args) ->
+//            Application(optimize env f, List.map (optimize env) args)
+//        | value -> Atom value
 
-    let rec optimize ((globals, locals) as env) = function
-        | Sym id ->
-            match localIndex id locals with
-            | Some x -> Local x
-            | None -> Atom(Sym id)
+    let rec parse ((globals, locals) as env) = function
         | AndExpr(left, right) ->
-            Conditional(optimize env left, optimize env right, Atom False)
+            Conjunction(parse env left, parse env right)
         | OrExpr(left, right) ->
-            Conditional(optimize env left, Atom True, optimize env right)
+            Disjunction(parse env left, parse env right)
         | IfExpr(condition, consequent, alternative) ->
-            Conditional(optimize env condition, optimize env consequent, optimize env alternative)
+            Conditional(parse env condition, parse env consequent, parse env alternative)
         | CondExpr clauses ->
-            let rec optimizeClauses = function
-                | [] -> Atom Empty
+            let rec parseClauses = function
+                | [] -> 
+                    GlobalCall(intern "simple-error" globals, [Constant(Str "No condition was true")])
+                | (Sym "true", consequent) :: _ ->
+                    parse env consequent
                 | (condition, consequent) :: rest ->
-                    Conditional(optimize env condition, optimize env consequent, optimizeClauses rest)
-            optimizeClauses clauses
+                    Conditional(parse env condition, parse env consequent, parseClauses rest)
+            parseClauses clauses
         | LetExpr(param, value, body) ->
-            let (x, locals) = localInsert param locals
-            Binding(x, optimize env value, optimize (globals, locals) body)
+            Binding(param, parse env value, parse (globals, Set.add param locals) body)
         | LambdaExpr(param, body) ->
-            let (x, locals) = localInsert param locals
-            F1(x, optimize (globals, locals) body)
+            Anonymous(Some param, parse (globals, Set.add param locals) body)
         | FreezeExpr body ->
-            F0(optimize env body)
+            Anonymous(None, parse env body)
         | TrapExpr(body, handler) ->
-            Catch(optimize env body, optimize env handler)
-        | DoExpr _ as exprs ->
-            Sequential (List.map (optimize env) (flattenDo exprs))
-        | AppExpr(Sym id, args) when not(List.contains id locals) ->
-            GlobalApplication(internSymbol id globals, List.map (optimize env) args)
+            Catch(parse env body, parse env handler)
+        | AppExpr(Sym id, args) when not(Set.contains id locals) ->
+            GlobalCall(intern id globals, List.map (parse env) args)
         | AppExpr(f, args) ->
-            Application(optimize env f, List.map (optimize env) args)
-        | value -> Atom value
+            Application(parse env f, List.map (parse env) args)
+        | value -> Constant value
