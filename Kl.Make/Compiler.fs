@@ -38,7 +38,7 @@ module Compiler =
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
     let rec private buildDo ((fn, globals, locals) as context) expr =
-        let flatExpr = List.map (build context) (flattenDo expr)
+        let flatExpr = List.map (RawExpr >> build context) (flattenDo expr)
         let ignoreButLast i e =
             if i < List.length flatExpr - 1
                 then e |> toType fn FsUnit
@@ -70,63 +70,64 @@ module Compiler =
             // vapply globals ~f ~args
             appIdExprN fn "vapply"
                 [idExpr fn "globals"
-                 build context f |> toType fn KlValue
+                 build context (RawExpr f) |> toType fn KlValue
                  listExpr fn args]
 
-    and private build ((fn, globals, locals) as context) = function
-        | Empty -> idExpr fn "Empty", KlValue
-        | Num x -> appIdExpr fn "Num" (decimalExpr fn x), KlValue
-        | Str s -> appIdExpr fn "Str" (stringExpr fn s), KlValue
-        | Sym "true" -> boolExpr fn true, FsBoolean
-        | Sym "false" -> boolExpr fn false, FsBoolean
-        | Sym s ->
+    and private build ((fn, globals, locals) as context) (oexpr : OptimizedExpr) =
+        match oexpr with
+        | RawExpr Empty -> idExpr fn "Empty", KlValue
+        | RawExpr(Num x) -> appIdExpr fn "Num" (decimalExpr fn x), KlValue
+        | RawExpr(Str s) -> appIdExpr fn "Str" (stringExpr fn s), KlValue
+        | RawExpr(Sym "true") -> boolExpr fn true, FsBoolean
+        | RawExpr(Sym "false") -> boolExpr fn false, FsBoolean
+        | RawExpr(Sym s) ->
             // ``kl_symbol-name`` OR Sym "symbol-name"
             if Set.contains s locals
                 then idExpr fn (rename s), KlValue
                 else appIdExpr fn "Sym" (stringExpr fn s), KlValue
-        | AndExpr(left, right) ->
+        | RawExpr(AndExpr(left, right)) ->
             infixIdExpr fn "op_BooleanAnd"
-                (parens fn (build context left  |> toType fn FsBoolean))
-                (parens fn (build context right |> toType fn FsBoolean)), FsBoolean
-        | OrExpr(left, right) ->
+                (parens fn (build context (RawExpr left)  |> toType fn FsBoolean))
+                (parens fn (build context (RawExpr right) |> toType fn FsBoolean)), FsBoolean
+        | RawExpr(OrExpr(left, right)) ->
             infixIdExpr fn "op_BooleanOr"
-                 (parens fn (build context left  |> toType fn FsBoolean))
-                 (parens fn (build context right |> toType fn FsBoolean)), FsBoolean
-        | IfExpr(condition, consequent, alternative) ->
+                 (parens fn (build context (RawExpr left)  |> toType fn FsBoolean))
+                 (parens fn (build context (RawExpr right) |> toType fn FsBoolean)), FsBoolean
+        | RawExpr(IfExpr(condition, consequent, alternative)) ->
             ifExpr fn
-                (build context condition   |> toType fn FsBoolean)
-                (build context consequent  |> toType fn KlValue)
-                (build context alternative |> toType fn KlValue), KlValue
-        | CondExpr clauses ->
+                (build context (RawExpr condition)   |> toType fn FsBoolean)
+                (build context (RawExpr consequent)  |> toType fn KlValue)
+                (build context (RawExpr alternative) |> toType fn KlValue), KlValue
+        | RawExpr(CondExpr clauses) ->
             let rec compileClauses = function
                 | [] -> idExpr fn "Empty"
                 | (Sym "true", consequent) :: _ ->
-                    build context consequent |> toType fn KlValue
+                    build context (RawExpr consequent) |> toType fn KlValue
                 | (condition, consequent) :: rest ->
                     ifExpr fn
-                        (build context condition  |> toType fn FsBoolean)
-                        (build context consequent |> toType fn KlValue)
+                        (build context (RawExpr condition)  |> toType fn FsBoolean)
+                        (build context (RawExpr consequent) |> toType fn KlValue)
                         (compileClauses rest)
             compileClauses clauses, KlValue
-        | LetExpr(param, binding, body) ->
+        | RawExpr(LetExpr(param, binding, body)) ->
             letExpr fn
                 (rename param)
-                (build context binding |> toType fn KlValue)
-                (build (fn, globals, Set.add param locals) body |> toType fn KlValue), KlValue
-        | LambdaExpr(param, body) ->
+                (build context (RawExpr binding) |> toType fn KlValue)
+                (build (fn, globals, Set.add param locals) (RawExpr body) |> toType fn KlValue), KlValue
+        | RawExpr(LambdaExpr(param, body)) ->
             // Func(Lambda(CompiledLambda(fun (globals: Globals) (~param: Value) -> ~body)))
             nestedAppIdExpr fn ["Func"; "Lambda"; "CompiledLambda"]
                 (lambdaExpr fn
                     ["globals",    shortType fn "Globals"
                      rename param, shortType fn "Value"]
-                    (build (fn, globals, Set.add param locals) body |> toType fn KlValue)), KlValue
-        | FreezeExpr body ->
+                    (build (fn, globals, Set.add param locals) (RawExpr body) |> toType fn KlValue)), KlValue
+        | RawExpr(FreezeExpr body) ->
             // Func(Freeze(CompiledFreeze(fun (globals: Globals) -> ~body)))
             nestedAppIdExpr fn ["Func"; "Freeze"; "CompiledFreeze"]
                 (lambdaExpr fn
                     ["globals", shortType fn "Globals"]
-                    (build context body |> toType fn KlValue)), KlValue
-        | TrapExpr(body, handler) ->
+                    (build context (RawExpr body) |> toType fn KlValue)), KlValue
+        | RawExpr(TrapExpr(body, handler)) ->
             let errExpr = appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])
             let handlerExpr =
                 match handler with
@@ -135,26 +136,25 @@ module Compiler =
                     (letExpr fn
                         (rename param)
                         errExpr
-                        (build (fn, globals, Set.add param locals) body |> toType fn KlValue))
+                        (build (fn, globals, Set.add param locals) (RawExpr body) |> toType fn KlValue))
                 | f -> buildApp context f [errExpr]
-            tryWithExpr fn (build context body |> toType fn KlValue) "e" handlerExpr, KlValue
-        | DoExpr _ as expr -> buildDo context expr
-        | DefunExpr _ -> failwith "Can't compile defun not at top level"
-        | AppExpr(Sym "not", [x]) ->
-            appIdExpr fn "not" (build context x |> toType fn FsBoolean), FsBoolean
-        | AppExpr(Sym "=", [x; y]) ->
-            let xExpr = build context x
-            let yExpr = build context y
+            tryWithExpr fn (build context (RawExpr body) |> toType fn KlValue) "e" handlerExpr, KlValue
+        | RawExpr(DoExpr _ as expr) -> buildDo context expr
+        | RawExpr(DefunExpr _) -> failwith "Can't compile defun not at top level"
+        | RawExpr(AppExpr(Sym "not", [x])) ->
+            appIdExpr fn "not" (build context (RawExpr x) |> toType fn FsBoolean), FsBoolean
+        | RawExpr(AppExpr(Sym "=", [x; y])) ->
+            let xExpr = build context (RawExpr x)
+            let yExpr = build context (RawExpr y)
             let t = simplestCommonType (snd xExpr) (snd yExpr)
             infixIdExpr fn "op_Equality" (xExpr |> toType fn t) (yExpr |> toType fn t), FsBoolean
-        | AppExpr(f, args) ->
-            buildApp context f (List.map (build context >> toType fn KlValue) args), KlValue
-        | klExpr -> failwithf "Unable to compile: %O" klExpr
+        | RawExpr(AppExpr(f, args)) ->
+            buildApp context f (List.map (RawExpr >> build context >> toType fn KlValue) args), KlValue
+        | RawExpr klExpr -> failwithf "Unable to compile: %O" klExpr
+        | GlobalApplication(name, fref, args) ->
+            buildApp context (Sym name) (List.map (build context >> toType fn KlValue) args), KlValue
 
     let private compileDefun fn globals = function
-        // and ~(rename name) (globals: Globals) = function
-        //     | [~@(map rename paramz)] -> ~body
-        //     | args -> argsErr ~name ~(replicate arity "value") args
         | Defun(name, arity, InterpretedDefun(paramz, body)) ->
             letBindingPrivate fn
                 (rename name)
@@ -171,6 +171,9 @@ module Compiler =
                              idExpr fn "args"])])
         | _ -> failwith "Can't compile functions other than interpreted defuns"
 
+    let private compileDefunOption fn globals (f: Function option ref) =
+        Option.map (compileDefun fn globals) f.Value
+
     let private installDefun fn (name, f) =
         indexSetExpr fn
             (longIdExpr fn ["globals"; "Functions"])
@@ -180,6 +183,9 @@ module Compiler =
                     [stringExpr fn name
                      intExpr fn (functionArity f)
                      appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))
+
+    let private installDefunOption fn (name, f: Function option ref) =
+        Option.map (fun f -> installDefun fn (name, f)) f.Value
 
     let rec private buildValue ((fn, globals) as context) = function
         | Empty -> idExpr fn "Empty"
@@ -205,6 +211,11 @@ module Compiler =
             (stringExpr fn name)
             (buildValue context value)
 
+    let rec private filterOption = function
+        | [] -> []
+        | Some x :: xs -> x :: filterOption xs
+        | None :: xs -> filterOption xs
+
     let compile nameParts globals =
         let fn = sjoin "" nameParts
         let symbols = nonPrimitiveSymbols globals
@@ -220,7 +231,7 @@ module Compiler =
              openDecl fn ["Kl"; "Evaluator"]
              openDecl fn ["Kl"; "Builtins"]
              openDecl fn ["Kl"; "Startup"]
-             letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
+             letMultiDecl fn (defuns |> List.map (snd >> compileDefunOption fn globals) |> filterOption)
              letAttrsDecl fn
                 [compiledNameAttr "Install"]
                 "install"
@@ -228,7 +239,7 @@ module Compiler =
                 (sequentialExpr fn
                     (List.concat
                         [List.map (installSymbol (fn, globals)) symbols
-                         List.map (installDefun fn) defuns
+                         List.map (installDefunOption fn) defuns |> filterOption
                          [idExpr fn "globals"]]))
              letUnitAttrsDecl fn
                 [compiledNameAttr "NewRuntime"]

@@ -24,7 +24,7 @@ type [<ReferenceEquality>] IO = {
 /// </summary>
 type Globals = {
     Symbols: Dictionary<string, Value>
-    Functions: Dictionary<string, Function>
+    Functions: ConcurrentDictionary<string, Function option ref>
     PrimitiveSymbols: HashSet<string>
     PrimitiveFunctions: HashSet<string>
 }
@@ -36,15 +36,15 @@ and Locals = Map<string, Value>
 
 and [<ReferenceEquality>] DefunImpl =
     | CompiledDefun of (Globals -> Value list -> Value)
-    | InterpretedDefun of string list * Value
+    | InterpretedDefun of string list * OptimizedExpr
 
 and [<ReferenceEquality>] LambdaImpl =
     | CompiledLambda of (Globals -> Value -> Value)
-    | InterpretedLambda of Locals * string * Value
+    | InterpretedLambda of Locals * string * OptimizedExpr
 
 and [<ReferenceEquality>] FreezeImpl =
     | CompiledFreeze of (Globals -> Value)
-    | InterpretedFreeze of Locals * Value
+    | InterpretedFreeze of Locals * OptimizedExpr
 
 /// <summary>
 /// The different types of functions in KL.
@@ -94,29 +94,30 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
 /// <summary>
 /// A symbol binding for both the value and function namespaces.
 /// </summary>
-type SymbolRef = string * Value option ref * Function option ref
+//and SymbolRef = string * Value option ref * Function option ref
 
 /// <summary>
 /// Global dictionary of mutable symbol bindings.
 /// </summary>
-type GlobalRefs = ConcurrentDictionary<string, SymbolRef>
+//and GlobalRefs = ConcurrentDictionary<string, SymbolRef>
 
 /// <summary>
 /// Integer-indexed collection of local variable values.
 /// </summary>
-type LocalRefs = Value list
+//and LocalRefs = Value list
 
 /// <summary>
 /// Optimized abstract syntax tree with inlined symbol lookups.
 /// </summary>
-type OptimizedExpr =
-    | Atom of Value // number, string, empty... ? cons, vector, etc.
-    | Local of int
-    | Conditional of OptimizedExpr * OptimizedExpr * OptimizedExpr // and, or, if, cond
-    | Binding of int * OptimizedExpr * OptimizedExpr // (let LocalVar value body)
-    | F1 of int * OptimizedExpr // (lambda LocalVar body)
-    | F0 of OptimizedExpr // (freeze body)
-    | Catch of OptimizedExpr * OptimizedExpr // (trap-error body handler)
-    | Sequential of OptimizedExpr list // (do (do x y) (do z w))
-    | GlobalApplication of SymbolRef * OptimizedExpr list // (fname ...args)
-    | Application of OptimizedExpr * OptimizedExpr list // (fexpr ...args)
+and OptimizedExpr =
+    //| Atom of Value // number, string, empty... ? cons, vector, etc.
+    //| Local of int
+    //| Conditional of OptimizedExpr * OptimizedExpr * OptimizedExpr // and, or, if, cond
+    //| Binding of int * OptimizedExpr * OptimizedExpr // (let LocalVar value body)
+    //| F1 of int * OptimizedExpr // (lambda LocalVar body)
+    //| F0 of OptimizedExpr // (freeze body)
+    //| Catch of OptimizedExpr * OptimizedExpr // (trap-error body handler)
+    //| Sequential of OptimizedExpr list // (do (do x y) (do z w))
+    | GlobalApplication of string * Function option ref * OptimizedExpr list // (fname ...args)
+    //| Application of OptimizedExpr * OptimizedExpr list // (fexpr ...args)
+    | RawExpr of Value // unoptimized

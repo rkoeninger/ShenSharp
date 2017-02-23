@@ -7,7 +7,7 @@ open Builtins
 
 module Startup =
 
-    let private fn name arity f = name, Defun(name, arity, CompiledDefun f)
+    let private fn name arity f = name, ref(Some(Defun(name, arity, CompiledDefun f)))
 
     let private installBase globals =
         let onMono = Type.GetType "Mono.Runtime" <> null
@@ -75,7 +75,7 @@ module Startup =
             fn "ls"              0 kl_ls
         ]
         List.iter globals.Symbols.Add symbols
-        List.iter globals.Functions.Add functions
+        List.iter (globals.Functions.TryAdd >> ignore) functions
         List.map (fst >> globals.PrimitiveSymbols.Add) symbols |> ignore
         List.map (fst >> globals.PrimitiveFunctions.Add) functions |> ignore
         globals

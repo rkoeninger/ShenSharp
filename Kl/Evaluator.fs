@@ -2,13 +2,14 @@
 
 open Extensions
 open Values
+open Analysis
 
 module Evaluator =
 
     // Work that may be deferred. Used as trampolines for tail-call optimization.
     type private Work =
         | Done of Value
-        | Pending of Locals * Value
+        | Pending of Locals * OptimizedExpr
 
     let inline private defer locals expr = Pending(locals, expr)
 
@@ -22,7 +23,10 @@ module Evaluator =
     /// </summary>
     let resolveGlobalFunction globals id =
         match globals.Functions.GetMaybe id with
-        | Some f -> f
+        | Some f ->
+            match f.Value with
+            | Some f -> f
+            | None -> failwithf "Function not defined: %s" id
         | None -> failwithf "Function not defined: %s" id
 
     // Symbols in operator position are either:
@@ -65,7 +69,7 @@ module Evaluator =
             | arg0 :: args1 ->
                 let result =
                     match impl with
-                    | InterpretedLambda(locals, param, body) -> evalv (globals, Map.add param arg0 locals) body
+                    | InterpretedLambda(locals, param, body) -> oevalv (globals, Map.add param arg0 locals) body
                     | CompiledLambda native -> native globals arg0
                 match result with
                 | Func f -> applyw globals f args1
@@ -111,73 +115,81 @@ module Evaluator =
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | AndExpr(left, right) ->
-            Done(Bool(isTrue(evalv env left) && isTrue(evalv env right)))
+            Done(Bool(isTrue(oevalv env (RawExpr left)) && isTrue(oevalv env (RawExpr right))))
 
         // Short-circuit evaluation. Both left and right must eval to Bool.
         | OrExpr(left, right) ->
-            Done(Bool(isTrue(evalv env left) || isTrue(evalv env right)))
+            Done(Bool(isTrue(oevalv env (RawExpr left)) || isTrue(oevalv env (RawExpr right))))
 
         // Condition must evaluate to Bool. Consequent and alternative are in tail position.
         | IfExpr(condition, consequent, alternative) ->
-            if isTrue(evalv env condition)
-                then defer locals consequent
-                else defer locals alternative
+            if isTrue(oevalv env (RawExpr condition))
+                then defer locals (RawExpr consequent)
+                else defer locals (RawExpr alternative)
 
         // Conditions must evaluate to Bool. Consequents are in tail position.
         | CondExpr clauses ->
             let rec evalClauses = function
                 | [] -> Done Empty
                 | (condition, consequent) :: rest ->
-                    if isTrue(evalv env condition)
-                        then defer locals consequent
+                    if isTrue(oevalv env (RawExpr condition))
+                        then defer locals (RawExpr consequent)
                         else evalClauses rest
             evalClauses clauses
 
         // Body expression is in tail position.
         | LetExpr(symbol, binding, body) ->
-            let value = evalv env binding
-            defer (Map.add symbol value locals) body
+            let value = oevalv env (RawExpr binding)
+            defer (Map.add symbol value locals) (RawExpr body)
 
         // Lambdas capture local scope.
         | LambdaExpr(param, body) ->
-            Done(Func(Lambda(InterpretedLambda(locals, param, body))))
+            Done(Func(Lambda(InterpretedLambda(locals, param, optimize env body))))
 
         // Freezes capture local scope.
         | FreezeExpr body ->
-            Done(Func(Freeze(InterpretedFreeze(locals, body))))
+            Done(Func(Freeze(InterpretedFreeze(locals, optimize env body))))
 
         // Handler expression only evaluated if body results in an error.
         // Handler expression must evaluate to a Function.
         // Handler expression is in tail position.
         | TrapExpr(body, handler) ->
             try
-                Done(evalv env body)
+                Done(oevalv env (RawExpr body))
             with e ->
                 let operator = evalf env handler
                 applyw globals operator [Err e.Message]
 
         // Second expression is in tail position.
         | DoExpr(first, second) ->
-            evalv env first |> ignore
-            defer locals second
+            oevalv env (RawExpr first) |> ignore
+            defer locals (RawExpr second)
 
         // Evaluating a defun just takes the name, param list and body
         // and stores them in the global function scope.
         // Ignore attempts to redefine a primitive.
         | DefunExpr(name, paramz, body) ->
             if not(globals.PrimitiveFunctions.Contains name) then
-                globals.Functions.[name] <-
-                    Defun(name, List.length paramz, InterpretedDefun(paramz, body))
+                let fref = internSymbol name globals.Functions
+                fref.Value <-
+                    Some(Defun(name, List.length paramz, InterpretedDefun(paramz, optimize env body)))
             Done(Sym name)
 
         // Expression in operator position must evaluate to a Function.
         | AppExpr(f, args) ->
             let operator = evalf env f
-            let operands = List.map (evalv env) args
+            let operands = List.map (RawExpr >> oevalv env) args
             applyw globals operator operands
 
         // All other expressions/values are self-evaluating.
         | expr -> Done expr
+
+    and private oevalw ((globals, _) as env) = function
+        | RawExpr expr -> evalw env expr
+        | GlobalApplication(id, fref, args) ->
+            match fref.Value with
+            | Some f -> applyw globals f (List.map (oevalv env) args)
+            | None -> failwithf "Function not defined: %s" id
 
     // Does a full eval of expr, looking to get a Function.
     // 3 ways this can work:
@@ -187,21 +199,21 @@ module Evaluator =
         match expr with
         | Sym s -> resolveFunction env s
         | _ ->
-            match evalv env expr with
+            match oevalv env (RawExpr expr) with
             | Func f -> f
             | _ -> failwith "Operator expression must evaluate to a function"
 
     // Evaluates an expression, running all deferred work.
     // Must be tail recursive. This is where tail call optimization happens.
-    and private evalv ((globals, _) as env) expr =
-        match evalw env expr with
+    and private oevalv ((globals, _) as env) expr =
+        match oevalw env expr with
         | Done value -> value
-        | Pending(locals, expr) -> evalv (globals, locals) expr
+        | Pending(locals, expr) -> oevalv (globals, locals) expr
 
     /// <summary>
     /// Evaluates an expression into a value, starting with a new, empty local scope.
     /// </summary>
-    let eval globals expr = evalv (globals, Map.empty) expr
+    let eval globals expr = oevalv (globals, Map.empty) (RawExpr expr)
 
     /// <summary>
     /// Applies a function to a list of values.
@@ -209,7 +221,7 @@ module Evaluator =
     let apply globals f args =
         match applyw globals f args with
         | Done value -> value
-        | Pending(locals, expr) -> evalv (globals, locals) expr
+        | Pending(locals, expr) -> oevalv (globals, locals) expr
 
     /// <summary>
     /// Interprets a value as a function and applies it to a list of values.
