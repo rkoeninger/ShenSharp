@@ -7,7 +7,7 @@ open Builtins
 
 module Startup =
 
-    let private fn name arity f = name, Defun(name, arity, CompiledDefun f)
+    let private fn name arity native = name, Compiled(arity, native)
 
     let private installBase globals =
         let onMono = Type.GetType "Mono.Runtime" <> null

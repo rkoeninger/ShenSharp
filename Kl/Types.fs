@@ -33,34 +33,18 @@ type Globals = {
 /// </summary>
 and Locals = Map<string, Value>
 
-and [<ReferenceEquality>] DefunImpl =
-    | CompiledDefun of (Globals -> Value list -> Value)
-    | InterpretedDefun of string list * Expr
-
-and [<ReferenceEquality>] LambdaImpl =
-    | CompiledLambda of (Globals -> Value -> Value)
-    | InterpretedLambda of Locals * string * Expr
-
-and [<ReferenceEquality>] FreezeImpl =
-    | CompiledFreeze of (Globals -> Value)
-    | InterpretedFreeze of Locals * Expr
-
 /// <summary>
 /// The different types of functions in KL.
 /// </summary>
-and [<DebuggerDisplay("{ToString(),nq}")>] Function =
-    | Defun   of string * int * DefunImpl
-    | Lambda  of LambdaImpl
-    | Freeze  of FreezeImpl
-    | Partial of Function * Value list
+and [<ReferenceEquality; DebuggerDisplay("{ToString(),nq}")>] Function =
+    | Interpreted of Locals * string list * Expr
+    | Compiled    of int * (Globals -> Value list -> Value)
+    | Partial     of Function * Value list
     override this.ToString() =
         match this with
-        | Defun(name, _, _)                         -> sprintf "%s" name
-        | Lambda(CompiledLambda _)                  -> "<Lambda Compiled>"
-        | Lambda(InterpretedLambda(_, param, body)) -> sprintf "<Lambda %s %O>" param body
-        | Freeze(CompiledFreeze _)                  -> "<Freeze Compiled>"
-        | Freeze(InterpretedFreeze(_, body))        -> sprintf "<Freeze %O>" body
-        | Partial(f, args)                          -> sprintf "<Partial %O %s>" f (String.Join(" ", args))
+        | Interpreted _ -> "<Interpreted Function>"
+        | Compiled _    -> "<Compiled Function>"
+        | Partial(f, _) -> "<Partial Application>"
 
 /// <summary>
 /// A value in KL.

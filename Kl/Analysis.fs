@@ -13,10 +13,9 @@ module Analysis =
         | klExpr -> [klExpr]
 
     let rec functionArity = function
-        | Defun(_, arity, _) -> arity
-        | Lambda _ -> 1
-        | Freeze _ -> 0
-        | Partial(f, _) -> functionArity f
+        | Interpreted(_, paramz, _) -> List.length paramz
+        | Compiled(arity, _) -> arity
+        | Partial(f, args) -> functionArity f - args.Length
 
     let nonPrimitiveSymbols globals =
         globals.Symbols

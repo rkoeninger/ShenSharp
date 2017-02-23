@@ -18,13 +18,13 @@ type ``Partial Application``() =
     [<Test>]
     member this.``applying a defun to fewer arguments than it takes results in a partial``() =
         match runAll "(defun add3 (A B C) (+ A (+ B C))) (add3 1 2)" with
-        | Func(Partial(Defun("add3", _, _), [Int 1; Int 2])) -> ()
+        | Func(Partial(Interpreted _, [Int 1; Int 2])) -> ()
         | _ -> Assert.Fail "Partial expected"
 
     [<Test>]
     member this.``applying a defun that takes 1 or more parameters to 0 arguments results in that same defun``() =
         match runAll "(defun inc (X) (+ X 1)) (inc)" with
-        | Func(Defun("inc", _, _)) -> ()
+        | Func(Interpreted _) -> ()
         | _ -> Assert.Fail "Defun expected"
 
     [<Test>]
@@ -48,7 +48,7 @@ type ``Partial Application``() =
     [<Test>]
     member this.``applying a native to fewer arguments than it takes results in a partial``() =
         match run "(+ 2)" with
-        | Func(Partial(Defun("+", _, _), [Int 2])) -> ()
+        | Func(Partial _) -> ()
         | _ -> Assert.Fail "Partial expected"
 
         assertEq (Int 3) (run "((+ 2) 1)")
@@ -56,7 +56,7 @@ type ``Partial Application``() =
     [<Test>]
     member this.``applying a native that takes 1 or more parameters to 0 arguments results in that same primitve``() =
         match run "(+)" with
-        | Func(Defun("+", _, _)) -> ()
+        | Func(Compiled _) -> ()
         | x -> Assert.Fail "Native expected"
 
         assertEq (Int 3) (run "((+) 1 2)")
@@ -77,7 +77,7 @@ type ``Partial Application``() =
 
     [<Test>]
     member this.``applying a lambda to 0 arguments results in error``() =
-        assertError "((lambda X X))"
+        assertTrue "(let F (lambda X X) (= F (F)))"
 
     [<Test>]
     member this.``application of multiple arguments should work over curried lambdas``() =
@@ -85,22 +85,11 @@ type ``Partial Application``() =
 
     [<Test>]
     member this.``excessive arguments applied by freeze results in error``() =
-        assertError "(let F (freeze (lambda X (lambda Y (+ X Y)))) (F 1 2))"
-
-    [<Test>]
-    member this.``excessive arguments applied by defuns will not get passed on to returned function``() =
-        assertEq (Int 3) <| runAll
-            "(defun add (X) (lambda Y (+ X Y)))
-             ((add 1) 2)"
-
-        assertError
-            "(defun add (X) (lambda Y (+ X Y)))
-             (add 1 2)"
+        assertEq (Int 3) (run "(let F (freeze (lambda X (lambda Y (+ X Y)))) (F 1 2))")
 
     [<Test>]
     member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from freeze``() =
         assertEq (Int 3) (run "(((freeze (lambda X (lambda Y (+ X Y))))) 1 2)")
-        assertError "((freeze +) 1 2)"
 
     [<Test>]
     member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from lambda``() =

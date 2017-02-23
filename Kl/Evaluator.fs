@@ -36,66 +36,96 @@ module Evaluator =
         | Some _ -> failwithf "Function not defined: %s" id
         | None -> resolveGlobalFunction globals id
 
+    let private merge m0 m1 = Map.fold (fun m k v -> Map.add k v m) m0 m1
+
     // Applies function to arguments.
     // Could return deferred work or a partial function.
     let rec private applyw globals f args =
         match f with
 
-        // Freezes can only be applied to 0 arguments.
-        // They evaluate their body with local scope captured where they were formed.
-        | Freeze impl ->
-            match args with
-            | [] ->
-                match impl with
-                | InterpretedFreeze(locals, body) -> defer locals body
-                | CompiledFreeze native -> Done(native globals)
-            | _ -> failwithf "%O expected 0 arguments, given %i" f args.Length
-
-        // Each lambda only takes exactly 1 argument.
-        // Applying a lambda to 0 arguments is an error.
-        // Applying a lambda to more than 1 argument will apply the remaining
-        // arguments to the returned function. If lambda does not return another
-        // function, this is an error.
-        // Lambdas evaluate their body with local scope captured when they were formed.
-        | Lambda impl ->
-            match args with
-            | [] -> failwithf "%O expected 1 arguments, given 0" f
-            | [arg0] ->
-                match impl with
-                | InterpretedLambda(locals, param, body) -> defer (Map.add param arg0 locals) body
-                | CompiledLambda native -> Done(native globals arg0)
-            | arg0 :: args1 ->
-                let result =
-                    match impl with
-                    | InterpretedLambda(locals, param, body) -> eevalv (globals, Map.add param arg0 locals) body
-                    | CompiledLambda native -> native globals arg0
-                match result with
-                | Func f -> applyw globals f args1
-                | Sym s ->
-                    let locals =
-                        match impl with
-                        | InterpretedLambda(locals, _, _) -> locals
-                        | CompiledLambda _ -> Map.empty
-                    let f = resolveFunction (globals, locals) s
-                    applyw globals f args1
-                | _ -> failwithf "%O expected 1 arguments, given %i" f args.Length
-
-        // Defuns can be applied to anywhere between 0 and the their full parameter list.
-        // An error is raised if a Defun is applied to more arguments than it takes.
-        // If applied to fewer arguments than the full parameter list, a Partial is returned.
-        // They do not retain local state and are usually evaluated at the root level.
-        | Defun(name, arity, impl) ->
-            if args.Length < arity then
+        | Interpreted(locals, paramz, body) ->
+            if List.length args < List.length paramz then
                 match args with
                 | [] -> Done(Func f)
                 | _ -> Done(Func(Partial(f, args)))
+            elif List.length args > List.length paramz then
+                let (args0, args1) = List.splitAt (List.length paramz) args
+                let v = eevalv (globals, merge locals (Map(List.zip paramz args0))) body
+                match v with
+                | Func f -> applyw globals f args1
+                | _ -> failwith "Too many arguments passed to function"
             else
-                match impl with
-                | InterpretedDefun(paramz, body) ->
-                    if args.Length > arity
-                        then failwithf "%O expected %i arguments, given %i" f arity args.Length
-                        else defer (Map(List.zip paramz args)) body
-                | CompiledDefun native -> Done(native globals args)
+                defer (merge locals (Map(List.zip paramz args))) body
+
+        | Compiled(arity, native) ->
+            if List.length args < arity then
+                match args with
+                | [] -> Done(Func f)
+                | _ -> Done(Func(Partial(f, args)))
+            elif List.length args > arity then
+                let (args0, args1) = List.splitAt arity args
+                let v = native globals args0
+                match v with
+                | Func f -> applyw globals f args1
+                | _ -> failwith "Too many arguments passed to function"
+            else
+                Done(native globals args)
+
+        // Freezes can only be applied to 0 arguments.
+        // They evaluate their body with local scope captured where they were formed.
+//        | Freeze impl ->
+//            match args with
+//            | [] ->
+//                match impl with
+//                | InterpretedFreeze(locals, body) -> defer locals body
+//                | CompiledFreeze native -> Done(native globals)
+//            | _ -> failwithf "%O expected 0 arguments, given %i" f args.Length
+//
+//        // Each lambda only takes exactly 1 argument.
+//        // Applying a lambda to 0 arguments is an error.
+//        // Applying a lambda to more than 1 argument will apply the remaining
+//        // arguments to the returned function. If lambda does not return another
+//        // function, this is an error.
+//        // Lambdas evaluate their body with local scope captured when they were formed.
+//        | Lambda impl ->
+//            match args with
+//            | [] -> failwithf "%O expected 1 arguments, given 0" f
+//            | [arg0] ->
+//                match impl with
+//                | InterpretedLambda(locals, param, body) -> defer (Map.add param arg0 locals) body
+//                | CompiledLambda native -> Done(native globals arg0)
+//            | arg0 :: args1 ->
+//                let result =
+//                    match impl with
+//                    | InterpretedLambda(locals, param, body) -> eevalv (globals, Map.add param arg0 locals) body
+//                    | CompiledLambda native -> native globals arg0
+//                match result with
+//                | Func f -> applyw globals f args1
+//                | Sym s ->
+//                    let locals =
+//                        match impl with
+//                        | InterpretedLambda(locals, _, _) -> locals
+//                        | CompiledLambda _ -> Map.empty
+//                    let f = resolveFunction (globals, locals) s
+//                    applyw globals f args1
+//                | _ -> failwithf "%O expected 1 arguments, given %i" f args.Length
+//
+//        // Defuns can be applied to anywhere between 0 and the their full parameter list.
+//        // An error is raised if a Defun is applied to more arguments than it takes.
+//        // If applied to fewer arguments than the full parameter list, a Partial is returned.
+//        // They do not retain local state and are usually evaluated at the root level.
+//        | Defun(name, arity, impl) ->
+//            if args.Length < arity then
+//                match args with
+//                | [] -> Done(Func f)
+//                | _ -> Done(Func(Partial(f, args)))
+//            else
+//                match impl with
+//                | InterpretedDefun(paramz, body) ->
+//                    if args.Length > arity
+//                        then failwithf "%O expected %i arguments, given %i" f arity args.Length
+//                        else defer (Map(List.zip paramz args)) body
+//                | CompiledDefun native -> Done(native globals args)
 
         // Applying a partial applies the original function
         // to the previous and current argument lists appended.
@@ -124,9 +154,9 @@ module Evaluator =
             let binding = eevalv env value
             defer (Map.add param binding  locals) body
         | Anonymous(Some param, body) ->
-            Done(Func(Lambda(InterpretedLambda(locals, param, body))))
+            Done(Func(Interpreted(locals, [param], body)))
         | Anonymous(None, body) ->
-            Done(Func(Freeze(InterpretedFreeze(locals, body))))
+            Done(Func(Interpreted(locals, [], body)))
         | Catch(body, handler) ->
             try
                 Done(eevalv env body)
@@ -151,7 +181,7 @@ module Evaluator =
             | None -> failwith "No value" // TODO: make error messages consistent
         | Definition((id, _, fref), paramz, body) ->
             if not(globals.PrimitiveFunctions.Contains id) then
-                fref.Value <- Some(Defun(id, List.length paramz, InterpretedDefun(paramz, body)))
+                fref.Value <- Some(Interpreted(Map.empty, paramz, body))
             Done(Sym id)
         | GlobalCall((id, _, fref), args) ->
             match fref.Value with

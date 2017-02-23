@@ -16,13 +16,11 @@ type Compilation() =
 
     let pars = parse (newGlobals(), Set.empty)
 
-    let fn globals name args body =
-        let (_, _, fref) = intern name globals
-        fref.Value <- Some(Defun(name, List.length args, InterpretedDefun(args, pars <| read body)))
+    let fn globals name paramz body =
+        define globals name (Interpreted(Map.empty, paramz, pars <| read body))
 
     let sy globals name value =
-        let (_, sref, _) = intern name globals
-        sref.Value <- Some value
+        assign globals name value
 
     [<Test>]
     member this.``test parse``() =
@@ -42,9 +40,14 @@ module Shen.Runtime
         fn globals "xor" ["X"; "Y"] "(and (not (and X Y)) (or X Y))"
         fn globals "factorial" ["N"] "(if (= N 0) 1 (* N (factorial (- N 1))))"
         fn globals "inc-all" ["Xs"] "(map (lambda X (+ 1 X)) Xs)"
+        fn globals "lambda-value-test" [] "((lambda X (+ 1 X)) 0)"
+        fn globals "lmabda-local-test" [] "(let F (lambda X (+ 1 X)) (F 0))"
+        fn globals "curried-defun" ["X"] "(do X (lambda Y (+ X Y)))"
+        fn globals "freeze-in-defun" ["X"] "(do X (freeze X))"
+        fn globals "partial-test" [] "((+ 1) 2)"
         sy globals "array-value" (Vec [|Int 1; Int 2; Int 3|])
         sy globals "cons-test" (Cons(Int 1, Int 2))
-        sy globals "lambda-test" (Func(Lambda(InterpretedLambda(Map.empty, "X", pars <| toCons [Sym "+"; Sym "X"; Int 1]))))
+        sy globals "lambda-test" (Func(Interpreted(Map.empty, ["X"], pars <| toCons [Sym "+"; Sym "X"; Int 1])))
         let ast = compile ["Shen"; "Runtime"] globals
         let format = {FormatConfig.Default with PageWidth = 1024}
         printfn "%s" (CodeFormatter.FormatAST(ast, "file", None, format))

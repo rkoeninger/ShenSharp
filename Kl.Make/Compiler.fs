@@ -48,25 +48,40 @@ module Compiler =
     and private buildApp ((fn, globals, locals) as context) f args =
         match f with
         | Sym s ->
-            let (_, _, fref) = intern s globals
-            if Option.isSome fref.Value then
-                // ~(rename s) globals ~args
-                appKl fn s args
-            elif Set.contains s locals then
+            if Set.contains s locals then
                 // vapply globals ~(rename s) ~args
                 appIdExprN fn "vapply"
                     [idExpr fn "globals"
                      idExpr fn (rename s)
                      listExpr fn args]
             else
-                // apply globals (resolveGlobalFunction ~s) ~args
-                appIdExprN fn "apply"
-                    [idExpr fn "globals"
-                     parens fn
-                        (appIdExprN fn "resolveGlobalFunction"
-                            [idExpr fn "globals"
-                             stringExpr fn s])
-                     listExpr fn args]
+                let (_, _, fref) = intern s globals
+                match fref.Value with
+                | Some systemf ->
+                    let arity = functionArity systemf
+                    if args.Length > arity then
+                        failwith "Can't compile over application"
+                    elif args.Length < arity then
+                        // Func(Partial(Compiled(~arity, ~(rename s)), ~args))
+                        nestedAppIdExpr fn ["Func"; "Partial"]
+                            (tupleExpr fn
+                                [appIdExpr fn "Compiled"
+                                    (tupleExpr fn
+                                        [intExpr fn arity
+                                         idExpr fn (rename s)])
+                                 listExpr fn args])
+                    else
+                        // ~(rename s) globals ~args
+                        appKl fn s args
+                | None ->
+                    // apply globals (resolveGlobalFunction ~s) ~args
+                    appIdExprN fn "apply"
+                        [idExpr fn "globals"
+                         parens fn
+                            (appIdExprN fn "resolveGlobalFunction"
+                                [idExpr fn "globals"
+                                 stringExpr fn s])
+                         listExpr fn args]
         | f ->
             // vapply globals ~f ~args
             appIdExprN fn "vapply"
@@ -115,18 +130,9 @@ module Compiler =
                 (build context binding |> toType fn KlValue)
                 (build (fn, globals, Set.add param locals) body |> toType fn KlValue), KlValue
         | LambdaExpr(param, body) ->
-            // Func(Lambda(CompiledLambda(fun (globals: Globals) (~param: Value) -> ~body)))
-            nestedAppIdExpr fn ["Func"; "Lambda"; "CompiledLambda"]
-                (lambdaExpr fn
-                    ["globals",    shortType fn "Globals"
-                     rename param, shortType fn "Value"]
-                    (build (fn, globals, Set.add param locals) body |> toType fn KlValue)), KlValue
+            compileF fn globals locals [param] body, KlValue
         | FreezeExpr body ->
-            // Func(Freeze(CompiledFreeze(fun (globals: Globals) -> ~body)))
-            nestedAppIdExpr fn ["Func"; "Freeze"; "CompiledFreeze"]
-                (lambdaExpr fn
-                    ["globals", shortType fn "Globals"]
-                    (build context body |> toType fn KlValue)), KlValue
+            compileF fn globals locals [] body, KlValue
         | TrapExpr(body, handler) ->
             let errExpr = appIdExpr fn "Err" (longIdExpr fn ["e"; "Message"])
             let handlerExpr =
@@ -152,11 +158,33 @@ module Compiler =
             buildApp context f (List.map (build context >> toType fn KlValue) args), KlValue
         | klExpr -> failwithf "Unable to compile: %O" klExpr
 
-    let private compileDefun fn globals = function
+    and private compileF fn globals locals paramz body =
+        let arity = List.length paramz
+        nestedAppIdExpr fn ["Func"; "Compiled"]
+            (tupleExpr fn
+                [intExpr fn arity
+                 (lambdaExpr fn
+                     ["globals", shortType fn "Globals"]
+                     (matchLambdaExpr fn
+                         [matchClause fn
+                             (listPat fn (List.map (rename >> namePat fn) paramz))
+                             (build (fn, globals, Set.union locals (Set.ofList paramz)) body |> toType fn KlValue)
+                          matchClause fn
+                             (namePat fn "args")
+                             (appIdExprN fn "argsErr"
+                                 [stringExpr fn "Compiled Function" // TODO: better name
+                                  listExpr fn (List.replicate arity (stringExpr fn "value"))
+                                  idExpr fn "args"])]))])
+
+    let private compileDefun fn globals (name, f) =
         // and ~(rename name) (globals: Globals) = function
         //     | [~@(map rename paramz)] -> ~body
         //     | args -> argsErr ~name ~(replicate arity "value") args
-        | Defun(name, arity, InterpretedDefun(paramz, body)) ->
+        match f with
+        | Interpreted(locals, paramz, body) ->
+            if not(Map.isEmpty locals) then
+                failwith "Top-level should not have locals when compiled"
+            let arity = List.length paramz
             letBindingPrivate fn
                 (rename name)
                 ["globals", shortType fn "Globals"]
@@ -173,14 +201,14 @@ module Compiler =
         | _ -> failwith "Can't compile functions other than interpreted defuns"
 
     let private installDefun fn (name, f) =
+        // define globals ~name (Compiled(~argcount, ~(rename name)))
         appIdExprN fn "define"
             [idExpr fn "globals"
              stringExpr fn name
-             (appIdExpr fn "Defun"
+             (appIdExpr fn "Compiled"
                 (tupleExpr fn
-                    [stringExpr fn name
-                     intExpr fn (functionArity f)
-                     appIdExpr fn "CompiledDefun" (idExpr fn (rename name))]))]
+                    [intExpr fn (functionArity f)
+                     idExpr fn (rename name)]))]
 
     let rec private buildValue ((fn, globals) as context) = function
         | Empty -> idExpr fn "Empty"
@@ -190,14 +218,10 @@ module Compiler =
         | Cons(x, y) -> appIdExpr fn "Cons" (tupleExpr fn [buildValue context x; buildValue context y])
         | Vec array -> appIdExpr fn "Vec" (arrayExpr fn (List.map (buildValue context) (Seq.toList array)))
         | Err s -> appIdExpr fn "Err" (stringExpr fn s)
-        | Func(Lambda(InterpretedLambda(locals, param, body))) ->
+        | Func(Interpreted(locals, paramz, body)) ->
             if not(Map.isEmpty locals) then
                 failwith "Can't build non-empty Locals"
-            nestedAppIdExpr fn ["Func"; "Lambda"; "CompiledLambda"]
-                (lambdaExpr fn
-                    ["globals",    shortType fn "Globals"
-                     rename param, shortType fn "Value"]
-                    (build (fn, globals, Set [param]) (unparse body) |> toType fn KlValue))
+            compileF fn globals Set.empty paramz (unparse body) // TODO: need to extract keys
         | value -> failwithf "Can't build value: %A" value
 
     let private installSymbol ((fn, globals) as context) (name, (_, sref: Value option ref, _)) =
@@ -230,7 +254,7 @@ module Compiler =
              openDecl fn ["Kl"; "Evaluator"]
              openDecl fn ["Kl"; "Builtins"]
              openDecl fn ["Kl"; "Startup"]
-             letMultiDecl fn (List.map (snd >> compileDefun fn globals) defuns)
+             letMultiDecl fn (List.map (compileDefun fn globals) defuns)
              letAttrsDecl fn
                 [compiledNameAttr "Install"]
                 "install"
