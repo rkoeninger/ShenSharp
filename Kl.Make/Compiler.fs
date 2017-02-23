@@ -99,7 +99,7 @@ module Compiler =
                 (build context alternative |> toType fn KlValue), KlValue
         | CondExpr clauses ->
             let rec compileClauses = function
-                | [] -> idExpr fn "Empty"
+                | [] -> (appIdExpr fn "failwith" (stringExpr fn "No condition was true"))
                 | (Sym "true", consequent) :: _ ->
                     build context consequent |> toType fn KlValue
                 | (condition, consequent) :: rest ->
