@@ -1,7 +1,6 @@
 ﻿namespace Kl
 
 open System
-open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
 open System.Text
@@ -36,13 +35,13 @@ module Values =
 
     let newGlobals() = {
         Symbols = new Dictionary<string, Value>()
-        Functions = new ConcurrentDictionary<string, Function option ref>()
+        Functions = new Dictionary<string, Function>()
         PrimitiveSymbols = new HashSet<string>()
         PrimitiveFunctions = new HashSet<string>()
     }
 
-    let internSymbol id (globals: ConcurrentDictionary<string, Function option ref>) =
-        globals.GetOrAdd(id, fun _ -> ref None)
+    let internSymbol id (globals: GlobalRefs) =
+        globals.GetOrAdd(id, fun _ -> (id, ref None, ref None))
 
     let localIndex id locals =
         List.tryFindIndex ((=) id) locals |> Option.map (fun x -> locals.Length - x - 1)

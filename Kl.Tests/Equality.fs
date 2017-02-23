@@ -59,19 +59,19 @@ type Equality() =
 
     [<Test>]
     member this.``Functions can be compared for reference equality``() =
-        let f = Freeze(InterpretedFreeze(Map.empty, RawExpr Empty))
+        let f = Freeze(InterpretedFreeze(Map.empty, Empty))
         assertEq (Func f) (Func f)
-        let l = Lambda(InterpretedLambda(Map.empty, "X", RawExpr <| toCons [Sym "+"; Int 1; Sym "X"]))
+        let l = Lambda(InterpretedLambda(Map.empty, "X", toCons [Sym "+"; Int 1; Sym "X"]))
         assertEq (Func l) (Func l)
-        let d = Defun("inc", 1, InterpretedDefun(["X"], RawExpr <| toCons [Sym "+"; Int 1; Sym "X"]))
+        let d = Defun("inc", 1, InterpretedDefun(["X"], toCons [Sym "+"; Int 1; Sym "X"]))
         assertEq (Func d) (Func d)
         let inc _ = function
             | [Int x] -> Int(x + 1)
             | _ -> failwith "Must be integer"
         let n = Defun("inc", 1, CompiledDefun inc)
         assertEq (Func n) (Func n)
-        assertNotEq (Func(Freeze(InterpretedFreeze(Map.empty, RawExpr <| Empty))))
-                    (Func(Freeze(InterpretedFreeze(Map.empty, RawExpr <| Empty))))
+        assertNotEq (Func(Freeze(InterpretedFreeze(Map.empty, Empty))))
+                    (Func(Freeze(InterpretedFreeze(Map.empty, Empty))))
 
     [<Test>]
     member this.``Hash codes can be generated for all value types``() =

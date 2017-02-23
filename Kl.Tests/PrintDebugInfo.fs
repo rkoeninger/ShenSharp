@@ -29,8 +29,8 @@ type ``Print Debug Info``() =
         printfn "%O" (Vec(Array.create 10 Empty))
         printfn "%O" (Err "Something went wrong")
         printfn "%O" (Func(Defun("+", 2, CompiledDefun ``kl_+``)))
-        printfn "%O" (Func(Defun("add", 2, InterpretedDefun(["X"; "Y"], RawExpr <| toCons [Sym "+"; Sym "X"; Sym "Y"]))))
-        printfn "%O" (Func(Lambda(InterpretedLambda(Map.empty, "X", RawExpr <| toCons [Sym "+"; Int 1; Sym "X"]))))
-        printfn "%O" (Func(Freeze(InterpretedFreeze(Map.empty, RawExpr <| toCons [Sym "get-time"; Sym "run"]))))
+        printfn "%O" (Func(Defun("add", 2, InterpretedDefun(["X"; "Y"], toCons [Sym "+"; Sym "X"; Sym "Y"]))))
+        printfn "%O" (Func(Lambda(InterpretedLambda(Map.empty, "X", toCons [Sym "+"; Int 1; Sym "X"]))))
+        printfn "%O" (Func(Freeze(InterpretedFreeze(Map.empty, toCons [Sym "get-time"; Sym "run"]))))
         printfn "%O" (Func(Partial(Defun("+", 2, CompiledDefun ``kl_+``), [Int 1])))
         printfn "%O" console

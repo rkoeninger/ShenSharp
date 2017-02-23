@@ -14,8 +14,7 @@ open Assertions
 type Compilation() =
 
     let fn globals name args body =
-        let fref = internSymbol name globals.Functions
-        fref.Value <- Some(Defun(name, List.length args, InterpretedDefun(args, RawExpr(read body))))
+        globals.Functions.[name] <- Defun(name, List.length args, InterpretedDefun(args, read body))
 
     let sy globals name value =
         globals.Symbols.[name] <- value
@@ -40,7 +39,7 @@ module Shen.Runtime
         fn globals "inc-all" ["Xs"] "(map (lambda X (+ 1 X)) Xs)"
         sy globals "array-value" (Vec [|Int 1; Int 2; Int 3|])
         sy globals "cons-test" (Cons(Int 1, Int 2))
-        sy globals "lambda-test" (Func(Lambda(InterpretedLambda(Map.empty, "X", RawExpr <| toCons [Sym "+"; Sym "X"; Int 1]))))
+        sy globals "lambda-test" (Func(Lambda(InterpretedLambda(Map.empty, "X", toCons [Sym "+"; Sym "X"; Int 1]))))
         let ast = compile ["Shen"; "Runtime"] globals
         let format = {FormatConfig.Default with PageWidth = 1024}
         printfn "%s" (CodeFormatter.FormatAST(ast, "file", None, format))
