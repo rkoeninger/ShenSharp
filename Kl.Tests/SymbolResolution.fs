@@ -20,11 +20,10 @@ type ``Symbol Resolution``() =
             (Sym "hi"),     "(hi-sym)"]
 
     [<Test>]
-    member this.``if a symbol originally idle ends up in application position, it will be resolved as a global function``() =
-        assertEach [
-            (Sym "abc"), "(defun abc (X) (+ X 1))"
-            (Sym "abc"), "(if false 0 abc)"
-            (Int 2),     "((if false 0 abc) 1)"]
+    member this.``symbols as the values of variables cannot be applied as funtions``() =
+        assertError
+            "(defun abc (X) (+ X 1))
+             (let F abc (F 2))"
 
     [<Test>]
     member this.``result of interning a string is equal to symbol with name that is equal to that string``() =

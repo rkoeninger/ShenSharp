@@ -99,27 +99,20 @@ type ``Partial Application``() =
 
     [<Test>]
     member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from freeze``() =
-        assertEq (Int 3) (run "(((freeze +)) 1 2)")
+        assertEq (Int 3) (run "(((freeze (lambda X (lambda Y (+ X Y))))) 1 2)")
         assertError "((freeze +) 1 2)"
 
     [<Test>]
     member this.``excessive arguments are applied by function that symbol resolves to if symbol returned from lambda``() =
-        assertEq (Int 3) (run "((lambda _ +) 0 1 2)")
-        assertEq (Int 3) (run "(((lambda _ +) 0) 1 2)")
-        assertEq (Int 3) (run "((((lambda _ +) 0) 1) 2)")
-        assertEq (Int 3) (run "((((lambda _ +) 0) 1) 2)")
+        assertEq (Int 3) (run "((lambda X (lambda Y (+ X Y))) 1 2)")
+        assertEq (Int 3) (run "(((lambda X (lambda Y (+ X Y))) 1) 2)")
 
     [<Test>]
     member this.``excessive arguments are not applied by function that symbol resolves to if symbol returned from defun``() =
         assertEq (Int 3) <| runAll
-            "(defun f () +)
+            "(defun f () (lambda X (lambda Y (+ X Y))))
              ((f) 1 2)"
 
         assertError
             "(defun f () +)
              (f 1 2)"
-
-    [<Test>]
-    member this.``excessive arguments are not applied by function that symbol resolves to if symbol returned from native``() =
-        assertEq (Int 3) (run "((intern \"+\") 1 2)")
-        assertError "(intern \"+\" 1 2)"
