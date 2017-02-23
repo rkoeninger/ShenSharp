@@ -49,7 +49,7 @@ module Startup =
             fn "tl"              1 kl_tl
             fn "cons?"           1 ``kl_cons?``
             fn "="               2 ``kl_=``
-            fn "type"            1 kl_type
+            fn "type"            2 kl_type
             fn "eval-kl"         1 ``kl_eval-kl``
             fn "absvector"       1 kl_absvector
             fn "<-address"       2 ``kl_<-address``
