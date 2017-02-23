@@ -57,6 +57,12 @@ module Values =
         let (_, _, fref) = intern id globals
         fref.Value <- Some f
 
+    let lookup globals id =
+        let (_, _, fref) = intern id globals
+        match fref.Value with
+        | Some f -> f
+        | None -> failwithf "Function \"%s\" is not defined" id
+
     let localIndex id locals =
         List.tryFindIndex ((=) id) locals |> Option.map (fun x -> locals.Length - x - 1)
 

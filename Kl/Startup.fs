@@ -6,14 +6,6 @@ open Values
 open Builtins
 
 module Startup =
-    
-    let private setSymbol globals (id, value) =
-        let (_, sref, _) = intern id globals
-        sref.Value <- Some value
-
-    let private setFunction globals (id, f) =
-        let (_, _, fref) = intern id globals
-        fref.Value <- Some f
 
     let private fn name arity f = name, Defun(name, arity, CompiledDefun f)
 
@@ -82,8 +74,8 @@ module Startup =
             fn "pwd"             0 kl_pwd
             fn "ls"              0 kl_ls
         ]
-        List.iter (setSymbol globals) symbols
-        List.iter (setFunction globals) functions
+        List.iter ((<||) (assign globals)) symbols
+        List.iter ((<||) (define globals)) functions
         List.map (fst >> globals.PrimitiveSymbols.Add) symbols |> ignore
         List.map (fst >> globals.PrimitiveFunctions.Add) functions |> ignore
         globals

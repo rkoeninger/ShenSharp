@@ -53,17 +53,12 @@ module Builtins =
 
     let kl_set globals = function
         | [Sym s; x] ->
-            let (_, sref, _) = intern s globals
-            sref.Value <- Some x
+            assign globals s x
             x
         | args -> argsErr "set" ["symbol"; "value"] args
 
     let kl_value globals = function
-        | [Sym s] ->
-            let (_, sref, _) = intern s globals
-            match sref.Value with
-            | Some x -> x
-            | None -> failwithf "Symbol \"%s\" is undefined" s
+        | [Sym s] -> retrieve globals s
         | args -> argsErr "value" ["symbol"] args
 
     let ``kl_simple-error`` _ = function
