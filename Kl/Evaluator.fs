@@ -27,7 +27,6 @@ module Evaluator =
 
     // Symbols in operator position are either:
     //   * A local variable whose value is a function.
-    //   * A local variable whose value is a symbol that resolves to a global function.
     //   * A symbol that resolves to a global function.
     let private resolveFunction (globals, locals) id =
         match Map.tryFind id locals with
@@ -184,7 +183,6 @@ module Evaluator =
     // 3 ways this can work:
     //   * expr can be a symbol that resolves to a function.
     //   * expr can eval to function.
-    //   * expr can eval to a symbol that resolves to a function.
     and private evalf env expr =
         match expr with
         | Sym s -> resolveFunction env s
@@ -219,5 +217,4 @@ module Evaluator =
     let vapply globals value args =
         match value with
         | Func f -> apply globals f args
-        | Sym s -> apply globals (resolveGlobalFunction globals s) args
         | _ -> failwith "Operator expression must evaluate to a function"

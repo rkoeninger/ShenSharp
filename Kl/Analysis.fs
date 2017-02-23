@@ -74,11 +74,6 @@ module Analysis =
         // Anything else just gets passed through
         | expr -> expr
 
-    // TODO: remove the ability to pass in global functions as symbols:
-    //       (map sq [1 2 3])
-    //       just do it the standard way:
-    //       (map (function sq) [1 2 3])
-
     // TODO: do we need to do this for simple Value exprs, which then get optimized,
     //       or substitute the optimized expr?
     // TODO: locals can be function scoped since captured variables are substituted.
