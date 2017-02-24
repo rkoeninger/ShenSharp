@@ -11,17 +11,16 @@ module Startup =
 
     let private installBase globals =
         let onMono = Type.GetType "Mono.Runtime" <> null
-        let platform = if onMono then "Mono" else "Microsoft.NET"
         let klAssembly = typedefof<Value>.Assembly
         let klVersion = klAssembly.GetName().Version
         let companyAttribute = klAssembly.GetCustomAttribute<AssemblyCompanyAttribute>()
         let author = if companyAttribute <> null then companyAttribute.Company else "Unknown"
-        let fsAssembly = typedefof<unit>.Assembly
-        let fsVersion = fsAssembly.GetName().Version
+        let fsVersion = typedefof<unit>.Assembly.GetName().Version
         let symbols = [
             "*language*",       Str(sprintf "F# %i.%i" fsVersion.Minor fsVersion.MajorRevision)
-            "*implementation*", Str platform
+            "*implementation*", Str(if onMono then "Mono" else "Microsoft.NET")
             "*release*",        Str(string Environment.Version)
+            "*os*",             Str(Environment.OSVersion.Platform.ToString())
             "*port*",           Str(sprintf "%i.%i" klVersion.Major klVersion.Minor)
             "*porters*",        Str author
             "*stinput*",        console
