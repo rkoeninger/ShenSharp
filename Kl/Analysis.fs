@@ -81,60 +81,9 @@ module Analysis =
         // Anything else just gets passed through
         | expr -> expr
 
-    // TODO: do we need to do this for simple Value exprs, which then get optimized,
-    //       or substitute the optimized expr?
+    // TODO: substitute local variables in Exprs
     // TODO: locals can be function scoped since captured variables are substituted.
-
-    // ValueExpr -> OptimizedExpr -> OptimizedSubsitutedExpr
-//    let rec oPopulate locals = function
-//        | Conditional(condition, consequent, alternative) ->
-//            Conditional(
-//                oPopulate locals condition,
-//                oPopulate locals consequent,
-//                oPopulate locals alternative)
-//        | Binding(x, value, body) ->
-//            Binding(
-//                x,
-//                oPopulate locals value,
-//                oPopulate locals body)
-//        | Sequential exprs ->
-//            Sequential (List.map (oPopulate locals) exprs)
-//        | expr -> expr
-//
-//    let rec optimize ((globals, locals) as env) = function
-//        | Sym id ->
-//            match localIndex id locals with
-//            | Some x -> Local x
-//            | None -> Atom(Sym id)
-//        | AndExpr(left, right) ->
-//            Conditional(optimize env left, optimize env right, Atom False)
-//        | OrExpr(left, right) ->
-//            Conditional(optimize env left, Atom True, optimize env right)
-//        | IfExpr(condition, consequent, alternative) ->
-//            Conditional(optimize env condition, optimize env consequent, optimize env alternative)
-//        | CondExpr clauses ->
-//            let rec optimizeClauses = function
-//                | [] -> Atom Empty
-//                | (condition, consequent) :: rest ->
-//                    Conditional(optimize env condition, optimize env consequent, optimizeClauses rest)
-//            optimizeClauses clauses
-//        | LetExpr(param, value, body) ->
-//            let (x, locals) = localInsert param locals
-//            Binding(x, optimize env value, optimize (globals, locals) body)
-//        | LambdaExpr(param, body) ->
-//            let (x, locals) = localInsert param locals
-//            F1(x, optimize (globals, locals) body)
-//        | FreezeExpr body ->
-//            F0(optimize env body)
-//        | TrapExpr(body, handler) ->
-//            Catch(optimize env body, optimize env handler)
-//        | DoExpr _ as exprs ->
-//            Sequential (List.map (optimize env) (flattenDo exprs))
-//        | AppExpr(Sym id, args) when not(List.contains id locals) ->
-//            GlobalApplication(internSymbol id globals, List.map (optimize env) args)
-//        | AppExpr(f, args) ->
-//            Application(optimize env f, List.map (optimize env) args)
-//        | value -> Atom value
+    // TODO: remove the need for unparse
 
     let rec parse ((globals, locals) as env) = function
         | AndExpr(left, right) ->

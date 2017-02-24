@@ -61,6 +61,13 @@ module Evaluator =
             else
                 Done(native globals args)
 
+        // Applying a partial applies the original function
+        // to the previous and current argument lists appended.
+        | Partial(f, previousArgs) as partial ->
+            match args with
+            | [] -> Done(Func(partial))
+            | _ -> applyw globals f (previousArgs @ args)
+
         // Freezes can only be applied to 0 arguments.
         // They evaluate their body with local scope captured where they were formed.
 //        | Freeze impl ->
@@ -116,13 +123,6 @@ module Evaluator =
 //                        then failwithf "%O expected %i arguments, given %i" f arity args.Length
 //                        else defer (Map(List.zip paramz args)) body
 //                | CompiledDefun native -> Done(native globals args)
-
-        // Applying a partial applies the original function
-        // to the previous and current argument lists appended.
-        | Partial(f, previousArgs) as partial ->
-            match args with
-            | [] -> Done(Func(partial))
-            | _ -> applyw globals f (previousArgs @ args)
 
     and private eevalv ((globals, _) as env) expr =
         match eevalw env expr with
