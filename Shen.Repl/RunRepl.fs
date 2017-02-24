@@ -1,4 +1,4 @@
-﻿module Shen
+﻿module Shen.Repl
 
 open System.Threading
 open Kl
