@@ -17,16 +17,6 @@ module Evaluator =
     let private resolveSymbol locals id =
         defaultArg (Map.tryFind id locals) (Sym id)
 
-    /// <summary>
-    /// Looks up id in the global function namespace.
-    /// Raises an error if function not defined.
-    /// </summary>
-    let resolveGlobalFunction globals id =
-        let (_, _, fref) = intern id globals
-        match fref.Value with
-        | Some f -> f
-        | None -> failwithf "Function not defined: %s" id
-
     // Symbols in operator position are either:
     //   * A local variable whose value is a function.
     //   * A symbol that resolves to a global function.
@@ -34,7 +24,7 @@ module Evaluator =
         match Map.tryFind id locals with
         | Some(Func f) -> f
         | Some _ -> failwithf "Function not defined: %s" id
-        | None -> resolveGlobalFunction globals id
+        | None -> lookup globals id
 
     let private merge m0 m1 = Map.fold (fun m k v -> Map.add k v m) m0 m1
 

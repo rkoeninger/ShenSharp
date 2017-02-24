@@ -74,11 +74,11 @@ module Compiler =
                         // ~(rename s) globals ~args
                         appKl fn s args
                 | None ->
-                    // apply globals (resolveGlobalFunction ~s) ~args
+                    // apply globals (lookup globals ~s) ~args
                     appIdExprN fn "apply"
                         [idExpr fn "globals"
                          parens fn
-                            (appIdExprN fn "resolveGlobalFunction"
+                            (appIdExprN fn "lookup"
                                 [idExpr fn "globals"
                                  stringExpr fn s])
                          listExpr fn args]

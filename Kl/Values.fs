@@ -57,6 +57,10 @@ module Values =
         let (_, _, fref) = intern id globals
         fref.Value <- Some f
 
+    /// <summary>
+    /// Looks up id in the global function namespace.
+    /// Raises an error if function not defined.
+    /// </summary>
     let lookup globals id =
         let (_, _, fref) = intern id globals
         match fref.Value with
