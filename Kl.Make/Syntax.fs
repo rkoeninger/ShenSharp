@@ -15,56 +15,57 @@ open Microsoft.FSharp.Compiler.Range
 /// </remarks>
 module internal Syntax =
 
+    let private fileName = "file.fs"
     // Picked large values for line, col because there will be an unpredictable
     // ArrayIndexOutOfBoundsException if the numbers are too small
-    let private loc fn = mkRange fn (mkPos 512 512) (mkPos 1024 1024)
-    let attr fn name value : SynAttribute =  {
+    let private loc = mkRange fileName (mkPos 512 512) (mkPos 1024 1024)
+    let attr name value : SynAttribute =  {
         TypeName = name
         ArgExpr = value
         Target = None
         AppliesToGetterAndSetter = false
-        Range = loc fn
+        Range = loc
     }
-    let ident fn s = new Ident(s, loc fn)
-    let longIdent fn parts = List.map (ident fn) parts
-    let longIdentWithDots fn parts =
+    let ident s = new Ident(s, loc)
+    let longIdent parts = List.map ident parts
+    let longIdentWithDots parts =
         LongIdentWithDots.LongIdentWithDots(
-            List.map (ident fn) parts,
-            List.replicate (List.length parts - 1) (loc fn))
-    let argInfo fn s = SynArgInfo.SynArgInfo([], false, Some(ident fn s))
-    let nullArgInfo() = SynArgInfo.SynArgInfo([], false, None)
-    let anonType fn = SynType.Anon(loc fn)
-    let longType fn parts = SynType.LongIdent(longIdentWithDots fn parts)
-    let shortType fn s = longType fn [s]
-    let listType fn t = SynType.App(shortType fn "list", None, [t], [], None, true, loc fn)
-    let wildPat fn = SynPat.Wild(loc fn)
-    let namePat fn s = SynPat.Named(wildPat fn, ident fn s, false, None, loc fn)
-    let unparenTypedPat fn pat synType = SynPat.Typed(pat, synType, loc fn)
-    let typedPat fn pat synType = SynPat.Paren(unparenTypedPat fn pat synType, loc fn)
-    let listPat fn pats = SynPat.ArrayOrList(false, pats, loc fn)
-    let tuplePat fn pats = SynPat.Paren(SynPat.Tuple(pats, loc fn), loc fn)
-    let appPat fn parts args =
+            List.map ident parts,
+            List.replicate (List.length parts - 1) loc)
+    let argInfo s = SynArgInfo.SynArgInfo([], false, Some(ident s))
+    let nullArgInfo = SynArgInfo.SynArgInfo([], false, None)
+    let anonType = SynType.Anon loc
+    let longType parts = SynType.LongIdent(longIdentWithDots parts)
+    let shortType s = longType [s]
+    let listType t = SynType.App(shortType "list", None, [t], [], None, true, loc)
+    let wildPat = SynPat.Wild loc
+    let namePat s = SynPat.Named(wildPat, ident s, false, None, loc)
+    let unparenTypedPat pat synType = SynPat.Typed(pat, synType, loc)
+    let typedPat pat synType = SynPat.Paren(unparenTypedPat pat synType, loc)
+    let listPat pats = SynPat.ArrayOrList(false, pats, loc)
+    let tuplePat pats = SynPat.Paren(SynPat.Tuple(pats, loc), loc)
+    let appPat parts args =
         SynPat.LongIdent(
-            longIdentWithDots fn parts,
+            longIdentWithDots parts,
             None,
             None,
-            SynConstructorArgs.Pats(args),
+            SynConstructorArgs.Pats args,
             None,
-            loc fn)
-    let unitPat fn = SynPat.Paren(SynPat.Const(SynConst.Unit, loc fn), loc fn)
-    let matchClause fn pat body =
+            loc)
+    let unitPat = SynPat.Paren(SynPat.Const(SynConst.Unit, loc), loc)
+    let matchClause pat body =
         SynMatchClause.Clause(
             pat,
             None,
             body,
-            loc fn,
+            loc,
             SequencePointInfoForTarget.SequencePointAtTarget)
-    let nameTypeSimplePat fn s synType =
+    let nameTypeSimplePat s synType =
         SynSimplePat.Typed(
-            SynSimplePat.Id(ident fn s, None, true, false, false, loc fn),
+            SynSimplePat.Id(ident s, None, true, false, false, loc),
             synType,
-            loc fn)
-    let simpleBinding fn pat value =
+            loc)
+    let simpleBinding pat value =
         SynBinding.Binding(
             None,
             SynBindingKind.NormalBinding,
@@ -74,14 +75,14 @@ module internal Syntax =
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
-                SynValInfo.SynValInfo([], nullArgInfo()),
+                SynValInfo.SynValInfo([], nullArgInfo),
                 None),
             pat,
             None,
             value,
-            loc fn,
+            loc,
             SequencePointInfoForBinding.NoSequencePointAtLetBinding)
-    let letAttrsMultiParamBinding fn attrs name paramz body =
+    let letAttrsMultiParamBinding attrs name paramz body =
         SynBinding.Binding(
             None,
             SynBindingKind.NormalBinding,
@@ -91,24 +92,24 @@ module internal Syntax =
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
-                SynValInfo.SynValInfo([List.map (fst >> argInfo fn) paramz], nullArgInfo()),
+                SynValInfo.SynValInfo([List.map (fst >> argInfo) paramz], nullArgInfo),
                 None),
             SynPat.LongIdent(
-                longIdentWithDots fn [name],
+                longIdentWithDots [name],
                 None,
                 None,
                 SynConstructorArgs.Pats(
-                    [tuplePat fn
+                    [tuplePat
                         (List.map
-                            (fun (s, synType) -> unparenTypedPat fn (namePat fn s) synType)
+                            (fun (s, synType) -> unparenTypedPat (namePat s) synType)
                             paramz)]),
                 None,
-                loc fn),
+                loc),
             None,
             body,
-            loc fn,
-            SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
-    let letBindingAccessWithAttrs fn attrs access name paramz body =
+            loc,
+            SequencePointInfoForBinding.SequencePointAtBinding loc)
+    let letBindingAccessWithAttrs attrs access name paramz body =
         SynBinding.Binding(
             access,
             SynBindingKind.NormalBinding,
@@ -118,24 +119,24 @@ module internal Syntax =
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
-                SynValInfo.SynValInfo(List.map (fun (s, _) -> [argInfo fn s]) paramz, nullArgInfo()),
+                SynValInfo.SynValInfo(List.map (fun (s, _) -> [argInfo s]) paramz, nullArgInfo),
                 None),
             SynPat.LongIdent(
-                longIdentWithDots fn [name],
+                longIdentWithDots [name],
                 None,
                 None,
                 SynConstructorArgs.Pats(
-                    List.map (fun (s, synType) -> typedPat fn (namePat fn s) synType) paramz),
+                    List.map (fun (s, synType) -> typedPat (namePat s) synType) paramz),
                 None,
-                loc fn),
+                loc),
             None,
             body,
-            loc fn,
-            SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
-    let letAttrsBinding fn attrs = letBindingAccessWithAttrs fn attrs None
-    let letBinding fn = letAttrsBinding fn []
-    let letBindingPrivate fn = letBindingAccessWithAttrs fn [] (Some SynAccess.Private)
-    let letUnitBinding fn attrs name body =
+            loc,
+            SequencePointInfoForBinding.SequencePointAtBinding loc)
+    let letAttrsBinding attrs = letBindingAccessWithAttrs attrs None
+    let letBinding = letAttrsBinding []
+    let letBindingPrivate = letBindingAccessWithAttrs [] (Some SynAccess.Private)
+    let letUnitBinding attrs name body =
         SynBinding.Binding(
             None,
             SynBindingKind.NormalBinding,
@@ -145,90 +146,85 @@ module internal Syntax =
             PreXmlDoc.Empty,
             SynValData.SynValData(
                 None,
-                SynValInfo.SynValInfo([[]], nullArgInfo()),
+                SynValInfo.SynValInfo([[]], nullArgInfo),
                 None),
             SynPat.LongIdent(
-                longIdentWithDots fn [name],
+                longIdentWithDots [name],
                 None,
                 None,
-                SynConstructorArgs.Pats([unitPat fn]),
+                SynConstructorArgs.Pats [unitPat],
                 None,
-                loc fn),
+                loc),
             None,
             body,
-            loc fn,
-            SequencePointInfoForBinding.SequencePointAtBinding(loc fn))
-    let parenExpr fn expr = SynExpr.Paren(expr, loc fn, None, loc fn)
-    let parens fn = function
+            loc,
+            SequencePointInfoForBinding.SequencePointAtBinding loc)
+    let parenExpr expr = SynExpr.Paren(expr, loc, None, loc)
+    let parens = function
         | SynExpr.Paren _ as e -> e
-        | e -> parenExpr fn e
-    let unitExpr fn = SynExpr.Const(SynConst.Unit, loc fn)
-    let boolExpr fn b = SynExpr.Const(SynConst.Bool b, loc fn)
-    let intExpr fn n = SynExpr.Const(SynConst.Int32 n, loc fn)
-    let decimalExpr fn n = SynExpr.Const(SynConst.Decimal n, loc fn)
-    let stringExpr fn s = SynExpr.Const(SynConst.String(s, loc fn), loc fn)
-    let idExpr fn s = SynExpr.Ident(ident fn s)
-    let longIdExpr fn parts = SynExpr.LongIdent(false, longIdentWithDots fn parts, None, loc fn)
-    let indexSetExpr fn obj index value =
+        | e -> parenExpr e
+    let unitExpr = SynExpr.Const(SynConst.Unit, loc)
+    let boolExpr b = SynExpr.Const(SynConst.Bool b, loc)
+    let intExpr n = SynExpr.Const(SynConst.Int32 n, loc)
+    let decimalExpr n = SynExpr.Const(SynConst.Decimal n, loc)
+    let stringExpr s = SynExpr.Const(SynConst.String(s, loc), loc)
+    let idExpr s = SynExpr.Ident(ident s)
+    let longIdExpr parts = SynExpr.LongIdent(false, longIdentWithDots parts, None, loc)
+    let indexSetExpr obj index value =
         SynExpr.DotIndexedSet(
             obj,
             [SynIndexerArg.One index],
             value,
-            loc fn,
-            loc fn,
-            loc fn)
-    let appExpr fn f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc fn)
-    let rec appExprN fn f = function
-        | [] -> appExpr fn f (unitExpr fn)
-        | [arg] -> appExpr fn f arg
-        | arg :: args -> appExprN fn (appExpr fn f arg) args
-    let infixExpr fn op left right =
+            loc,
+            loc,
+            loc)
+    let appExpr f arg = SynExpr.App(ExprAtomicFlag.NonAtomic, false, f, arg, loc)
+    let rec appExprN f = function
+        | [] -> appExpr f unitExpr
+        | [arg] -> appExpr f arg
+        | arg :: args -> appExprN (appExpr f arg) args
+    let infixExpr op left right =
         SynExpr.App(
             ExprAtomicFlag.NonAtomic,
             false,
-            SynExpr.App(ExprAtomicFlag.NonAtomic, true, op, left, loc fn),
+            SynExpr.App(ExprAtomicFlag.NonAtomic, true, op, left, loc),
             right,
-            loc fn)
-    let appIdExpr fn s arg = parens fn (appExpr fn (idExpr fn s) arg)
-    let appIdExprN fn s args = appExprN fn (idExpr fn s) args
-    let infixIdExpr fn s left right = parens fn (infixExpr fn (idExpr fn s) left right)
-    let rec nestedAppIdExpr fn ss args =
-        match ss with
-        | [] -> failwith "nested call can't be empty"
-        | [s] -> parens fn (appIdExpr fn s args)
-        | s :: ss -> parens fn (appIdExpr fn s (nestedAppIdExpr fn ss args))
-    let ifExpr fn condition consequent alternative =
-        parens fn
+            loc)
+    let appIdExpr s arg = parens (appExpr (idExpr s) arg)
+    let appIdExprN s args = appExprN (idExpr s) args
+    let infixIdExpr s left right = parens (infixExpr (idExpr s) left right)
+    let ifExpr condition consequent alternative =
+        parens
             (SynExpr.IfThenElse(
                 condition,
                 consequent,
                 Some alternative,
                 SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
                 false,
-                loc fn,
-                loc fn))
-    let letExpr fn symbol value body =
+                loc,
+                loc))
+    let letExpr symbol value body =
         SynExpr.LetOrUse(
             false,
             false,
-            [simpleBinding fn (namePat fn symbol) value],
+            [simpleBinding (namePat symbol) value],
             body,
-            loc fn)
-    let tryWithExpr fn body e handler =
+            loc)
+    let tryWithExpr body e handler =
         SynExpr.TryWith(
             body,
-            loc fn,
+            loc,
             [SynMatchClause.Clause(
-                namePat fn e,
+                namePat e,
                 None,
                 handler,
-                loc fn,
+                loc,
                 SequencePointInfoForTarget.SequencePointAtTarget)],
-            loc fn,
-            loc fn,
-            SequencePointInfoForTry.SequencePointAtTry(loc fn),
-            SequencePointInfoForWith.SequencePointAtWith(loc fn))
-    let rec sequentialExpr fn = function
+            loc,
+            loc,
+            SequencePointInfoForTry.SequencePointAtTry loc,
+            SequencePointInfoForWith.SequencePointAtWith loc)
+    let rec sequentialExpr = function
         | [] -> failwith "sequential cannot be empty"
         | [expr] -> expr
         | expr :: rest ->
@@ -236,101 +232,89 @@ module internal Syntax =
                 SequencePointInfoForSeq.SequencePointsAtSeq,
                 true,
                 expr,
-                sequentialExpr fn rest,
-                loc fn)
-    let doExpr fn expr = SynExpr.Do(expr, loc fn)
-    let tupleExpr fn vals =
-        parens fn
+                sequentialExpr rest,
+                loc)
+    let doExpr expr = SynExpr.Do(expr, loc)
+    let tupleExpr vals =
+        parens
             (SynExpr.Tuple(
                 vals,
-                List.replicate (List.length vals - 1) (loc fn),
-                loc fn))
-    let listExpr fn vals = SynExpr.ArrayOrList(false, vals, loc fn)
-    let arrayExpr fn vals = SynExpr.ArrayOrList(true, vals, loc fn)
-    let rec lambdaExpr fn paramz body =
-        parens fn
+                List.replicate (List.length vals - 1) loc,
+                loc))
+    let listExpr vals = SynExpr.ArrayOrList(false, vals, loc)
+    let arrayExpr vals = SynExpr.ArrayOrList(true, vals, loc)
+    let rec lambdaExpr paramz body =
+        parens
             (match paramz with
              | [] ->
                 SynExpr.Lambda(
                     false,
                     false,
-                    SynSimplePats.SimplePats([], loc fn),
+                    SynSimplePats.SimplePats([], loc),
                     body,
-                    loc fn)
+                    loc)
              | [s, synType] ->
                 SynExpr.Lambda(
                     false,
                     false,
-                    SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
+                    SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
                     body,
-                    loc fn)
+                    loc)
              | (s, synType) :: paramz ->
                 SynExpr.Lambda(
                     false,
                     false,
-                    SynSimplePats.SimplePats([nameTypeSimplePat fn s synType], loc fn),
-                    lambdaExpr fn paramz body,
-                    loc fn))
-    let matchLambdaExpr fn clauses =
+                    SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
+                    lambdaExpr paramz body,
+                    loc))
+    let matchLambdaExpr clauses =
         SynExpr.MatchLambda(
             false,
-            loc fn,
+            loc,
             clauses,
-            SequencePointInfoForBinding.SequencePointAtBinding(loc fn),
-            loc fn)
-    let matchExpr fn key clauses =
+            SequencePointInfoForBinding.SequencePointAtBinding loc,
+            loc)
+    let matchExpr key clauses =
         SynExpr.Match(
-            SequencePointInfoForBinding.SequencePointAtBinding(loc fn),
+            SequencePointInfoForBinding.SequencePointAtBinding loc,
             key,
             clauses,
             false,
-            loc fn)
-    let openDecl fn parts = SynModuleDecl.Open(longIdentWithDots fn parts, loc fn)
-    let letAttrsDecl fn attrs name paramz body =
-        SynModuleDecl.Let(
-            false,
-            [letAttrsBinding fn attrs name paramz body],
-            loc fn)
-    let letAttrsMultiParamDecl fn attrs name paramz body =
-        SynModuleDecl.Let(
-            false,
-            [letAttrsMultiParamBinding fn attrs name paramz body],
-            loc fn)
-    let letDecl fn name paramz body =
-        SynModuleDecl.Let(
-            false,
-            [letBinding fn name paramz body],
-            loc fn)
-    let letUnitAttrsDecl fn attrs name body =
-        SynModuleDecl.Let(
-            false,
-            [letUnitBinding fn attrs name body],
-            loc fn)
-    let letMultiDecl fn bindings = SynModuleDecl.Let(true, bindings, loc fn)
-    let extnAttr fn =
-        attr fn
-            (longIdentWithDots fn [
+            loc)
+    let openDecl parts = SynModuleDecl.Open(longIdentWithDots parts, loc)
+    let letAttrsDecl attrs name paramz body =
+        SynModuleDecl.Let(false, [letAttrsBinding attrs name paramz body], loc)
+    let letAttrsMultiParamDecl attrs name paramz body =
+        SynModuleDecl.Let(false, [letAttrsMultiParamBinding attrs name paramz body], loc)
+    let letDecl name paramz body =
+        SynModuleDecl.Let(false, [letBinding name paramz body], loc)
+    let letUnitAttrsDecl attrs name body =
+        SynModuleDecl.Let(false, [letUnitBinding attrs name body], loc)
+    let letMultiDecl bindings = SynModuleDecl.Let(true, bindings, loc)
+    let extnAttr =
+        attr
+            (longIdentWithDots [
                 "System"
                 "Runtime"
                 "CompilerServices"
                 "Extension"])
-            (unitExpr fn)
+            unitExpr
     let sjoin sep (parts: string list) = String.Join(sep, parts)
-    let moduleFile fn nameParts attrs decls =
+    let moduleFile nameParts attrs decls =
         ParsedInput.ImplFile(
             ParsedImplFileInput.ParsedImplFileInput(
-                fn + ".fs",
+                fileName,
                 false,
-                QualifiedNameOfFile.QualifiedNameOfFile(ident fn (sjoin "." nameParts)),
+                QualifiedNameOfFile.QualifiedNameOfFile(ident(sjoin "." nameParts)),
                 [],
                 [],
                 [SynModuleOrNamespace.SynModuleOrNamespace(
-                    (List.map (ident fn) nameParts),
+                    (List.map ident nameParts),
                     false,
                     true,
                     decls,
                     PreXmlDoc.Empty,
                     attrs,
                     None,
-                    loc fn)],
+                    loc)],
                 (false, false)))
