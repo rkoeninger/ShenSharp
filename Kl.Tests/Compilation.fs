@@ -14,10 +14,10 @@ open Assertions
 [<TestFixture>]
 module Compilation =
 
-    let pars = parse (newGlobals(), Set.empty)
+    let pars globals = parse (globals, Set.empty)
 
     let fn globals name paramz body =
-        define globals name (Interpreted(Map.empty, paramz, pars <| read body))
+        define globals name (Interpreted(Map.empty, paramz, pars globals <| read body))
 
     let sy globals name value =
         assign globals name value
@@ -32,7 +32,7 @@ module Shen.Runtime
 "
         let ast = CodeFormatter.Parse("./test.fs", text)
         Assert.IsTrue(CodeFormatter.IsValidAST ast)
-        printfn "%A" ast
+        //printfn "%A" ast
 
     [<Test>]
     let ``test build``() =
@@ -45,10 +45,12 @@ module Shen.Runtime
         fn globals "curried-defun" ["X"] "(do X (lambda Y (+ X Y)))"
         fn globals "freeze-in-defun" ["X"] "(do X (freeze X))"
         fn globals "partial-test" [] "((+ 1) 2)"
+        fn globals "curried+" ["X"] "(lambda Y (+ X Y))"
+        fn globals "overapplication" [] "(curried+ 1 2)"
         sy globals "array-value" (Vec [|Int 1; Int 2; Int 3|])
         sy globals "cons-test" (Cons(Int 1, Int 2))
-        sy globals "lambda-test" (Func(Interpreted(Map.empty, ["X"], pars <| toCons [Sym "+"; Sym "X"; Int 1])))
+        sy globals "lambda-test" (Func(Interpreted(Map.empty, ["X"], pars globals <| toCons [Sym "+"; Sym "X"; Int 1])))
         let ast = compile ["Shen"; "Runtime"] globals
         let format = {FormatConfig.Default with PageWidth = 1024}
         printfn "%s" (CodeFormatter.FormatAST(ast, "file", None, format))
-        printfn "%A" ast
+        //printfn "%A" ast

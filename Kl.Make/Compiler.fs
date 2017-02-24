@@ -60,7 +60,12 @@ module Compiler =
                 | Some systemf ->
                     let arity = functionArity systemf
                     if args.Length > arity then
-                        failwith "Can't compile over application"
+                        // vapply globals ~(buildApp context f args0) args1
+                        let (args0, args1) = List.splitAt arity args
+                        appIdExprN fn "vapply"
+                            [idExpr fn "globals"
+                             buildApp context f args0
+                             listExpr fn args1]
                     elif args.Length < arity then
                         // Func(Partial(Compiled(~arity, ~(rename s)), ~args))
                         nestedAppIdExpr fn ["Func"; "Partial"]
