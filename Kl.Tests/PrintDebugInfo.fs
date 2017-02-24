@@ -10,10 +10,10 @@ open Kl.Startup
 open Assertions
 
 [<TestFixture>]
-type ``Print Debug Info``() =
+module ``Print Debug Info`` =
 
     [<Test>]
-    member this.``print platform information``() =
+    let ``print platform information``() =
         let globals = baseGlobals()
         for pair in globals.Symbols do
             let (_, sref, _) = pair.Value
@@ -22,7 +22,7 @@ type ``Print Debug Info``() =
             | _ -> ()
 
     [<Test>]
-    member this.``demo ToString() for values``() =
+    let ``demo ToString() for values``() =
         let pars = parse (newGlobals(), Set.empty)
         printfn "%O" (Int 12)
         printfn "%O" (Num 34.12m)

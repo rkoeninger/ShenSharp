@@ -7,57 +7,57 @@ open Kl.Startup
 open Assertions
 
 [<TestFixture>]
-type ``Tail Call Optimization``() =
+module ``Tail Call Optimization`` =
 
     let attempt body =
         assertTrue (sprintf "(defun count-down (X) %s) (count-down 20000)" body)
 
     [<Test>]
-    member this.``optimize tail recursive calls in an if consequent expression``() =
+    let ``optimize tail recursive calls in an if consequent expression``() =
         attempt "(if (> X 0) (count-down (- X 1)) true)"
 
     [<Test>]
-    member this.``optimize tail recursive calls in an if alternative expression``() =
+    let ``optimize tail recursive calls in an if alternative expression``() =
         attempt "(if (<= X 0) true (count-down (- X 1)))"
 
     [<Test>]
-    member this.``optimize tail recursive calls in nested if expressions``() =
+    let ``optimize tail recursive calls in nested if expressions``() =
         attempt "(if (<= X 0) true (if true (count-down (- X 1)) false))"
 
     [<Test>]
-    member this.``optimize tail recursive calls in a let body``() =
+    let ``optimize tail recursive calls in a let body``() =
         attempt "(if (<= X 0) true (let F 1 (count-down (- X F))))"
 
     [<Test>]
-    member this.``optimize tail recursive calls in a first cond consequent``() =
+    let ``optimize tail recursive calls in a first cond consequent``() =
         attempt "(cond ((> X 0) (count-down (- X 1))) (true true))"
 
     [<Test>]
-    member this.``optimize tail recursive calls in a last cond consequent``() =
+    let ``optimize tail recursive calls in a last cond consequent``() =
         attempt "(cond ((<= X 0) true) (true (count-down (- X 1))))"
 
     [<Test>]
-    member this.``optimize tail recursive calls at the end of a do``() =
+    let ``optimize tail recursive calls at the end of a do``() =
         attempt "(do 0 (if (<= X 0) true (do 0 (count-down (- X 1)))))"
 
     [<Test>]
-    member this.``optimize tail recursive calls in handler of trap expression``() =
+    let ``optimize tail recursive calls in handler of trap expression``() =
         attempt "(trap-error (if (> X 0) (simple-error \"recur\") true) (lambda E (count-down (- X 1))))"
 
     [<Test>]
-    member this.``optimize through freeze calls``() =
+    let ``optimize through freeze calls``() =
         attempt "(if (<= X 0) true ((freeze (count-down (- X 1)))))"
 
     [<Test>]
-    member this.``optimize through lambda calls``() =
+    let ``optimize through lambda calls``() =
         attempt "(if (<= X 0) true ((lambda Y (count-down (- X Y))) 1))"
 
     [<Test>]
-    member this.``optimize through recursive lambdas``() =
+    let ``optimize through recursive lambdas``() =
         assertTrue "(let F (lambda F (lambda X (if (<= X 0) true ((F F) (- X 1))))) ((F F) 20000))"
 
     [<Test>]
-    member this.``optimize through recursive freezes``() =
+    let ``optimize through recursive freezes``() =
         assertTrue
             "(set counter 20000)
              (defun decrement () (set counter (- (value counter) 1)))
@@ -65,7 +65,7 @@ type ``Tail Call Optimization``() =
              ((value count-down))"
 
     [<Test>]
-    member this.``optimize through zero-arg defuns``() =
+    let ``optimize through zero-arg defuns``() =
         assertTrue
             "(set counter 20000)
              (defun decrement () (set counter (- (value counter) 1)))
@@ -73,7 +73,7 @@ type ``Tail Call Optimization``() =
              (count-down)"
 
     [<Test>]
-    member this.``optimize mutually-recursive functions``() =
+    let ``optimize mutually-recursive functions``() =
         assertFalse
             "(defun odd? (X) (if (= 0 X) false (even? (- X 1))))
              (defun even? (X) (if (= 0 X) true (odd? (- X 1))))

@@ -7,10 +7,10 @@ open Kl.Startup
 open Assertions
 
 [<TestFixture>]
-type ``Evaluation Order``() =
+module ``Evaluation Order`` =
 
     [<Test>]
-    member this.``argument expressions in applications should be evaluated left to right``() =
+    let ``argument expressions in applications should be evaluated left to right``() =
         assertEq (Str "abc") <| runAll
             "(set state \"a\")
              (defun order (X Body) (do (set state (cn (value state) (str X))) Body))
@@ -18,7 +18,7 @@ type ``Evaluation Order``() =
              (value state)"
 
     [<Test>]
-    member this.``operator expression should be evaluated before arguments``() =
+    let ``operator expression should be evaluated before arguments``() =
         assertEq (Str "abcd") <| runAll
             "(set state \"a\")
              (defun order (X Body) (do (set state (cn (value state) (str X))) Body))

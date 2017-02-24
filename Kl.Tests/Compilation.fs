@@ -12,7 +12,7 @@ open Kl.Make.Compiler
 open Assertions
 
 [<TestFixture>]
-type Compilation() =
+module Compilation =
 
     let pars = parse (newGlobals(), Set.empty)
 
@@ -23,7 +23,7 @@ type Compilation() =
         assign globals name value
 
     [<Test>]
-    member this.``test parse``() =
+    let ``test parse``() =
         let text = "
 [<System.Runtime.CompilerServices.Extension>]
 module Shen.Runtime
@@ -35,7 +35,7 @@ module Shen.Runtime
         printfn "%A" ast
 
     [<Test>]
-    member this.``test build``() =
+    let ``test build``() =
         let globals = baseGlobals()
         fn globals "xor" ["X"; "Y"] "(and (not (and X Y)) (or X Y))"
         fn globals "factorial" ["N"] "(if (= N 0) 1 (* N (factorial (- N 1))))"
