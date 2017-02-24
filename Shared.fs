@@ -7,7 +7,7 @@ open System.Runtime.InteropServices
 let Author = "Robert Koeninger"
 
 [<Literal>]
-let Version = "0.5.0.0"
+let Version = "0.6.0.0"
 
 [<assembly: AssemblyProduct "ShenSharp">]
 [<assembly: AssemblyDescription "Shen for the Common Language Runtime">]

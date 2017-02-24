@@ -16,7 +16,10 @@ type ``Print Debug Info``() =
     member this.``print platform information``() =
         let globals = baseGlobals()
         for pair in globals.Symbols do
-            printfn "%s = %O" pair.Key pair.Value
+            let (_, sref, _) = pair.Value
+            match sref.Value with
+            | Some value -> printfn "%s = %O" pair.Key value
+            | _ -> ()
 
     [<Test>]
     member this.``demo ToString() for values``() =
