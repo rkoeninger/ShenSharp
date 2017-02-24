@@ -140,35 +140,29 @@ module Builtins =
 
     let kl_cd globals = function
         | [Str path] ->
-            let (_, sref, _) = intern "*home-directory*" globals
             let current =
-                match sref.Value with
-                | Some(Str s) -> s
-                | _ -> ""
+                match retrieve globals "*home-directory*" with
+                | Str s -> s
+                | _ -> Environment.CurrentDirectory
             let fullPath = Path.GetFullPath(Path.Combine(current, path))
             Environment.CurrentDirectory <- fullPath
-            sref.Value <- Some(Str fullPath)
+            assign globals "*home-directory*" (Str fullPath)
             Str fullPath
         | args -> argsErr "cd" ["string"] args
 
     let kl_pwd globals = function
-        | [] ->
-            let (_, sref, _) = intern "*home-directory*" globals
-            match sref.Value with
-            | Some value -> value
-            | None -> Empty
+        | [] -> retrieve globals "*home-directory*"
         | args -> argsErr "pwd" [] args
 
     let kl_ls globals = function
         | [] ->
-            let (_, sref, _) = intern "*home-directory*" globals
-            match sref.Value with
-            | Some(Str s) ->
-                Directory.GetFileSystemEntries s
+            match retrieve globals "*home-directory*" with
+            | Str path ->
+                Directory.GetFileSystemEntries path
                 |> Array.toList
                 |> List.map (Path.GetFileName >> Str)
                 |> toCons
-            | _ -> Empty
+            | _ -> failwith "*home-directory* is expected to be a string"
         | args -> argsErr "ls" [] args
 
     let console = Pipe {
