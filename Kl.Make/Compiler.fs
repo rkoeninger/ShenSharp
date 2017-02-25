@@ -39,17 +39,16 @@ module Compiler =
         | _, FsUnit -> appIgnore fsExpr
         | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
-    let rec private buildDo ((globals, locals) as context) expr =
-        let flatExpr = List.map (build context) (flattenDo expr)
+    let rec private buildSeq ((globals, locals) as context) exprs =
         let ignoreButLast i e =
-            if i < List.length flatExpr - 1
+            if i < List.length exprs - 1
                 then e |> toType FsUnit
                 else fst e
-        sequentialExpr (List.mapi ignoreButLast flatExpr), snd (List.last flatExpr)
+        sequentialExpr (List.mapi ignoreButLast exprs), snd (List.last exprs)
 
-    and private buildApp ((globals, locals) as context) f args =
+    and private buildApp ((globals, locals) as context) (f: Expr) args =
         match f with
-        | Sym s ->
+        | Constant(Sym s) ->
             if Set.contains s locals then
                 // vapply globals ~(rename s) ~args
                 appIdExprN "vapply"
@@ -94,76 +93,80 @@ module Compiler =
             // vapply globals ~f ~args
             appIdExprN "vapply"
                 [idExpr "globals"
-                 build context f |> toType KlValue
+                 buildExpr context f |> toType KlValue
                  listExpr args]
 
-    and private build ((globals, locals) as context) = function
-        | Empty -> idExpr "Empty", KlValue
-        | Num x -> appIdExpr "Num" (decimalExpr x), KlValue
-        | Str s -> appIdExpr "Str" (stringExpr s), KlValue
-        | Sym "true" -> boolExpr true, FsBoolean
-        | Sym "false" -> boolExpr false, FsBoolean
-        | Sym s ->
+    and private buildExpr ((globals, locals) as context) (expr : Expr) =
+        match expr with
+        | Constant Empty -> idExpr "Empty", KlValue
+        | Constant(Num x) -> appIdExpr "Num" (decimalExpr x), KlValue
+        | Constant(Str s) -> appIdExpr "Str" (stringExpr s), KlValue
+        | Constant(Bool b) -> boolExpr b, FsBoolean
+        | Constant(Sym s) ->
             // ``kl_symbol-name`` OR Sym "symbol-name"
             if Set.contains s locals
                 then idExpr (rename s), KlValue
                 else appIdExpr "Sym" (stringExpr s), KlValue
-        | AndExpr(left, right) ->
+        | Conjunction(left, right) ->
             infixIdExpr "op_BooleanAnd"
-                (parens (build context left  |> toType FsBoolean))
-                (parens (build context right |> toType FsBoolean)), FsBoolean
-        | OrExpr(left, right) ->
+                (parens (buildExpr context left  |> toType FsBoolean))
+                (parens (buildExpr context right |> toType FsBoolean)), FsBoolean
+        | Disjunction(left, right) ->
             infixIdExpr "op_BooleanOr"
-                 (parens (build context left  |> toType FsBoolean))
-                 (parens (build context right |> toType FsBoolean)), FsBoolean
-        | IfExpr(condition, consequent, alternative) ->
+                 (parens (buildExpr context left  |> toType FsBoolean))
+                 (parens (buildExpr context right |> toType FsBoolean)), FsBoolean
+        | Conditional(condition, consequent, alternative) ->
             ifExpr
-                (build context condition   |> toType FsBoolean)
-                (build context consequent  |> toType KlValue)
-                (build context alternative |> toType KlValue), KlValue
-        | CondExpr clauses ->
-            let rec compileClauses = function
-                | [] -> (appIdExpr "failwith" (stringExpr "No condition was true"))
-                | (Sym "true", consequent) :: _ ->
-                    build context consequent |> toType KlValue
-                | (condition, consequent) :: rest ->
-                    ifExpr
-                        (build context condition  |> toType FsBoolean)
-                        (build context consequent |> toType KlValue)
-                        (compileClauses rest)
-            compileClauses clauses, KlValue
-        | LetExpr(param, binding, body) ->
+                (buildExpr context condition   |> toType FsBoolean)
+                (buildExpr context consequent  |> toType KlValue)
+                (buildExpr context alternative |> toType KlValue), KlValue
+        | Binding(param, binding, body) ->
             letExpr
                 (rename param)
-                (build context binding |> toType KlValue)
-                (build (globals, Set.add param locals) body |> toType KlValue), KlValue
-        | LambdaExpr(param, body) ->
+                (buildExpr context binding |> toType KlValue)
+                (buildExpr (globals, Set.add param locals) body |> toType KlValue), KlValue
+        | Anonymous(Some param, body) ->
             compileF globals locals [param] body, KlValue
-        | FreezeExpr body ->
+        | Anonymous(None, body) ->
             compileF globals locals [] body, KlValue
-        | TrapExpr(body, handler) ->
+        | Catch(body, handler) ->
             let errExpr = appIdExpr "Err" (longIdExpr ["e"; "Message"])
             let handlerExpr =
                 match handler with
-                | LambdaExpr(param, body) ->
+                | Anonymous(Some param, body) ->
                     // let ~(rename param) = Err e.Message in ~body
                     (letExpr
                         (rename param)
                         errExpr
-                        (build (globals, Set.add param locals) body |> toType KlValue))
+                        (buildExpr (globals, Set.add param locals) body |> toType KlValue))
                 | f -> buildApp context f [errExpr]
-            tryWithExpr (build context body |> toType KlValue) "e" handlerExpr, KlValue
-        | DoExpr _ as expr -> buildDo context expr
-        | DefunExpr _ -> failwith "Can't compile defun not at top level"
-        | AppExpr(Sym "not", [x]) ->
-            appIdExpr "not" (build context x |> toType FsBoolean), FsBoolean
-        | AppExpr(Sym "=", [x; y]) ->
-            let xExpr = build context x
-            let yExpr = build context y
+            tryWithExpr (buildExpr context body |> toType KlValue) "e" handlerExpr, KlValue
+        | Sequential exprs ->
+            buildSeq context (List.map (buildExpr context) exprs)
+        | Definition _ ->
+            failwith "Can't compile defun not at top level"
+        | Assignment((id, _, _), expr) ->
+            appIdExprN (rename "set")
+                [idExpr "globals"
+                 listExpr
+                    [appIdExpr "Sym" (stringExpr id)
+                     buildExpr context expr |> toType KlValue]], KlValue
+        | Retrieval((id, _, _)) ->
+            appIdExprN (rename "value")
+                [idExpr "globals"
+                 listExpr
+                    [appIdExpr "Sym" (stringExpr id)]], KlValue
+        | GlobalCall(("not", _, _), [expr]) ->
+            appIdExpr "not" (buildExpr context expr |> toType FsBoolean), FsBoolean
+        | GlobalCall(("=", _, _), [x; y]) ->
+            let xExpr = buildExpr context x
+            let yExpr = buildExpr context y
             let t = simplestCommonType (snd xExpr) (snd yExpr)
             infixIdExpr "op_Equality" (xExpr |> toType t) (yExpr |> toType t), FsBoolean
-        | AppExpr(f, args) ->
-            buildApp context f (List.map (build context >> toType KlValue) args), KlValue
+        | GlobalCall((id, _, _), args) ->
+            buildApp context (Constant(Sym id)) (List.map (buildExpr context >> toType KlValue) args), KlValue
+        | Application(f, args) ->
+            buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
         | klExpr -> failwithf "Unable to compile: %O" klExpr
 
     and private compileF globals locals paramz body =
@@ -177,7 +180,7 @@ module Compiler =
                          (matchLambdaExpr
                              [matchClause
                                  (listPat(List.map (rename >> namePat) paramz))
-                                 (build
+                                 (buildExpr
                                      (globals, Set.union locals (Set.ofList paramz))
                                      body |> toType KlValue)
                               matchClause
@@ -202,7 +205,7 @@ module Compiler =
                 (matchLambdaExpr
                     [matchClause
                         (listPat(List.map (rename >> namePat) paramz))
-                        (build (globals, Set.ofList paramz) (unparse body) |> toType KlValue)
+                        (buildExpr (globals, Set.ofList paramz) body |> toType KlValue)
                      matchClause
                         (namePat "args")
                         (appIdExprN "argsErr"
@@ -238,7 +241,7 @@ module Compiler =
         | Func(Interpreted(locals, paramz, body)) ->
             if not(Map.isEmpty locals) then
                 failwith "Can't build non-empty Locals"
-            compileF globals Set.empty paramz (unparse body)
+            compileF globals Set.empty paramz body
         | value -> failwithf "Can't build value: %A" value
 
     let private installSymbol (globals as context) (name, (_, sref: Value option ref, _)) =
