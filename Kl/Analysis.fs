@@ -83,7 +83,6 @@ module Analysis =
 
     // TODO: substitute local variables in Exprs
     // TODO: locals can be function scoped since captured variables are substituted.
-    // TODO: remove the need for unparse
 
     let rec parse ((globals, locals) as env) = function
         | AndExpr(left, right) ->

@@ -164,11 +164,6 @@ module Extensions =
             | true, x -> Some x
             | false, _ -> None
 
-    let (|Greater|Equal|Lesser|) = function
-        | x, y when x > y -> Greater
-        | x, y when x < y -> Lesser
-        | _ -> Equal
-
 // Console reader is an adapter that buffers input by line to provide
 // character stream to Shen REPL in expected format.
 type internal ConsoleReader() =

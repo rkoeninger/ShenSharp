@@ -28,45 +28,41 @@ module Evaluator =
 
     let private merge m0 m1 = Map.fold (fun m k v -> Map.add k v m) m0 m1
 
-    // Applies function to arguments.
-    // Could return deferred work or a partial function.
-    let rec private applyw globals f args =
+    // Returns Partial if fewer args than function arity.
+    // 
+    let rec private applyw globals f (args: Value list) =
+        let argc = args.Length
+        let curried v args =
+            match v with
+            | Func f -> applyw globals f args
+            | _ -> failwith "Too many arguments passed to function"
         match f with
 
         | Interpreted(locals, paramz, body) ->
-            if List.length args < List.length paramz then
-                match args with
-                | [] -> Done(Func f)
-                | _ -> Done(Func(Partial(f, args)))
-            elif List.length args > List.length paramz then
-                let (args0, args1) = List.splitAt (List.length paramz) args
-                let v = eevalv (globals, merge locals (Map(List.zip paramz args0))) body
-                match v with
-                | Func f -> applyw globals f args1
-                | _ -> failwith "Too many arguments passed to function"
+            if argc < paramz.Length then
+                Done(Func(if argc = 0 then f else Partial(f, args)))
+            elif argc > paramz.Length then
+                let (args0, args1) = List.splitAt paramz.Length args
+                let locals = merge locals (Map(List.zip paramz args0))
+                curried (eevalv (globals, locals) body) args1
             else
                 defer (merge locals (Map(List.zip paramz args))) body
 
         | Compiled(arity, native) ->
-            if List.length args < arity then
-                match args with
-                | [] -> Done(Func f)
-                | _ -> Done(Func(Partial(f, args)))
-            elif List.length args > arity then
+            if args.Length < arity then
+                Done(Func(if argc = 0 then f else Partial(f, args)))
+            elif args.Length > arity then
                 let (args0, args1) = List.splitAt arity args
-                let v = native globals args0
-                match v with
-                | Func f -> applyw globals f args1
-                | _ -> failwith "Too many arguments passed to function"
+                curried (native globals args0) args1
             else
                 Done(native globals args)
 
         // Applying a partial applies the original function
         // to the previous and current argument lists appended.
-        | Partial(f, previousArgs) as partial ->
-            match args with
-            | [] -> Done(Func(partial))
-            | _ -> applyw globals f (previousArgs @ args)
+        | Partial(inner, args0) as partial ->
+            if argc = 0
+                then Done(Func f)
+                else applyw globals inner (args0 @ args)
 
         // Freezes can only be applied to 0 arguments.
         // They evaluate their body with local scope captured where they were formed.
