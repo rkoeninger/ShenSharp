@@ -9,3 +9,6 @@ build_script:
   - mono Kl.Make.Run.exe
   - popd
   - msbuild /p:Configuration=Release Shen.sln
+  - pushd .\Shen.Tests\bin\Release
+  - Shen.Tests.exe
+  - popd
