@@ -7,8 +7,12 @@ open Kl.Values
 open Kl.Evaluator
 open Kl.Make.Loader
 
+let rec combine = function
+    | [] -> "."
+    | [x] -> x
+    | x :: xs -> Path.Combine(x, combine xs)
 let stackSize = 16777216
-let klFolder = @"..\..\..\Distribution\Kl"
+let klFolder = combine [".."; ".."; ".."; "Distribution"; "Kl"]
 let klFiles = [
     "toplevel.kl"
     "core.kl"
@@ -43,7 +47,7 @@ let dllName = "Shen.Runtime.dll"
 let buildRuntime () =
     doCompile klFolder klFiles
     printfn "Copying dll to dependent projects..."
-    copy dllName (sprintf @"..\..\..\Artifacts\%s\%s" buildConfig dllName)
+    copy dllName (combine [".."; ".."; ".."; "Artifacts"; buildConfig; dllName])
 
 [<EntryPoint>]
 let main args =
