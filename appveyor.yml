@@ -5,10 +5,10 @@ before_build:
 build_script:
   - msbuild /p:Configuration=Release Kl.sln
   - .\testrunner\NUnit.ConsoleRunner.3.6.0\tools\nunit3-console.exe .\Kl.Tests\bin\Release\Kl.Tests.dll
-  - pushd .\Kl.Make.Run\bin\Release
+  - cd .\Kl.Make.Run\bin\Release
   - Kl.Make.Run.exe
-  - popd
+  - cd ..\..\..
   - msbuild /p:Configuration=Release Shen.sln
-  - pushd .\Shen.Tests\bin\Release
+  - cd .\Shen.Tests\bin\Release
   - Shen.Tests.exe
-  - popd
+  - cd ..\..\..
