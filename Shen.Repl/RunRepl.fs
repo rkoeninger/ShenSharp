@@ -7,26 +7,9 @@ open Kl.Evaluator
 open Kl.Make.Loader
 
 let stackSize = 16777216
-let klFolder = @"..\..\..\Distribution\Kl"
-let klFiles = [
-    "toplevel.kl"
-    "core.kl"
-    "sys.kl"
-    "sequent.kl"
-    "yacc.kl"
-    "reader.kl"
-    "prolog.kl"
-    "track.kl"
-    "load.kl"
-    "writer.kl"
-    "macros.kl"
-    "declarations.kl"
-    "types.kl"
-    "t-star.kl"
-]
 
 let runRepl files =
-    let globals = cache klFolder klFiles
+    let globals = load()
 
     if Array.isEmpty files then
         eval globals (toCons [Sym "shen.shen"]) |> ignore

@@ -13,7 +13,7 @@ open Compiler
 
 module Loader =
 
-    let private load klFolder klFiles =
+    let private import klFolder klFiles =
         let globals = baseGlobals()
         for file in klFiles do
             printf "Loading %s " file
@@ -40,15 +40,14 @@ module Loader =
         if returnCode <> 0 then
             raise <| new Exception(errorsToString errors)
 
-    let cache klFolder klFiles =
-        if not(File.Exists fileName) then
-            let globals = load klFolder klFiles
-            printfn "Generating installation code..."
-            let ast = compile nameParts globals
-            printfn "Compiling installation code..."
-            emitDll ast
-            printfn "Installation code cached."
-            printfn ""
+    let doCompile klFolder klFiles =
+        let globals = import klFolder klFiles
+        printfn "Generating installation code..."
+        let ast = compile nameParts globals
+        printfn "Compiling installation code..."
+        emitDll ast
+
+    let load () =
         let assembly = Assembly.LoadFile(Path.Combine(Environment.CurrentDirectory, fileName))
         let installation = assembly.GetType(joinedName)
         let install = installation.GetMethod("NewRuntime")
