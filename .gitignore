@@ -4,3 +4,4 @@ TestResults/
 *.suo
 bin/
 obj/
+Artifacts/

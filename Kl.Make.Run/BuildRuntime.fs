@@ -29,6 +29,7 @@ let klFiles = [
 let copy source destination =
     if File.Exists destination then
         File.Delete destination
+    Directory.CreateDirectory(Path.GetDirectoryName destination) |> ignore
     File.WriteAllBytes(destination, File.ReadAllBytes source)
 
 #if DEBUG
@@ -38,13 +39,11 @@ let buildConfig = "Release"
 #endif
 
 let dllName = "Shen.Runtime.dll"
-let projects = ["Shen.Repl"; "Shen.Tests"]
 
 let buildRuntime () =
     doCompile klFolder klFiles
     printfn "Copying dll to dependent projects..."
-    for project in projects do
-        copy dllName (sprintf @"..\..\..\%s\bin\%s\%s" project buildConfig dllName)
+    copy dllName (sprintf @"..\..\..\Artifacts\%s\%s" buildConfig dllName)
 
 [<EntryPoint>]
 let main args =

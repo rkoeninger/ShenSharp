@@ -1,2 +1,11 @@
 before_build:
-  - nuget restore
+  - nuget restore Kl.sln
+  - nuget restore Shen.sln
+  - nuget install NUnit.ConsoleRunner -Version 3.6.0 -OutputDirectory testrunner
+build_script:
+  - msbuild /p:Configuration=Release Kl.sln
+  - .\testrunner\NUnit.ConsoleRunner.3.6.0\tools\nunit3-console.exe .\Kl.Tests\bin\Release\Kl.Tests.dll
+  - pushd .\Kl.Make.Run\bin\Release
+  - mono Kl.Make.Run.exe
+  - popd
+  - msbuild /p:Configuration=Release Shen.sln

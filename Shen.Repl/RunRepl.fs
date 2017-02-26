@@ -4,12 +4,12 @@ open System.Threading
 open Kl
 open Kl.Values
 open Kl.Evaluator
-open Kl.Make.Loader
+open Shen.Runtime
 
 let stackSize = 16777216
 
 let runRepl files =
-    let globals = load()
+    let globals = newRuntime()
 
     if Array.isEmpty files then
         eval globals (toCons [Sym "shen.shen"]) |> ignore

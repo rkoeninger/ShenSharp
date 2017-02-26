@@ -4,10 +4,14 @@ branches:
   only:
     - master
 language: csharp
-solution: ShenSharp.sln
 install:
-  - nuget restore ShenSharp.sln
+  - nuget restore Kl.sln
+  - nuget restore Shen.sln
   - nuget install NUnit.ConsoleRunner -Version 3.6.0 -OutputDirectory testrunner
 script:
-  - xbuild /p:Configuration=Release ShenSharp.sln
+  - xbuild /p:Configuration=Release Kl.sln
   - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/Kl.Tests.dll
+  - pushd ./Kl.Make.Run/bin/Release
+  - mono Kl.Make.Run.exe
+  - popd
+  - xbuild /p:Configuration=Release Shen.sln

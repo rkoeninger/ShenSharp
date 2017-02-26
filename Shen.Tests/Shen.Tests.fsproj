@@ -66,14 +66,15 @@
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
+    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Debug'">
+      <HintPath>..\Artifacts\Debug\Shen.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Release'">
+      <HintPath>..\Artifacts\Release\Shen.Runtime.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\Kl.Make\Kl.Make.fsproj">
-      <Name>Kl.Make</Name>
-      <Project>{5ea0dbc2-329b-4075-bee2-ef83186c5529}</Project>
-      <Private>True</Private>
-    </ProjectReference>
     <ProjectReference Include="..\Kl\Kl.fsproj">
       <Name>Kl</Name>
       <Project>{24903340-789d-4419-ac4b-c2c1f8000c54}</Project>
