@@ -6,7 +6,7 @@ build_script:
   - msbuild /p:Configuration=Release Kl.sln
   - .\testrunner\NUnit.ConsoleRunner.3.6.0\tools\nunit3-console.exe .\Kl.Tests\bin\Release\Kl.Tests.dll
   - pushd .\Kl.Make.Run\bin\Release
-  - mono Kl.Make.Run.exe
+  - Kl.Make.Run.exe
   - popd
   - msbuild /p:Configuration=Release Shen.sln
   - pushd .\Shen.Tests\bin\Release
