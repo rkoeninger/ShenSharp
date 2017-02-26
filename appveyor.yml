@@ -9,6 +9,6 @@ build_script:
   - Kl.Make.Run.exe
   - cd ..\..\..
   - msbuild /p:Configuration=Release Shen.sln
-  - cd .\Shen.Tests\bin\Release
-  - Shen.Tests.exe
+  - cd .\Shen.TestSuite\bin\Release
+  - Shen.TestSuite.exe
   - cd ..\..\..

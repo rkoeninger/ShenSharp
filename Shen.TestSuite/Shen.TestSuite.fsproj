@@ -7,12 +7,12 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>65484f8f-d542-4f87-99a9-23a6c50c35bf</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Shen.Tests</RootNamespace>
-    <AssemblyName>Shen.Tests</AssemblyName>
+    <RootNamespace>Shen.TestSuite</RootNamespace>
+    <AssemblyName>Shen.TestSuite</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>Shen.Tests</Name>
+    <Name>Shen.TestSuite</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -23,7 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\Shen.Tests.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\Shen.TestSuite.xml</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -34,7 +34,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\Shen.Tests.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\Shen.TestSuite.xml</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>

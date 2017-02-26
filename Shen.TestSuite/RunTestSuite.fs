@@ -1,4 +1,4 @@
-﻿module Shen.Tests
+﻿module Shen.TestSuite
 
 open System
 open System.IO

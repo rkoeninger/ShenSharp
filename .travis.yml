@@ -15,6 +15,6 @@ script:
   - mono Kl.Make.Run.exe
   - popd
   - xbuild /p:Configuration=Release Shen.sln
-  - pushd ./Shen.Tests/bin/Release
-  - mono Shen.Tests.exe
+  - pushd ./Shen.TestSuite/bin/Release
+  - mono Shen.TestSuite.exe
   - popd

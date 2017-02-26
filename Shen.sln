@@ -110,7 +110,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chap13", "Chap13", "{EA5D86
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Repl", "Shen.Repl\Shen.Repl.fsproj", "{06344109-7314-4086-AD31-BFF125F211F5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Tests", "Shen.Tests\Shen.Tests.fsproj", "{65484F8F-D542-4F87-99A9-23A6C50C35BF}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.TestSuite", "Shen.TestSuite\Shen.TestSuite.fsproj", "{65484F8F-D542-4F87-99A9-23A6C50C35BF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
