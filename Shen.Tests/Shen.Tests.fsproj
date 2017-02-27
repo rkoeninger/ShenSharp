@@ -22,7 +22,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\Shen.Tests.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\Shen.Tests.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -31,7 +31,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Shen.Tests.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\Shen.Tests.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -51,6 +51,10 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Content Include="packages.config" />
+    <Compile Include="$(SolutionDir)Shared.fs">
+      <Link>Properties\Shared.fs</Link>
+    </Compile>
+    <Compile Include="Properties\Metadata.fs" />
     <Compile Include="Assertions.fs" />
     <Compile Include="Symbols.fs" />
   </ItemGroup>
@@ -63,14 +67,15 @@
       <HintPath>..\packages\NUnit.3.6.0\lib\net45\nunit.framework.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Shen.Runtime">
+    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Debug'">
       <HintPath>..\Artifacts\Debug\Shen.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Release'">
+      <HintPath>..\Artifacts\Release\Shen.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Kl\Kl.fsproj">
       <Name>Kl</Name>
       <Project>{24903340-789d-4419-ac4b-c2c1f8000c54}</Project>
