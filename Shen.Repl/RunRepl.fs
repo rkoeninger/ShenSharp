@@ -1,6 +1,7 @@
 ﻿module Shen.Repl
 
 open System
+open System.IO
 open Kl
 open Kl.Values
 open Kl.Evaluator
@@ -10,10 +11,14 @@ let runRepl files () =
     let globals = newRuntime()
     try
         match files with
+        | ["-h"] ->
+            printfn "shen            : Starts REPL"
+            printfn "shen -e <expr>  : Evaluates expr and prints result"
+            printfn "shen <file>*    : Loads files in given order"
+        | "-e" :: rest ->
+            printfn "%O" (Eval(globals, String.Join(" ", rest)))
         | [] ->
             eval globals (toCons [Sym "shen"]) |> ignore
-        | "-e" :: rest ->
-            printfn "%O" (Eval(globals, (String.Join(" ", rest))))
         | _ ->
             for file in files do
                 eval globals (toCons [Sym "load"; Str file]) |> ignore
