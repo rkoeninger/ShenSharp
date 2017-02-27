@@ -1,17 +1,11 @@
 ﻿module Kl.Make.Run.BuildRuntime
 
 open System.IO
-open System.Threading
 open Kl
 open Kl.Values
 open Kl.Evaluator
 open Kl.Make.Loader
 
-let rec combine = function
-    | [] -> "."
-    | [x] -> x
-    | x :: xs -> Path.Combine(x, combine xs)
-let stackSize = 16777216
 let klFolder = combine [".."; ".."; ".."; "Distribution"; "Kl"]
 let klFiles = [
     "toplevel.kl"
@@ -50,8 +44,4 @@ let buildRuntime () =
     copy dllName (combine [".."; ".."; ".."; "Artifacts"; buildConfig; dllName])
 
 [<EntryPoint>]
-let main args =
-    let thread = new Thread(buildRuntime, stackSize)
-    thread.Start()
-    thread.Join()
-    0
+let main _ = separateThread buildRuntime

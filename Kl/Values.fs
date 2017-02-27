@@ -5,8 +5,21 @@ open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
 open System.Text
+open System.Threading
 
 module Values =
+
+    let rec combine = function
+        | [] -> "."
+        | [x] -> x
+        | x :: xs -> Path.Combine(x, combine xs)
+
+    // Runs continuation on separate thread with 16MB of stack space
+    let separateThread (f: unit -> unit) =
+        let thread = new Thread(f, 16777216)
+        thread.Start()
+        thread.Join()
+        0
 
     // Booleans are just these two particular symbols.
     let True = Sym "true"
