@@ -35,10 +35,10 @@ This port [passes all tests in the Shen standard test suite](https://gist.github
     Primitive functions required by Kλ
   * [Startup](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Startup.fs) -
     Builds a primitive Kλ environment
-  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Reader.fs) -
+  * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Reader.fs) -
     Parses Kλ code
-  * [Compiler](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Compiler.fs) -
+  * [Compiler](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Compiler.fs) -
     Translates an environment of KL expressions into a F# module AST
-  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Import/Loader.fs) -
+  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Loader.fs) -
     Reads and evaluates the Shen runtime from Kλ distribution or loads runtime from code
 	generated on previous run
