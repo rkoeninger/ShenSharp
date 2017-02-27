@@ -12,7 +12,7 @@ let runRepl files =
     let globals = newRuntime()
 
     if Array.isEmpty files then
-        eval globals (toCons [Sym "shen.shen"]) |> ignore
+        eval globals (toCons [Sym "shen"]) |> ignore
     else
         for file in files do
             eval globals (toCons [Sym "load"; Str file]) |> ignore
