@@ -43,7 +43,7 @@ module Evaluator =
 
         // Applying a partial applies the original function
         // to the previous and current argument lists appended.
-        | Partial(inner, args0) as partial ->
+        | Partial(inner, args0) ->
             if argc = 0
                 then Done(Func f)
                 else applyw globals inner (args0 @ args)
