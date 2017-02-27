@@ -74,8 +74,15 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream %s>" io.Name
 
+/// <summary>
+/// An interned symbol reference with optional values in
+/// the global symbol and global function namespaces.
+/// </summary>
 and Symbol = string * Value option ref * Function option ref
 
+/// <summary>
+/// An optimized KL expression.
+/// </summary>
 and Expr =
     | Constant    of Value
     | Conjunction of Expr * Expr

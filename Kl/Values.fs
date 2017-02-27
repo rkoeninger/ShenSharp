@@ -101,19 +101,7 @@ module Values =
         | Cons(x, y) -> Option.map (fun xs -> x :: xs) (toListOption y)
         | _ -> None
 
-    let private (|ConsExpr|_|) = toListOption
-
-    let (|AndExpr|_|) = function
-        | ConsExpr [Sym "and"; left; right] -> Some(left, right)
-        | _ -> None
-
-    let (|OrExpr|_|) = function
-        | ConsExpr [Sym "or"; left; right] -> Some(left, right)
-        | _ -> None
-
-    let (|IfExpr|_|) = function
-        | ConsExpr [Sym "if"; condition; consequent; alternative] -> Some(condition, consequent, alternative)
-        | _ -> None
+    let (|ConsExpr|_|) = toListOption
 
     let private condClause = function
         | ConsExpr [x; y] -> Some(x, y)
@@ -123,22 +111,6 @@ module Values =
 
     let (|CondExpr|_|) = function
         | ConsExpr(Sym "cond" :: CondClauses clauses) -> Some clauses
-        | _ -> None
-
-    let (|LetExpr|_|) = function
-        | ConsExpr [Sym "let"; Sym symbol; binding; body] -> Some(symbol, binding, body)
-        | _ -> None
-
-    let (|LambdaExpr|_|) = function
-        | ConsExpr [Sym "lambda"; Sym symbol; body] -> Some(symbol, body)
-        | _ -> None
-
-    let (|FreezeExpr|_|) = function
-        | ConsExpr [Sym "freeze"; body] -> Some body
-        | _ -> None
-
-    let (|TrapExpr|_|) = function
-        | ConsExpr [Sym "trap-error"; body; handler] -> Some(body, handler)
         | _ -> None
 
     let private param = function
@@ -153,10 +125,6 @@ module Values =
 
     let (|DoExpr|_|) = function
         | ConsExpr [Sym "do"; first; second] -> Some(first, second)
-        | _ -> None
-
-    let (|AppExpr|_|) = function
-        | ConsExpr(f :: args) -> Some(f, args)
         | _ -> None
 
 module Extensions =

@@ -58,7 +58,7 @@ module Analysis =
             | None -> Sym id
 
         // Let binding param is new variable masking old one
-        | LetExpr(param, binding, body) ->
+        | ConsExpr [Sym "let"; Sym param; binding; body] ->
             toCons [
                 Sym "let"
                 Sym param
@@ -66,14 +66,14 @@ module Analysis =
                 populate (Map.remove param locals) body]
 
         // Lambda param is new variable masking old one
-        | LambdaExpr(param, body) ->
+        | ConsExpr [Sym "lambda"; Sym param; body] ->
             toCons [
                 Sym "lambda"
                 Sym param
                 populate (Map.remove param locals) body]
 
         // Don't substitute special symbols: 'if, 'let, etc.
-        | AppExpr(Sym f, args) when List.contains f specialSymbols ->
+        | ConsExpr(Sym f :: args) when List.contains f specialSymbols ->
             toCons(Sym f :: (List.map (populate locals) args))
 
         | Cons(x, y) -> Cons(populate locals x, populate locals y)
@@ -85,11 +85,11 @@ module Analysis =
     // TODO: locals can be function scoped since captured variables are substituted.
 
     let rec parse ((globals, locals) as env) = function
-        | AndExpr(left, right) ->
+        | ConsExpr [Sym "and"; left; right] ->
             Conjunction(parse env left, parse env right)
-        | OrExpr(left, right) ->
+        | ConsExpr [Sym "or"; left; right] ->
             Disjunction(parse env left, parse env right)
-        | IfExpr(condition, consequent, alternative) ->
+        | ConsExpr [Sym "if"; condition; consequent; alternative] ->
             Conditional(parse env condition, parse env consequent, parse env alternative)
         | CondExpr clauses ->
             let rec parseClauses = function
@@ -100,24 +100,24 @@ module Analysis =
                 | (condition, consequent) :: rest ->
                     Conditional(parse env condition, parse env consequent, parseClauses rest)
             parseClauses clauses
-        | LetExpr(param, value, body) ->
+        | ConsExpr [Sym "let"; Sym param; value; body] ->
             Binding(param, parse env value, parse (globals, Set.add param locals) body)
-        | LambdaExpr(param, body) ->
+        | ConsExpr [Sym "lambda"; Sym param; body] ->
             Anonymous(Some param, parse (globals, Set.add param locals) body)
-        | FreezeExpr body ->
+        | ConsExpr [Sym "freeze"; body] ->
             Anonymous(None, parse env body)
-        | TrapExpr(body, handler) ->
+        | ConsExpr [Sym "trap-error"; body; handler] ->
             Catch(parse env body, parse env handler)
         | DoExpr _ as expr ->
             Sequential(List.map (parse env) (flattenDo expr))
         | DefunExpr(name, paramz, body) ->
             Definition(intern name globals, paramz, parse (globals, Set.union (Set.ofList paramz) locals) body)
-        | AppExpr(Sym "set", [Sym id; value]) when not(Set.contains id locals) ->
+        | ConsExpr [Sym "set"; Sym id; value] when not(Set.contains id locals) ->
             Assignment(intern id globals, parse env value)
-        | AppExpr(Sym "value", [Sym id]) when not(Set.contains id locals) ->
+        | ConsExpr [Sym "value"; Sym id] when not(Set.contains id locals) ->
             Retrieval(intern id globals)
-        | AppExpr(Sym id, args) when not(Set.contains id locals) ->
+        | ConsExpr(Sym id :: args) when not(Set.contains id locals) ->
             GlobalCall(intern id globals, List.map (parse env) args)
-        | AppExpr(f, args) ->
+        | ConsExpr(f :: args) ->
             Application(parse env f, List.map (parse env) args)
         | value -> Constant value
