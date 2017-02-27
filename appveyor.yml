@@ -9,6 +9,7 @@ build_script:
   - Kl.Make.Run.exe
   - cd ..\..\..
   - msbuild /p:Configuration=Release Shen.sln
+  - .\testrunner\NUnit.ConsoleRunner.3.6.0\tools\nunit3-console.exe .\Shen.Tests\bin\Release\Shen.Tests.dll
   - cd .\Shen.TestSuite\bin\Release
   - Shen.TestSuite.exe
   - cd ..\..\..

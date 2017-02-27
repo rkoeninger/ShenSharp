@@ -15,6 +15,7 @@ script:
   - mono Kl.Make.Run.exe
   - popd
   - xbuild /p:Configuration=Release Shen.sln
+  - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Shen.Tests/bin/Release/Shen.Tests.dll
   - pushd ./Shen.TestSuite/bin/Release
   - mono Shen.TestSuite.exe
   - popd
