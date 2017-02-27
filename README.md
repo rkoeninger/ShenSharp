@@ -1,4 +1,4 @@
-[![Shen Version](https://img.shields.io/badge/Shen_Language-19.2-blue.svg)](https://github.com/Shen-Language)
+[![Shen Version](https://img.shields.io/badge/Shen_Language-19.3.1-blue.svg)](https://github.com/Shen-Language)
 [![.Net Build Status](https://img.shields.io/appveyor/ci/rkoeninger/ShenSharp/master.svg?label=.Net%20Build)](https://ci.appveyor.com/project/rkoeninger/shensharp/branch/master)
 [![Mono Build Status](https://img.shields.io/travis/rkoeninger/ShenSharp/master.svg?label=Mono%20Build)](https://travis-ci.org/rkoeninger/ShenSharp)
 

@@ -7,7 +7,7 @@ open Kl.Extensions
 open Kl.Evaluator
 open Kl.Startup
 open Kl.Make.Reader
-    
+
 let runIn globals syntax = eval globals (read syntax)
 let run = runIn (baseGlobals())
 let runAll syntax =
