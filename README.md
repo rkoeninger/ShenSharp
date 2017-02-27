@@ -12,7 +12,7 @@ Shen is a portable, functional programming language by [Mark Tarver](http://www.
 
 Currently implemented as an interpreter, ShenSharp loads and runs Shen code on demand. The interpreter approach suffers from poor performance, but optimizations are forthcoming.
 
-This port [passes all tests in the Shen standard test suite](https://gist.github.com/rkoeninger/997a62925f35b5ec61743cf2c8b264de), making this a certifiable implementation. Current test run time is about 75 seconds on a typical machine when built in Release mode and run from the command line.
+This port passes all tests in the Shen standard test suite, making this a certifiable implementation. Current test run time is about 40 seconds in the Windows/.Net build on AppVeyor.
 
 ### Shen Resources
   * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
