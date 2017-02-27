@@ -15,4 +15,4 @@ let runRepl files () =
             eval globals (toCons [Sym "load"; Str file]) |> ignore
 
 [<EntryPoint>]
-let main = separateThread << runRepl
+let main args = separateThread (runRepl args)
