@@ -76,6 +76,8 @@ module Values =
     let localLookup x (locals: 'a list) =
         locals.[locals.Length - x - 1]
 
+    let merge m0 m1 = Map.fold (fun m k v -> Map.add k v m) m0 m1
+
     let rec toCons = function
         | [] -> Empty
         | x :: xs -> Cons(x, toCons xs)
