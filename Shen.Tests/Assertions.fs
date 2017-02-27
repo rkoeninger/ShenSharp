@@ -1,7 +1,6 @@
 ﻿module Shen.Tests.Assertions
 
 open NUnit.Framework
-open Kl
 open Kl.Values
 open Shen.Runtime
 
