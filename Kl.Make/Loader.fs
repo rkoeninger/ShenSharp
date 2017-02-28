@@ -12,7 +12,9 @@ open Compiler
 
 let private nameParts = ["Shen"; "Runtime"]
 let private joinedName = String.Join(".", nameParts)
-let private fileName = sprintf "%s.dll" joinedName
+let private dllName = sprintf "%s.dll" joinedName
+let private pdbName = sprintf "%s.pdb" joinedName
+let private searchPattern = sprintf "%s.*" joinedName
 let private deps = ["Kl.dll"]
 
 let private import sourcePath sourceFiles =
@@ -30,7 +32,7 @@ let private import sourcePath sourceFiles =
 
 let private emit ast =
     let service = new SimpleSourceCodeServices()
-    let (errors, returnCode) = service.Compile([ast], joinedName, fileName, deps)
+    let (errors, returnCode) = service.Compile([ast], joinedName, dllName, deps, pdbName, false, false)
     if returnCode <> 0 then
         raise <| new Exception(String.Join("\r\n\r\n", Seq.map string errors))
 
@@ -46,5 +48,6 @@ let make sourcePath sourceFiles outputPath =
     let ast = compile nameParts globals
     printfn "Compiling installation code..."
     emit ast
-    printfn "Copying dll to dependent projects..."
-    copy fileName (combine [outputPath; fileName])
+    printfn "Copying artifacts to output path..."
+    for file in Directory.GetFiles(".", searchPattern) do
+        copy file (combine [outputPath; file])
