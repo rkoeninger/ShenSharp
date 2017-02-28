@@ -93,15 +93,10 @@ and private evalw ((globals, locals) as env) = function
             let operator = evalf env handler
             applyw globals operator [Err e.Message]
 
-    // Second expression is in tail position.
-    | Sequential exprs ->
-        let rec evalSeq = function
-            | [] -> failwith "empty seq"
-            | [last] -> Pending(locals, last)
-            | next :: rest ->
-                evalv env next |> ignore
-                evalSeq rest
-        evalSeq exprs
+    // Final expression is in tail position.
+    | Sequential(exprs, last) ->
+        List.iter (evalv env >> ignore) exprs
+        Pending(locals, last)
 
     // Should exhibit same behavior as (set id expr)
     | Assignment(symbol, expr) ->

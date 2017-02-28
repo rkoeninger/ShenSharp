@@ -6,6 +6,10 @@ open Kl
 open Values
 open Extensions
 
+let rec private butLast = function
+    | [] | [_] -> []
+    | x :: xs -> x :: butLast xs
+
 let rec flattenDo = function
     | DoExpr(first, second) -> flattenDo first @ flattenDo second
     | klExpr -> [klExpr]
@@ -107,7 +111,8 @@ let rec parse ((globals, locals) as env) = function
     | ConsExpr [Sym "trap-error"; body; handler] ->
         Catch(parse env body, parse env handler)
     | DoExpr _ as expr ->
-        Sequential(List.map (parse env) (flattenDo expr))
+        let exprs = List.map (parse env) (flattenDo expr)
+        Sequential(butLast exprs, List.last exprs)
     | DefunExpr(name, paramz, body) ->
         Definition(intern globals name, paramz, parse (globals, Set.union (Set.ofList paramz) locals) body)
     | ConsExpr [Sym "set"; Sym id; value] when not(Set.contains id locals) ->

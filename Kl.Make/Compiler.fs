@@ -139,8 +139,10 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
                     (buildExpr (globals, Set.add param locals) body |> toType KlValue))
             | f -> buildApp context f [errExpr]
         tryWithExpr (buildExpr context body |> toType KlValue) "e" handlerExpr, KlValue
-    | Sequential exprs ->
-        buildSeq context (List.map (buildExpr context) exprs)
+    | Sequential(exprs, last) ->
+        let builtExprs = List.map (buildExpr context >> toType FsUnit) exprs
+        let (lastExpr, lastType) = buildExpr context last
+        sequentialExpr(builtExprs @ [lastExpr]), lastType
     | Definition _ ->
         failwith "Can't compile defun not at top level"
     | Assignment((id, _, _), expr) ->

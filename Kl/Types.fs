@@ -91,7 +91,7 @@ and Expr =
     | Binding     of string * Expr * Expr
     | Anonymous   of string option * Expr
     | Catch       of Expr * Expr
-    | Sequential  of Expr list
+    | Sequential  of Expr list * Expr
     | Assignment  of Symbol * Expr
     | Retrieval   of Symbol
     | Definition  of Symbol * string list * Expr
