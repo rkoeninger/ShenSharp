@@ -39,7 +39,7 @@ let buildConfig = "Release"
 let dllName = "Shen.Runtime.dll"
 
 let buildRuntime () =
-    doCompile klFolder klFiles
+    make klFolder klFiles
     printfn "Copying dll to dependent projects..."
     copy dllName (combine [".."; ".."; ".."; "Artifacts"; buildConfig; dllName])
 
