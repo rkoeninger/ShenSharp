@@ -29,7 +29,7 @@ let rec private filterSome = function
 let nonPrimitiveFunctions globals =
     globals.Symbols
     |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
-    |> Seq.map (fun (id, (_, _, fref)) -> (id, fref.Value))
+    |> Seq.map (fun (id, (_, _, fref)) -> (id, !fref))
     |> Seq.toList
     |> filterSome
     |> Seq.filter (fst >> globals.PrimitiveFunctions.Contains >> not)

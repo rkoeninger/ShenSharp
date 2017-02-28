@@ -55,7 +55,7 @@ and private buildApp ((globals, locals) as context) (f: Expr) args =
                  listExpr args]
         else
             let (_, _, fref) = intern s globals
-            match fref.Value with
+            match !fref with
             | Some systemf ->
                 let arity = functionArity systemf
                 if args.Length > arity then
@@ -242,14 +242,12 @@ let rec private buildValue (globals as context) = function
     | value -> failwithf "Can't build value: %A" value
 
 let private installSymbol (globals as context) (name, (_, sref: Value option ref, _)) =
-    match sref.Value with
-    | Some value ->
-        Some <|
-            appIdExprN "assign"
-                [idExpr "globals"
-                 stringExpr name
-                 buildValue context value]
-    | None -> None
+    let buildIt value =
+        appIdExprN "assign"
+            [idExpr "globals"
+             stringExpr name
+             buildValue context value]
+    Option.map buildIt !sref
 
 let rec private filterSome = function
     | [] -> []

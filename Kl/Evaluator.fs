@@ -111,7 +111,7 @@ and private evalw ((globals, locals) as env) = function
 
     // Should exhibit same behavior as (value id)
     | Retrieval((id, sref, _)) ->
-        match sref.Value with
+        match !sref with
         | Some value -> Done value
         | None -> failwithf "Symbol \"%s\" has no value" id
 
@@ -126,7 +126,7 @@ and private evalw ((globals, locals) as env) = function
     // Immediate lookup for global functions.
     // Should exhibit same behavior as if it was no optimized.
     | GlobalCall((id, _, fref), args) ->
-        match fref.Value with
+        match !fref with
         | Some f -> applyw globals f (List.map (evalv env) args)
         | None -> failwithf "Function not defined: %s" id
 

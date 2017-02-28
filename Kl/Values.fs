@@ -62,7 +62,7 @@ module Values =
 
     let retrieve globals id =
         let (_, sref, _) = intern id globals
-        match sref.Value with
+        match !sref with
         | Some value -> value
         | None -> failwithf "Symbol \"%s\" has no value" id
 
@@ -76,7 +76,7 @@ module Values =
     /// </summary>
     let lookup globals id =
         let (_, _, fref) = intern id globals
-        match fref.Value with
+        match !fref with
         | Some f -> f
         | None -> failwithf "Function \"%s\" is not defined" id
 

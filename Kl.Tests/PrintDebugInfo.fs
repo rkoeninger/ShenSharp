@@ -15,7 +15,7 @@ let ``print platform information``() =
     let globals = baseGlobals()
     for pair in globals.Symbols do
         let (_, sref, _) = pair.Value
-        match sref.Value with
+        match !sref with
         | Some value -> printfn "%s = %O" pair.Key value
         | _ -> ()
 

@@ -13,7 +13,7 @@ let assertEffect eff syntax =
     runIn globals "(defun effect (X) (do (set *effect* true) X))" |> ignore
     runIn globals syntax |> ignore
     let (_, sref, _) = intern "*effect*" globals
-    match sref.Value with
+    match !sref with
     | None -> if eff then Assert.Fail "Effect did not occurr" else ()
     | _ -> if not eff then Assert.Fail "Effect should not have occurred" else ()
 
