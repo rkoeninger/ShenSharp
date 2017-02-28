@@ -35,9 +35,17 @@ module Loader =
         if returnCode <> 0 then
             raise <| new Exception(String.Join("\r\n\r\n", Seq.map string errors))
 
-    let make klFolder klFiles =
-        let globals = import klFolder klFiles
+    let private copy source destination =
+        if File.Exists destination then
+            File.Delete destination
+        Directory.CreateDirectory(Path.GetDirectoryName destination) |> ignore
+        File.WriteAllBytes(destination, File.ReadAllBytes source)
+
+    let make sourcePath sourceFiles outputPath =
+        let globals = import sourcePath sourceFiles
         printfn "Generating installation code..."
         let ast = compile nameParts globals
         printfn "Compiling installation code..."
         emit ast
+        printfn "Copying dll to dependent projects..."
+        copy fileName (Path.Combine(outputPath, fileName))
