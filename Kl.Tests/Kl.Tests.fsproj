@@ -59,11 +59,11 @@
     <Compile Include="Assertions.fs" />
     <Compile Include="PrintDebugInfo.fs" />
     <Compile Include="Equality.fs" />
-    <Compile Include="KlParsing.fs" />
+    <Compile Include="KlReading.fs" />
     <Compile Include="ExpressionRecognition.fs" />
     <Compile Include="Arithmetic.fs" />
     <Compile Include="EvaluationOrder.fs" />
-    <Compile Include="ConditionalEvalutation.fs" />
+    <Compile Include="ConditionalEvaluation.fs" />
     <Compile Include="SymbolResolution.fs" />
     <Compile Include="ErrorHandling.fs" />
     <Compile Include="PrimitiveFunctions.fs" />
