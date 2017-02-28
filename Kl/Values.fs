@@ -58,7 +58,7 @@ module Values =
 
     let assign globals id value =
         let (_, sref, _) = intern id globals
-        sref.Value <- Some value
+        sref := Some value
 
     let retrieve globals id =
         let (_, sref, _) = intern id globals
@@ -68,7 +68,7 @@ module Values =
 
     let define globals id f =
         let (_, _, fref) = intern id globals
-        fref.Value <- Some f
+        fref := Some f
 
     /// <summary>
     /// Looks up id in the global function namespace.

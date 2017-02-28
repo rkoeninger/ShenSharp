@@ -106,7 +106,7 @@ and private evalw ((globals, locals) as env) = function
     // Should exhibit same behavior as (set id expr)
     | Assignment((_, sref, _), expr) ->
         let value = evalv env expr
-        sref.Value <- Some value
+        sref := Some value
         Done value
 
     // Should exhibit same behavior as (value id)
@@ -120,7 +120,7 @@ and private evalw ((globals, locals) as env) = function
     // Ignore attempts to redefine a primitive.
     | Definition((id, _, fref), paramz, body) ->
         if not(globals.PrimitiveFunctions.Contains id) then
-            fref.Value <- Some(Interpreted(Map.empty, paramz, body))
+            fref := Some(Interpreted(Map.empty, paramz, body))
         Done(Sym id)
 
     // Immediate lookup for global functions.
