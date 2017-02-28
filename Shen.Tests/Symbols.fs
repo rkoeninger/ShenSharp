@@ -12,6 +12,8 @@ let ``the symbols 'true and 'false should be recognized as booleans``() =
     assertTrue "(boolean? false)"
     assertTrue "(boolean? (= 0 0))"
     assertTrue "(boolean? (= 0 1))"
+    assertFalse "(boolean? abc)"
+    assertFalse "(boolean? (intern \"abc\"))"
 
 [<Test>]
 let ``only non-boolean symbols should be recognized as symbols``() =
