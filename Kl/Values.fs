@@ -53,21 +53,21 @@ module Values =
         PrimitiveFunctions = new HashSet<string>()
     }
 
-    let intern id (globals: Globals) =
+    let intern globals id =
         globals.Symbols.GetOrAdd(id, fun _ -> id, ref None, ref None)
 
     let assign globals id value =
-        let (_, sref, _) = intern id globals
+        let (_, sref, _) = intern globals id
         sref := Some value
 
     let retrieve globals id =
-        let (_, sref, _) = intern id globals
+        let (_, sref, _) = intern globals id
         match !sref with
         | Some value -> value
         | None -> failwithf "Symbol \"%s\" has no value" id
 
     let define globals id f =
-        let (_, _, fref) = intern id globals
+        let (_, _, fref) = intern globals id
         fref := Some f
 
     /// <summary>
@@ -75,7 +75,7 @@ module Values =
     /// Raises an error if function not defined.
     /// </summary>
     let lookup globals id =
-        let (_, _, fref) = intern id globals
+        let (_, _, fref) = intern globals id
         match !fref with
         | Some f -> f
         | None -> failwithf "Function \"%s\" is not defined" id

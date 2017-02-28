@@ -54,7 +54,7 @@ and private buildApp ((globals, locals) as context) (f: Expr) args =
                  idExpr(rename s)
                  listExpr args]
         else
-            let (_, _, fref) = intern s globals
+            let (_, _, fref) = intern globals s
             match !fref with
             | Some systemf ->
                 let arity = functionArity systemf

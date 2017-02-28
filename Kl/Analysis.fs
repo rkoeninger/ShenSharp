@@ -92,7 +92,7 @@ let rec parse ((globals, locals) as env) = function
     | CondExpr clauses ->
         let rec parseClauses = function
             | [] -> 
-                GlobalCall(intern "simple-error" globals, [Constant(Str "No condition was true")])
+                GlobalCall(intern globals "simple-error", [Constant(Str "No condition was true")])
             | (Sym "true", consequent) :: _ ->
                 parse env consequent
             | (condition, consequent) :: rest ->
@@ -109,13 +109,13 @@ let rec parse ((globals, locals) as env) = function
     | DoExpr _ as expr ->
         Sequential(List.map (parse env) (flattenDo expr))
     | DefunExpr(name, paramz, body) ->
-        Definition(intern name globals, paramz, parse (globals, Set.union (Set.ofList paramz) locals) body)
+        Definition(intern globals name, paramz, parse (globals, Set.union (Set.ofList paramz) locals) body)
     | ConsExpr [Sym "set"; Sym id; value] when not(Set.contains id locals) ->
-        Assignment(intern id globals, parse env value)
+        Assignment(intern globals id, parse env value)
     | ConsExpr [Sym "value"; Sym id] when not(Set.contains id locals) ->
-        Retrieval(intern id globals)
+        Retrieval(intern globals id)
     | ConsExpr(Sym id :: args) when not(Set.contains id locals) ->
-        GlobalCall(intern id globals, List.map (parse env) args)
+        GlobalCall(intern globals id, List.map (parse env) args)
     | ConsExpr(f :: args) ->
         Application(parse env f, List.map (parse env) args)
     | value -> Constant value

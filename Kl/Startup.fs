@@ -19,7 +19,7 @@ let baseGlobals () =
         "*language*",       Str(sprintf "F# %i.%i" fsVersion.Minor fsVersion.MajorRevision)
         "*implementation*", Str(if onMono then "Mono" else "Microsoft.NET")
         "*release*",        Str(string Environment.Version)
-        "*os*",             Str(Environment.OSVersion.Platform.ToString())
+        "*os*",             Str(string Environment.OSVersion.Platform)
         "*port*",           Str(sprintf "%i.%i" klVersion.Major klVersion.Minor)
         "*porters*",        Str author
         "*stinput*",        console
