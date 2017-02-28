@@ -104,31 +104,29 @@ and private evalw ((globals, locals) as env) = function
         evalSeq exprs
 
     // Should exhibit same behavior as (set id expr)
-    | Assignment((_, sref, _), expr) ->
+    | Assignment(symbol, expr) ->
         let value = evalv env expr
-        sref := Some value
+        setValue symbol value
         Done value
 
     // Should exhibit same behavior as (value id)
-    | Retrieval((id, sref, _)) ->
-        match !sref with
-        | Some value -> Done value
-        | None -> failwithf "Symbol \"%s\" has no value" id
+    | Retrieval(symbol) ->
+        Done(getValue symbol)
 
     // Evaluating a defun just takes the name, param list and body
     // and stores them in the global function scope.
     // Ignore attempts to redefine a primitive.
-    | Definition((id, _, fref), paramz, body) ->
+    | Definition((id, _, fref) as symbol, paramz, body) ->
         if not(globals.PrimitiveFunctions.Contains id) then
-            fref := Some(Interpreted(Map.empty, paramz, body))
+            setFunction symbol (Interpreted(Map.empty, paramz, body))
         Done(Sym id)
 
     // Immediate lookup for global functions.
     // Should exhibit same behavior as if it was no optimized.
-    | GlobalCall((id, _, fref), args) ->
-        match !fref with
-        | Some f -> applyw globals f (List.map (evalv env) args)
-        | None -> failwithf "Function not defined: %s" id
+    | GlobalCall(symbol, args) ->
+        let operator = getFunction symbol
+        let operands = List.map (evalv env) args
+        applyw globals operator operands
 
     // Expression in operator position must evaluate to a Function.
     | Application(f, args) ->
@@ -146,7 +144,7 @@ and private evalf ((globals, locals) as env) expr =
     | Constant(Sym id) ->
         match Map.tryFind id locals with
         | Some(Func f) -> f
-        | Some _ -> failwithf "Function not defined: %s" id
+        | Some _ -> failwithf "Function \"%s\" not defined" id
         | None -> lookup globals id
     | _ ->
         match evalv env expr with

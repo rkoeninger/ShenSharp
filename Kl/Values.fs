@@ -56,29 +56,41 @@ module Values =
     let intern globals id =
         globals.Symbols.GetOrAdd(id, fun _ -> id, ref None, ref None)
 
-    let assign globals id value =
-        let (_, sref, _) = intern globals id
-        sref := Some value
+    let getValueOption symbol =
+        let (_, sref, _) = symbol
+        !sref
 
-    let retrieve globals id =
-        let (_, sref, _) = intern globals id
+    let getValue symbol =
+        let (id, sref, _) = symbol
         match !sref with
         | Some value -> value
-        | None -> failwithf "Symbol \"%s\" has no value" id
+        | None -> failwithf "Symbol \"%s\" is not defined" id
 
-    let define globals id f =
-        let (_, _, fref) = intern globals id
+    let getFunction symbol =
+        let (id, _, fref) = symbol
+        match !fref with
+        | Some f -> f
+        | None -> failwithf "Function \"%s\" is not defined" id
+
+    let setValue symbol value =
+        let (_, sref, _) = symbol
+        sref := Some value
+
+    let setFunction symbol f =
+        let (_, _, fref) = symbol
         fref := Some f
+
+    let assign globals id value = setValue (intern globals id) value
+
+    let retrieve globals id = getValue (intern globals id)
+
+    let define globals id f = setFunction (intern globals id) f
 
     /// <summary>
     /// Looks up id in the global function namespace.
     /// Raises an error if function not defined.
     /// </summary>
-    let lookup globals id =
-        let (_, _, fref) = intern globals id
-        match !fref with
-        | Some f -> f
-        | None -> failwithf "Function \"%s\" is not defined" id
+    let lookup globals id = getFunction (intern globals id)
 
     let localIndex id locals =
         List.tryFindIndex ((=) id) locals |> Option.map (fun x -> locals.Length - x - 1)

@@ -14,10 +14,7 @@ open Assertions
 let ``print platform information``() =
     let globals = baseGlobals()
     for pair in globals.Symbols do
-        let (_, sref, _) = pair.Value
-        match !sref with
-        | Some value -> printfn "%s = %O" pair.Key value
-        | _ -> ()
+        Option.iter (printfn "%s = %O" pair.Key) (getValueOption pair.Value)
 
 [<Test>]
 let ``demo ToString() for values``() =
