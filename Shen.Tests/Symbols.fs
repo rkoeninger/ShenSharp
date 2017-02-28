@@ -31,3 +31,5 @@ let ``only non-boolean symbols should be recognized as symbols``() =
     assertFalse "(symbol? (vector 0))"
     assertTrue "(symbol? abc)"
     assertTrue "(symbol? (intern \"abc\"))"
+    assertTrue "(symbol? u87.dfg)"
+    assertTrue "(symbol? (intern \"fsdf{}.$%2\"))"
