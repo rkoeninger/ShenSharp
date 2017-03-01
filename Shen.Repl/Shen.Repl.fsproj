@@ -37,36 +37,6 @@
     <DocumentationFile>bin\Release\Shen.Repl.xml</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Debug'">
-      <HintPath>..\Artifacts\Debug\Shen.Runtime.dll</HintPath>
-    </Reference>
-    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Release'">
-      <HintPath>..\Artifacts\Release\Shen.Runtime.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-    <Compile Include="$(SolutionDir)Shared.fs">
-      <Link>Properties\Shared.fs</Link>
-    </Compile>
-    <Compile Include="Properties\Metadata.fs" />
-    <Compile Include="RunRepl.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Kl\Kl.fsproj">
-      <Name>Kl</Name>
-      <Project>{24903340-789d-4419-ac4b-c2c1f8000c54}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
@@ -83,4 +53,34 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <ItemGroup>
+    <None Include="App.config" />
+    <Content Include="packages.config" />
+    <Compile Include="$(SolutionDir)Shared.fs">
+      <Link>Properties\Shared.fs</Link>
+    </Compile>
+    <Compile Include="Properties\Metadata.fs" />
+    <Compile Include="RunRepl.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="FSharp.Core">
+      <HintPath>..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="mscorlib" />
+    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Debug'">
+      <HintPath>..\Artifacts\Debug\Shen.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Release'">
+      <HintPath>..\Artifacts\Release\Shen.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\Kl\Kl.fsproj">
+      <Name>Kl</Name>
+      <Project>{24903340-789d-4419-ac4b-c2c1f8000c54}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
 </Project>
