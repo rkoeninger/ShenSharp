@@ -261,7 +261,7 @@ let compile nameParts globals =
     let symbols = nonPrimitiveSymbols globals
     let defuns = nonPrimitiveFunctions globals
     let compiledNameAttr name =
-        attr
+        attr None
             (longIdentWithDots ["CompiledName"])
             (stringExpr name)
     moduleFile nameParts
@@ -295,3 +295,10 @@ let compile nameParts globals =
             (appIgnore
                 (appKl "load"
                     [appIdExpr "Str" (idExpr "path")]))]
+
+let buildMetadataFile name =
+    moduleFile ["ShenSharp"; "Metadata"]
+        []
+        [assemblyAttrDecl
+            (longIdentWithDots ["System"; "Reflection"; "AssemblyTitle"])
+            (stringExpr name)]

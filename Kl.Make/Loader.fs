@@ -4,6 +4,7 @@ open System
 open System.IO
 open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
+open Microsoft.FSharp.Compiler.SourceCodeServices
 open Kl.Values
 open Kl.Evaluator
 open Kl.Startup
@@ -16,6 +17,7 @@ let private dllName = sprintf "%s.dll" joinedName
 let private pdbName = sprintf "%s.pdb" joinedName
 let private searchPattern = sprintf "%s.*" joinedName
 let private deps = ["Kl.dll"]
+let private sharedMetadataPath = combine [".."; ".."; ".."; "Shared.fs"]
 
 let private import sourcePath sourceFiles =
     let globals = baseGlobals()
@@ -30,11 +32,26 @@ let private import sourcePath sourceFiles =
     printfn ""
     globals
 
-let private emit ast =
+let private raiseErrors errors = raise(new Exception(String.Join("\r\n\r\n", Seq.map string errors)))
+
+let private parseFile file =
+    let input = File.ReadAllText file
+    let checker = FSharpChecker.Create()
+    let projOptions =
+        checker.GetProjectOptionsFromScript(file, input)
+        |> Async.RunSynchronously
+    let result =
+        checker.ParseFileInProject(file, input, projOptions)
+        |> Async.RunSynchronously
+    match result.ParseTree with
+    | Some tree -> tree
+    | None -> raiseErrors result.Errors
+
+let private emit asts =
     let service = new SimpleSourceCodeServices()
-    let (errors, returnCode) = service.Compile([ast], joinedName, dllName, deps, pdbName, false, false)
+    let (errors, returnCode) = service.Compile(asts, joinedName, dllName, deps, pdbName, false, false)
     if returnCode <> 0 then
-        raise <| new Exception(String.Join("\r\n\r\n", Seq.map string errors))
+        raiseErrors errors
 
 let private copy source destination =
     if File.Exists destination then
@@ -47,7 +64,7 @@ let make sourcePath sourceFiles outputPath =
     printfn "Generating installation code..."
     let ast = compile nameParts globals
     printfn "Compiling installation code..."
-    emit ast
+    emit [ast; parseFile sharedMetadataPath; buildMetadataFile "Shen.Runtime"]
     printfn "Copying artifacts to output path..."
     for file in Directory.GetFiles(".", searchPattern) do
         copy file (combine [outputPath; file])

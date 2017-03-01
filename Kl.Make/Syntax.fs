@@ -17,10 +17,10 @@ let private fileName = "file.fs"
 // Picked large values for line, col because there will be an unpredictable
 // ArrayIndexOutOfBoundsException if the numbers are too small
 let private loc = mkRange fileName (mkPos 512 512) (mkPos 1024 1024)
-let attr name value : SynAttribute =  {
+let attr target name value : SynAttribute =  {
     TypeName = name
     ArgExpr = value
-    Target = None
+    Target = target
     AppliesToGetterAndSetter = false
     Range = loc
 }
@@ -293,13 +293,14 @@ let letUnitAttrsDecl attrs name body =
     SynModuleDecl.Let(false, [letUnitBinding attrs name body], loc)
 let letMultiDecl bindings = SynModuleDecl.Let(true, bindings, loc)
 let extnAttr =
-    attr
+    attr None
         (longIdentWithDots [
             "System"
             "Runtime"
             "CompilerServices"
             "Extension"])
         unitExpr
+let assemblyAttrDecl name value = SynModuleDecl.Attributes([attr (Some(ident "assembly")) name value], loc)
 let sjoin sep (parts: string list) = String.Join(sep, parts)
 let moduleFile nameParts attrs decls =
     ParsedInput.ImplFile(

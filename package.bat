@@ -3,6 +3,8 @@ nuget install ILRepack -Version 2.0.12 -OutputDirectory packages
 .\packages\ILRepack.2.0.12\tools\ILRepack.exe ^
     /target:library ^
     /targetplatform:v4 ^
+    /allowDup:ShenSharp.Shared ^
+    /allowDup:ShenSharp.Metadata ^
     /out:.\Artifacts\Debug\Package\lib\Shen.dll ^
     .\Artifacts\Debug\Shen.Runtime.dll ^
     .\Kl\bin\Debug\Kl.dll
@@ -14,5 +16,5 @@ nuget install ILRepack -Version 2.0.12 -OutputDirectory packages
     /allowDup:ShenSharp.Metadata ^
     /out:.\Artifacts\Debug\Package\tools\Shen.exe ^
     .\Shen.Repl\bin\Debug\Shen.Repl.exe ^
-    .\Kl\bin\Debug\Kl.dll ^
-    .\Artifacts\Debug\Shen.Runtime.dll
+    .\Artifacts\Debug\Shen.Runtime.dll ^
+    .\Kl\bin\Debug\Kl.dll
