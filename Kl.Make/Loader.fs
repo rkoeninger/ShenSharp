@@ -32,7 +32,9 @@ let private import sourcePath sourceFiles =
     printfn ""
     globals
 
-let private raiseErrors errors = raise(new Exception(String.Join("\r\n\r\n", Seq.map string errors)))
+let private raiseErrors messages =
+    let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
+    raise(new Exception(String.Join("\r\n\r\n", Seq.map string errors)))
 
 let private parseFile file =
     let input = File.ReadAllText file
