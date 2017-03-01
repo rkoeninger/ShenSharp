@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Kl.Tests.``KL Reading``
+﻿module Kl.Tests.``KL Reading``
 
 open NUnit.Framework
 open Kl

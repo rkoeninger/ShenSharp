@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Kl.Tests.``Evaluation Order``
+﻿module Kl.Tests.``Evaluation Order``
 
 open NUnit.Framework
 open Kl

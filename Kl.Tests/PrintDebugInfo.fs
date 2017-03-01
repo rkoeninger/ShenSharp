@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Kl.Tests.``Print Debug Info``
+﻿module Kl.Tests.``Print Debug Info``
 
 open NUnit.Framework
 open Kl.Extensions

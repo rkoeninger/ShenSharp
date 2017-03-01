@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Shen.Tests.Symbols
+﻿module Shen.Tests.Symbols
 
 open NUnit.Framework
 open Assertions

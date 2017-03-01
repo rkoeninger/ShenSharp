@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Kl.Tests.Arithmetic
+﻿module Kl.Tests.Arithmetic
 
 open NUnit.Framework
 open Kl

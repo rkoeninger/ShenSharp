@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Kl.Tests.``Conditional Evaluation``
+﻿module Kl.Tests.``Conditional Evaluation``
 
 open NUnit.Framework
 open Kl

@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Kl.Tests.Equality
+﻿module Kl.Tests.Equality
 
 open System.IO
 open NUnit.Framework

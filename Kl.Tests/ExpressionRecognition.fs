@@ -1,5 +1,4 @@
-﻿[<NUnit.Framework.TestFixture>]
-module Kl.Tests.``Expression Recognition``
+﻿module Kl.Tests.``Expression Recognition``
 
 open NUnit.Framework
 open Kl.Values
