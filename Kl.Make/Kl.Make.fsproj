@@ -110,4 +110,8 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <Target Name="AfterBuild">
+    <Copy SourceFiles="..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
+  </Target>
 </Project>
