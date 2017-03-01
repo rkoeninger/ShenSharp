@@ -6,8 +6,8 @@ mono ./packages/ILRepack.2.0.12/tools/ILRepack.exe \
     /target:library \
     /targetplatform:v4 \
     /out:./Artifacts/Debug/Package/lib/Shen.dll \
-    ./Kl/bin/Debug/Kl.dll \
-    ./Artifacts/Debug/Shen.Runtime.dll
+    ./Artifacts/Debug/Shen.Runtime.dll \
+    ./Kl/bin/Debug/Kl.dll
 
 mono ./packages/ILRepack.2.0.12/tools/ILRepack.exe \
     /target:exe \
