@@ -7,15 +7,15 @@ open System.Runtime.InteropServices
 let Author = "Robert Koeninger"
 
 [<Literal>]
-let Version = "0.7.0.0"
+let Revision = "0.7.0.0"
 
 [<assembly: AssemblyProduct "ShenSharp">]
 [<assembly: AssemblyDescription "Shen for the Common Language Runtime">]
 [<assembly: AssemblyCompany(Author)>]
 [<assembly: AssemblyCopyright("Copyright © 2015-2017 " + Author)>]
-[<assembly: AssemblyVersion(Version)>]
-[<assembly: AssemblyFileVersion(Version)>]
-[<assembly: AssemblyInformationalVersion(Version)>]
+[<assembly: AssemblyVersion(Revision)>]
+[<assembly: AssemblyFileVersion(Revision)>]
+[<assembly: AssemblyInformationalVersion(Revision)>]
 
 #if DEBUG
 [<assembly: AssemblyConfiguration "Debug">]
