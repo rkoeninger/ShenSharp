@@ -299,6 +299,11 @@ let compile nameParts globals =
 let buildMetadataFile name =
     moduleFile ["ShenSharp"; "Metadata"]
         []
-        [assemblyAttrDecl
-            (longIdentWithDots ["System"; "Reflection"; "AssemblyTitle"])
-            (stringExpr name)]
+        [openDecl ["System"; "Reflection"]
+         openDecl ["System"; "Runtime"; "Versioning"]
+         assemblyAttrDecl
+            (longIdentWithDots ["AssemblyTitle"])
+            (stringExpr name)
+         assemblyAttrDecl
+            (longIdentWithDots ["TargetFramework"])
+            (stringExpr ".NETFramework,Version=v4.5")]
