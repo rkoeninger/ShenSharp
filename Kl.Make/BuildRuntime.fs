@@ -1,7 +1,7 @@
-﻿module Kl.Make.Run.BuildRuntime
+﻿module Kl.Make.BuildRuntime
 
 open Kl.Values
-open Kl.Make.Loader
+open Loader
 
 #if DEBUG
 let buildConfig = "Debug"

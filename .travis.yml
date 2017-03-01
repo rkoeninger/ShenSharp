@@ -11,8 +11,8 @@ install:
 script:
   - xbuild /p:Configuration=Release Kl.sln
   - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/Kl.Tests.dll
-  - pushd ./Kl.Make.Run/bin/Release
-  - mono Kl.Make.Run.exe
+  - pushd ./Kl.Make/bin/Release
+  - mono Kl.Make.exe
   - popd
   - xbuild /p:Configuration=Release Shen.sln
   - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Shen.Tests/bin/Release/Shen.Tests.dll
