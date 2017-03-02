@@ -166,6 +166,8 @@ let apply globals f args =
     | Done value -> value
     | Pending(locals, expr) -> evalv (globals, locals) expr
 
+// TODO: replace vapply with asFunction: Value -> Function
+
 /// <summary>
 /// Interprets a value as a function and applies it to a list of values.
 /// </summary>

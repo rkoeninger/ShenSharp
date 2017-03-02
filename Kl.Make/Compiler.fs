@@ -11,7 +11,7 @@ open Syntax
 // All symbols from KL code need to be renamed so
 // they don't conflict with generated identifiers
 // or F# keywords
-let private rename s = "kl_" + s
+let private rename = sprintf "kl_%s"
 
 type private ExprType =
     | KlValue
@@ -37,14 +37,7 @@ let private toType targetType (fsExpr, currentType) =
     | _, FsUnit -> appIgnore fsExpr
     | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
-let rec private buildSeq ((globals, locals) as context) exprs =
-    let ignoreButLast i e =
-        if i < List.length exprs - 1
-            then e |> toType FsUnit
-            else fst e
-    sequentialExpr (List.mapi ignoreButLast exprs), snd (List.last exprs)
-
-and private buildApp ((globals, locals) as context) (f: Expr) args =
+let rec private buildApp ((globals, locals) as context) (f: Expr) args =
     match f with
     | Constant(Sym s) ->
         if Set.contains s locals then
@@ -122,10 +115,8 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
             (rename param)
             (buildExpr context binding |> toType KlValue)
             (buildExpr (globals, Set.add param locals) body |> toType KlValue), KlValue
-    | Anonymous(Some param, body) ->
-        compileF globals locals [param] body, KlValue
-    | Anonymous(None, body) ->
-        compileF globals locals [] body, KlValue
+    | Anonymous(param, body) ->
+        compileF globals locals (Option.toList param) body, KlValue
     | Catch(body, handler) ->
         let errExpr = appIdExpr "Err" (longIdExpr ["e"; "Message"])
         let handlerExpr =
@@ -248,7 +239,7 @@ let private installSymbol (globals as context) (id, value) =
         stringExpr id
         buildValue context value]
 
-let compile nameParts globals =
+let buildInstallationFile nameParts globals =
     let symbols = nonPrimitiveSymbols globals
     let defuns = nonPrimitiveFunctions globals
     let compiledNameAttr name =

@@ -64,7 +64,7 @@ let private copy source destination =
 let make sourcePath sourceFiles outputPath =
     let globals = import sourcePath sourceFiles
     printfn "Generating installation code..."
-    let ast = compile nameParts globals
+    let ast = buildInstallationFile nameParts globals
     printfn "Compiling installation code..."
     emit [ast; parseFile sharedMetadataPath; buildMetadataFile "Shen.Runtime"]
     printfn "Copying artifacts to output path..."
