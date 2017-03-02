@@ -17,16 +17,23 @@ type [<ReferenceEquality>] IO = {
 }
 
 /// <summary>
+/// An interned symbol reference with optional values in
+/// the global symbol and global function namespaces.
+/// </summary>
+type Symbol = {
+    Name: string
+    IsProtected: bool ref
+    Val: Value option ref
+    Func: Function option ref
+}
+
+/// <summary>
 /// A global, mutable set of symbol definitions that contains separate
 /// symbol and function namespaces.
 /// Primitives is a list of symbols that bootstrap the KL environment
 /// which should not be re-defined.
 /// </summary>
-type Globals = {
-    Symbols: ConcurrentDictionary<string, Symbol>
-    PrimitiveSymbols: HashSet<string>
-    PrimitiveFunctions: HashSet<string>
-}
+and Globals = ConcurrentDictionary<string, Symbol>
 
 /// <summary>
 /// An immutable map of local variable definitions.
@@ -73,12 +80,6 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
         | Err s   -> sprintf "<Error \"%s\">" s
         | Func f  -> string f
         | Pipe io -> sprintf "<Stream %s>" io.Name
-
-/// <summary>
-/// An interned symbol reference with optional values in
-/// the global symbol and global function namespaces.
-/// </summary>
-and Symbol = string * Value option ref * Function option ref
 
 /// <summary>
 /// An optimized KL expression.

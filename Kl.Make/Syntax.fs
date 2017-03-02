@@ -285,7 +285,7 @@ let matchExpr key clauses =
 let openDecl parts = SynModuleDecl.Open(longIdentWithDots parts, loc)
 let letAttrsDecl attrs name paramz body =
     SynModuleDecl.Let(false, [letAttrsBinding attrs name paramz body], loc)
-let letAttrsMultiParamDecl attrs name paramz body =
+let letAttrsUncurriedDecl attrs name paramz body =
     SynModuleDecl.Let(false, [letAttrsMultiParamBinding attrs name paramz body], loc)
 let letDecl name paramz body =
     SynModuleDecl.Let(false, [letBinding name paramz body], loc)

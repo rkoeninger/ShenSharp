@@ -101,7 +101,7 @@ and private evalw ((globals, locals) as env) = function
     // Should exhibit same behavior as (set id expr)
     | Assignment(symbol, expr) ->
         let value = evalv env expr
-        setValue symbol value
+        symbol.Val := Some value
         Done value
 
     // Should exhibit same behavior as (value id)
@@ -111,10 +111,10 @@ and private evalw ((globals, locals) as env) = function
     // Evaluating a defun just takes the name, param list and body
     // and stores them in the global function scope.
     // Ignore attempts to redefine a primitive.
-    | Definition((id, _, fref) as symbol, paramz, body) ->
-        if not(globals.PrimitiveFunctions.Contains id) then
-            setFunction symbol (Interpreted(Map.empty, paramz, body))
-        Done(Sym id)
+    | Definition(symbol, paramz, body) ->
+        if not(!symbol.IsProtected) then
+            symbol.Func := Some(Interpreted(Map.empty, paramz, body))
+        Done(Sym symbol.Name)
 
     // Immediate lookup for global functions.
     // Should exhibit same behavior as if it was no optimized.

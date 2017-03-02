@@ -47,50 +47,62 @@ module Values =
             then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
             else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
-    let newGlobals() = {
-        Symbols = new ConcurrentDictionary<string, Symbol>()
-        PrimitiveSymbols = new HashSet<string>()
-        PrimitiveFunctions = new HashSet<string>()
-    }
+    let newGlobals() = new ConcurrentDictionary<string, Symbol>()
 
-    let intern globals id =
-        globals.Symbols.GetOrAdd(id, fun _ -> id, ref None, ref None)
+    let intern (globals: Globals) id =
+        globals.GetOrAdd(id,
+            fun _ ->
+                {Name = id
+                 IsProtected = ref false
+                 Val = ref None
+                 Func = ref None})
 
-    let getValueOption symbol =
-        let (_, sref, _) = symbol
-        !sref
+    let unprotectAll (globals: Globals) =
+        for kv in globals do
+            kv.Value.IsProtected := false
+        globals
+
+    let getValueOption symbol = !symbol.Val
 
     let getValue symbol =
-        let (id, sref, _) = symbol
-        match !sref with
+        match !symbol.Val with
         | Some value -> value
-        | None -> failwithf "Symbol \"%s\" is not defined" id
+        | None -> failwithf "Symbol \"%s\" is not defined" symbol.Name
 
     let getFunction symbol =
-        let (id, _, fref) = symbol
-        match !fref with
+        match !symbol.Func with
         | Some f -> f
-        | None -> failwithf "Function \"%s\" is not defined" id
+        | None -> failwithf "Function \"%s\" is not defined" symbol.Name
 
     let setValue symbol value =
-        let (_, sref, _) = symbol
+        let (_, _, sref, _) = symbol
         sref := Some value
 
     let setFunction symbol f =
-        let (_, _, fref) = symbol
+        let (_, _, _, fref) = symbol
         fref := Some f
 
-    let assign globals id value = setValue (intern globals id) value
+    let assignProtected globals id value =
+        let symbol = intern globals id
+        symbol.Val := Some value
+        symbol.IsProtected := true
 
-    let retrieve globals id = getValue (intern globals id)
+    let defineProtected globals id f =
+        let symbol = intern globals id
+        symbol.Func := Some f
+        symbol.IsProtected := true
 
-    let define globals id f = setFunction (intern globals id) f
+    let assign globals id value = (intern globals id).Val := Some value
+
+    let retrieve globals id = getValue(intern globals id)
+
+    let define globals id f = (intern globals id).Func := Some f
 
     /// <summary>
     /// Looks up id in the global function namespace.
     /// Raises an error if function not defined.
     /// </summary>
-    let lookup globals id = getFunction (intern globals id)
+    let lookup globals id = getFunction(intern globals id)
 
     let localIndex id locals =
         List.tryFindIndex ((=) id) locals |> Option.map (fun x -> locals.Length - x - 1)
@@ -115,6 +127,11 @@ module Values =
             Write = stream.WriteByte
             Close = stream.Close
         }
+
+    let rec filterSome = function
+        | [] -> []
+        | Some x :: xs -> x :: filterSome xs
+        | None :: xs -> filterSome xs
 
     let private sequenceOption xs =
         let combine x xs = Option.bind (fun v -> Option.map (fun vs -> v :: vs) xs) x

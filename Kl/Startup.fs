@@ -70,8 +70,6 @@ let baseGlobals () =
         "ls",              Compiled(0, kl_ls)
     ]
     let globals = newGlobals()
-    List.iter ((<||) (assign globals)) symbols
-    List.iter ((<||) (define globals)) functions
-    List.map (fst >> globals.PrimitiveSymbols.Add) symbols |> ignore
-    List.map (fst >> globals.PrimitiveFunctions.Add) functions |> ignore
+    List.iter ((<||) (assignProtected globals)) symbols
+    List.iter ((<||) (defineProtected globals)) functions
     globals

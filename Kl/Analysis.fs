@@ -19,25 +19,19 @@ let rec functionArity = function
     | Compiled(arity, _) -> arity
     | Partial(f, args) -> functionArity f - args.Length
 
-let nonPrimitiveSymbols globals =
-    globals.Symbols
-    |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
-    |> Seq.filter (fst >> globals.PrimitiveSymbols.Contains >> not)
-    |> Seq.toList
+let nonPrimitiveSymbols (globals: Globals) =
+    let ps (kv: KeyValuePair<_, _>) =
+        if !kv.Value.IsProtected
+            then None
+            else Option.map (fun value -> (kv.Key, value)) !kv.Value.Val
+    filterSome(Seq.toList(Seq.map ps globals))
 
-let rec private filterSome = function
-    | [] -> []
-    | (y, Some x) :: xs -> (y, x) :: filterSome xs
-    | _ :: xs -> filterSome xs
-
-let nonPrimitiveFunctions globals =
-    globals.Symbols
-    |> Seq.map (fun (kv: KeyValuePair<_, _>) -> (kv.Key, kv.Value))
-    |> Seq.map (fun (id, (_, _, fref)) -> (id, !fref))
-    |> Seq.toList
-    |> filterSome
-    |> Seq.filter (fst >> globals.PrimitiveFunctions.Contains >> not)
-    |> Seq.toList
+let nonPrimitiveFunctions (globals: Globals) =
+    let pf (kv: KeyValuePair<_, _>) =
+        if !kv.Value.IsProtected
+            then None
+            else Option.map (fun f -> (kv.Key, f)) !kv.Value.Func
+    filterSome(Seq.toList(Seq.map pf globals))
 
 let private specialSymbols = [
     "and"

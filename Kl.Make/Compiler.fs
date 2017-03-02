@@ -54,8 +54,7 @@ and private buildApp ((globals, locals) as context) (f: Expr) args =
                  idExpr(rename s)
                  listExpr args]
         else
-            let (_, _, fref) = intern globals s
-            match !fref with
+            match !(intern globals s).Func with
             | Some systemf ->
                 let arity = functionArity systemf
                 if args.Length > arity then
@@ -145,24 +144,24 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
         sequentialExpr(builtExprs @ [lastExpr]), lastType
     | Definition _ ->
         failwith "Can't compile defun not at top level"
-    | Assignment((id, _, _), expr) ->
+    | Assignment(symbol, expr) ->
         appIdExprN (rename "set")
             [idExpr "globals"
              listExpr
-                [appIdExpr "Sym" (stringExpr id)
+                [appIdExpr "Sym" (stringExpr symbol.Name)
                  buildExpr context expr |> toType KlValue]], KlValue
-    | Retrieval((id, _, _)) ->
+    | Retrieval symbol ->
         appIdExprN (rename "value")
             [idExpr "globals"
-             listExpr [appIdExpr "Sym" (stringExpr id)]], KlValue
-    | GlobalCall(("not", _, _), [expr]) ->
+             listExpr [appIdExpr "Sym" (stringExpr symbol.Name)]], KlValue
+    | GlobalCall({Name = "not"}, [expr]) ->
         appIdExpr "not" (buildExpr context expr |> toType FsBoolean), FsBoolean
-    | GlobalCall(("=", _, _), [x; y]) ->
+    | GlobalCall({Name = "="}, [x; y]) ->
         let xExpr = buildExpr context x
         let yExpr = buildExpr context y
         let t = simplestCommonType (snd xExpr) (snd yExpr)
         infixIdExpr "op_Equality" (xExpr |> toType t) (yExpr |> toType t), FsBoolean
-    | GlobalCall((id, _, _), args) ->
+    | GlobalCall({Name = id}, args) ->
         buildApp context (Constant(Sym id)) (List.map (buildExpr context >> toType KlValue) args), KlValue
     | Application(f, args) ->
         buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
@@ -243,21 +242,13 @@ let rec private buildValue (globals as context) = function
         compileF globals Set.empty paramz body
     | value -> failwithf "Can't build value: %A" value
 
-let private installSymbol (globals as context) (name, (_, sref: Value option ref, _)) =
-    let buildIt value =
-        appIdExprN "assign"
-            [idExpr "globals"
-             stringExpr name
-             buildValue context value]
-    Option.map buildIt !sref
-
-let rec private filterSome = function
-    | [] -> []
-    | Some x :: xs -> x :: filterSome xs
-    | None :: xs -> filterSome xs
+let private installSymbol (globals as context) (id, value) =
+    appIdExprN "assign" [
+        idExpr "globals"
+        stringExpr id
+        buildValue context value]
 
 let compile nameParts globals =
-    let fn = sjoin "" nameParts
     let symbols = nonPrimitiveSymbols globals
     let defuns = nonPrimitiveFunctions globals
     let compiledNameAttr name =
@@ -278,19 +269,25 @@ let compile nameParts globals =
             [param "globals" "Globals"]
             (sequentialExpr
                 (List.concat
-                    [List.map (installSymbol globals) symbols |> filterSome
+                    [List.map (installSymbol globals) symbols
                      List.map installDefun defuns
                      [idExpr "globals"]]))
          letUnitAttrsDecl
             [compiledNameAttr "NewRuntime"]
-             "newRuntime"
-             (appIdExpr "install" (appIdExpr "baseGlobals" unitExpr))
-         letAttrsMultiParamDecl [extnAttr] "Eval"
+            "newRuntime"
+            (appIdExpr "unprotectAll"
+                (appIdExpr "install"
+                    (appIdExpr "baseGlobals" unitExpr)))
+         letAttrsUncurriedDecl
+            [extnAttr]
+            "Eval"
             [param "globals" "Globals"; param "syntax" "string"]
             (appKl "eval"
                 [appKl "read"
                     [appIdExpr "pipeString" (idExpr "syntax")]])
-         letAttrsMultiParamDecl [extnAttr] "Load"
+         letAttrsUncurriedDecl
+            [extnAttr]
+            "Load"
             [param "globals" "Globals"; param "path" "string"]
             (appIgnore
                 (appKl "load"

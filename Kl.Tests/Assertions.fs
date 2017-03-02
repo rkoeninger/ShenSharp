@@ -9,16 +9,16 @@ open Kl.Startup
 open Kl.Make.Reader
 
 let runIn globals syntax = eval globals (read syntax)
-let run = runIn (baseGlobals())
+let run = runIn(unprotectAll(baseGlobals()))
 let runAll syntax =
-    let globals = baseGlobals()
+    let globals = unprotectAll(baseGlobals())
     List.fold (fun _ -> eval globals) Empty (readAll syntax)
 let assertEq (expected: 'a) (actual: 'a) = Assert.AreEqual(expected, actual)
 let assertNotEq (expected: 'a) (actual: 'a) = Assert.AreNotEqual(expected, actual)
 let assertTrue syntax = assertEq True (runAll syntax)
 let assertFalse syntax = assertEq False (runAll syntax)
 let assertEach pairs =
-    let globals = baseGlobals()
+    let globals = unprotectAll(baseGlobals())
     List.iter (fun (expected, syntax) -> assertEq expected (runIn globals syntax)) pairs
 let assertNoError syntax = runAll syntax |> ignore
 let assertError syntax =
