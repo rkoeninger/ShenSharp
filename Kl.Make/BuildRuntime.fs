@@ -2,14 +2,9 @@
 
 open Kl.Values
 open Loader
+open ShenSharp.Shared
 
-#if DEBUG
-let buildConfig = "Debug"
-#else
-let buildConfig = "Release"
-#endif
-
-let outputPath = combine [".."; ".."; ".."; "Artifacts"; buildConfig]
+let outputPath = combine [".."; ".."; ".."; "Artifacts"; BuildConfig]
 let sourcePath = combine [".."; ".."; ".."; "Distribution"; "Kl"]
 let sourceFiles = [
     "toplevel.kl"

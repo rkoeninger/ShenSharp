@@ -18,6 +18,14 @@ let Copyright = "Copyright © 2015-2017 " + Author
 [<Literal>]
 let Revision = "0.7.0.0"
 
+#if DEBUG
+[<Literal>]
+let BuildConfig = "Debug"
+#else
+[<Literal>]
+let BuildConfig = "Release"
+#endif
+
 [<assembly: AssemblyProduct(Product)>]
 [<assembly: AssemblyDescription(Description)>]
 [<assembly: AssemblyCompany(Author)>]
@@ -25,13 +33,7 @@ let Revision = "0.7.0.0"
 [<assembly: AssemblyVersion(Revision)>]
 [<assembly: AssemblyFileVersion(Revision)>]
 [<assembly: AssemblyInformationalVersion(Revision)>]
-
-#if DEBUG
-[<assembly: AssemblyConfiguration "Debug">]
-#else
-[<assembly: AssemblyConfiguration "Release">]
-#endif
-
+[<assembly: AssemblyConfiguration(BuildConfig)>]
 [<assembly: ComVisible false>]
 
 do ()

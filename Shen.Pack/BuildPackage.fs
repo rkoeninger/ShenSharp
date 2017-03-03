@@ -2,41 +2,92 @@
 
 open System
 open System.IO
+open System.Text.RegularExpressions
+open ILRepacking
 open NuGet
+open Kl.Values
 open ShenSharp.Shared
 
-let addFile (builder: PackageBuilder) source target =
+let private solutionRoot = combine [".."; ".."; ".."]
+let private fromRoot = combine << (@) [solutionRoot]
+let private packageRoot = fromRoot ["Artifacts"; BuildConfig; "Package"]
+let private packageFileName = sprintf "%s.%s.nupkg" Product Revision
+let private packagePath = fromRoot ["Artifacts"; BuildConfig; packageFileName]
+let private tags = ["Shen"] // TODO: pull from github api?
+
+let private repackAssemblies kind target sources dups =
+    let options = RepackOptions()
+    options.TargetKind <- Nullable kind
+    options.TargetPlatformVersion <- "v4"
+    for name in dups do
+        options.AllowedDuplicateTypes.Add(name, name)
+    options.OutputFile <- target
+    options.InputAssemblies <- List.toArray sources
+    let repacker = new ILRepack(options)
+    repacker.Repack()
+
+let private regex pattern s = Regex.Match(s, pattern, RegexOptions.Multiline).Value
+
+let private urlFromLicenseFile() =
+    new Uri(regex @"http\S*" (File.ReadAllText(fromRoot ["LICENSE.txt"])))
+
+let private urlFromGitConfig() =
+    let configText = File.ReadAllText(fromRoot [".git"; "config"])
+    let origin = regex @"[remote ""origin""].*.git" configText
+    let urlString = regex @"http\S*" origin
+    new Uri(urlString.Substring(0, urlString.Length - 4))
+
+let private iconUrlFromReadme() =
+    let readmeText = File.ReadAllText(combine [solutionRoot; "README.md"])
+    let iconMarkup = regex "\!\[.*Logo\]\(.*\)" readmeText
+    new Uri((regex "http.*\)" iconMarkup).TrimEnd(')'))
+
+let private addFile (builder: PackageBuilder) source target =
     let file = new PhysicalPackageFile()
     file.SourcePath <- source
     file.TargetPath <- target
     builder.Files.Add file
 
-[<EntryPoint>]
-let main args =
+let rec private addFiles (builder: PackageBuilder) (root: string) folder =
+    for filePath in Directory.GetFiles folder do
+        let target = combine [folder.Substring(root.Length + 1); Path.GetFileName filePath]
+        addFile builder filePath target
+    for folderPath in Directory.GetDirectories folder do
+        addFiles builder root folderPath
 
-    // TODO: do ILRepack, like in package.{bat | sh}
-
+let private packageNuget() =
     let builder = new PackageBuilder()
     builder.Id <- Product
     builder.Title <- Product
     builder.Description <- Description
-    builder.Summary <- Description // TODO: pull from readme.md
+    //builder.Summary <- Description // TODO: pull from README.md
+    builder.ProjectUrl <- urlFromGitConfig()
+    List.iter (builder.Tags.Add >> ignore) tags
     builder.Authors.Add Author |> ignore
     builder.Owners.Add Author |> ignore
     builder.Copyright <- Copyright
     builder.Version <- SemanticVersion.Parse Revision
-    // TODO: builder.LicenseUrl // TODO: pull from license.txt
+    builder.LicenseUrl <- urlFromLicenseFile()
     builder.RequireLicenseAcceptance <- false
-    builder.Tags.Add "Shen" |> ignore // TODO: pull from ?
-    //builder.ReleaseNotes // TODO: pull from changelog.md
-    builder.ProjectUrl <- new Uri("https://github.com/rkoeninger/ShenSharp") // TODO: pull from .git ?
-    // TODO: builder.MinClientVersion
-    // TODO: use Values.combine and distinguish Debug/Release
-    // TODO: select everything under Package/ folder
-    addFile builder @"..\..\..\Artifacts\Debug\Package\lib\Shen.dll" @"lib\net40\Shen.dll"
-    addFile builder @"..\..\..\Artifacts\Debug\Package\tools\Shen.exe" @"tools\Shen.exe"
-    // TODO: move relative paths into ShenSharp.Shared?
-    let packageFileName = sprintf "%s.%s.nupkg" Product Revision
-    // builder.Save(File.Open(@"..\..\..\Artifacts\Debug\" + packageFileName, FileMode.OpenOrCreate, FileAccess.Write))
-    // TODO: ^ raises IO exception
+    //builder.ReleaseNotes // TODO: pull from CHANGELOG.md
+    builder.IconUrl <- iconUrlFromReadme()
+    addFiles builder packageRoot packageRoot
+    use stream = File.Open(packagePath, FileMode.OpenOrCreate)
+    builder.Save stream
+
+[<EntryPoint>]
+let main _ =
+    repackAssemblies ILRepack.Kind.Dll
+        (fromRoot ["Artifacts"; BuildConfig; "Package"; "lib"; "net45"; "Shen.dll"])
+        [fromRoot ["Artifacts"; BuildConfig; "Shen.Runtime.dll"]
+         fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]]
+        []
+    repackAssemblies ILRepack.Kind.Exe
+        (fromRoot ["Artifacts"; BuildConfig; "Package"; "tools"; "Shen.exe"])
+        [fromRoot ["Shen.Repl"; "bin"; BuildConfig; "Shen.Repl.exe"]
+         fromRoot ["Artifacts"; BuildConfig; "Shen.Runtime.dll"]
+         fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]]
+        ["ShenSharp.Shared"
+         "ShenSharp.Metadata"]
+    packageNuget()
     0
