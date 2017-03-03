@@ -72,6 +72,9 @@ let private packageNuget() =
     //builder.ReleaseNotes // TODO: pull from CHANGELOG.md
     builder.IconUrl <- iconUrlFromReadme()
     addFiles builder packageRoot packageRoot
+    let core = new PackageDependency("FSharp.Core", new VersionSpec(new SemanticVersion(4, 0, 0, 1)))
+    let deps = new PackageDependencySet(Runtime.Versioning.FrameworkName(".NETFramework,Version=v4.5"), [core])
+    builder.DependencySets.Add deps
     use stream = File.Open(packagePath, FileMode.OpenOrCreate)
     builder.Save stream
 
