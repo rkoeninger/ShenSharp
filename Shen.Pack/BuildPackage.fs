@@ -8,21 +8,21 @@ open NuGet
 open Kl.Values
 open ShenSharp.Shared
 
-let private solutionRoot = combine [".."; ".."; ".."]
-let private fromRoot = combine << (@) [solutionRoot]
+let private fromRoot = combine << (@) [".."; ".."; ".."]
 let private packageRoot = fromRoot ["Artifacts"; BuildConfig; "Package"]
 let private packageFileName = sprintf "%s.%s.nupkg" Product Revision
 let private packagePath = fromRoot ["Artifacts"; BuildConfig; packageFileName]
 let private tags = ["Shen"] // TODO: pull from github api?
 
-let private repackAssemblies kind target sources dups =
-    let options = RepackOptions()
-    options.TargetKind <- Nullable kind
-    options.TargetPlatformVersion <- "v4"
-    for name in dups do
-        options.AllowedDuplicateTypes.Add(name, name)
-    options.OutputFile <- target
-    options.InputAssemblies <- List.toArray sources
+let private repackAssemblies kind target sources =
+    let options =
+        new RepackOptions(
+            ["/target:library"
+             "/targetplatform:v4"
+             "/allowdup:ShenSharp.Shared"
+             "/allowdup:ShenSharp.Metadata"
+             "/out:" + target]
+            @ sources)
     let repacker = new ILRepack(options)
     repacker.Repack()
 
@@ -38,7 +38,7 @@ let private urlFromGitConfig() =
     new Uri(urlString.Substring(0, urlString.Length - 4))
 
 let private iconUrlFromReadme() =
-    let readmeText = File.ReadAllText(combine [solutionRoot; "README.md"])
+    let readmeText = File.ReadAllText(fromRoot ["README.md"])
     let iconMarkup = regex "\!\[.*Logo\]\(.*\)" readmeText
     new Uri((regex "http.*\)" iconMarkup).TrimEnd(')'))
 
@@ -84,13 +84,10 @@ let main _ =
         (fromRoot ["Artifacts"; BuildConfig; "Package"; "lib"; "net45"; "Shen.dll"])
         [fromRoot ["Artifacts"; BuildConfig; "Shen.Runtime.dll"]
          fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]]
-        []
     repackAssemblies ILRepack.Kind.Exe
         (fromRoot ["Artifacts"; BuildConfig; "Package"; "tools"; "Shen.exe"])
         [fromRoot ["Shen.Repl"; "bin"; BuildConfig; "Shen.Repl.exe"]
          fromRoot ["Artifacts"; BuildConfig; "Shen.Runtime.dll"]
          fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]]
-        ["ShenSharp.Shared"
-         "ShenSharp.Metadata"]
     packageNuget()
     0
