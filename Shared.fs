@@ -35,5 +35,6 @@ let BuildConfig = "Release"
 [<assembly: AssemblyInformationalVersion(Revision)>]
 [<assembly: AssemblyConfiguration(BuildConfig)>]
 [<assembly: ComVisible false>]
-
 do ()
+
+let generatedAssemblyName = ["Shen"; "Runtime"]

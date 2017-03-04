@@ -9,9 +9,15 @@ open Kl.Values
 open ShenSharp.Shared
 
 let private fromRoot = combine << (@) [".."; ".."; ".."]
-let private packageRoot = fromRoot ["Artifacts"; BuildConfig; "Package"]
+let private klDllPath = fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]
+let private shenReplExePath = fromRoot ["Shen.Repl"; "bin"; BuildConfig; "Shen.Repl.exe"]
+let private artifactsRoot = fromRoot ["Artifacts"; BuildConfig]
+let private shenRuntimeDllPath = fromRoot [artifactsRoot; String.Join(".", generatedAssemblyName)]
+let private packageRoot = fromRoot [artifactsRoot; "Package"]
+let private shenDllPath = fromRoot [packageRoot; "lib"; "net45"; "Shen.dll"]
+let private shenExePath = fromRoot [packageRoot; "tools"; "Shen.exe"]
 let private packageFileName = sprintf "%s.%s.nupkg" Product Revision
-let private packagePath = fromRoot ["Artifacts"; BuildConfig; packageFileName]
+let private packagePath = fromRoot [artifactsRoot; packageFileName]
 let private tags = ["Shen"] // TODO: pull from github api?
 
 let private repackAssemblies kind target sources =
@@ -80,14 +86,7 @@ let private packageNuget() =
 
 [<EntryPoint>]
 let main _ =
-    repackAssemblies ILRepack.Kind.Dll
-        (fromRoot ["Artifacts"; BuildConfig; "Package"; "lib"; "net45"; "Shen.dll"])
-        [fromRoot ["Artifacts"; BuildConfig; "Shen.Runtime.dll"]
-         fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]]
-    repackAssemblies ILRepack.Kind.Exe
-        (fromRoot ["Artifacts"; BuildConfig; "Package"; "tools"; "Shen.exe"])
-        [fromRoot ["Shen.Repl"; "bin"; BuildConfig; "Shen.Repl.exe"]
-         fromRoot ["Artifacts"; BuildConfig; "Shen.Runtime.dll"]
-         fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]]
+    repackAssemblies ILRepack.Kind.Dll shenDllPath [shenRuntimeDllPath; klDllPath]
+    repackAssemblies ILRepack.Kind.Exe shenExePath [shenReplExePath; shenRuntimeDllPath; klDllPath]
     packageNuget()
     0

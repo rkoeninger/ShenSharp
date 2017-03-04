@@ -10,9 +10,9 @@ open Kl.Evaluator
 open Kl.Startup
 open Reader
 open Compiler
+open ShenSharp.Shared
 
-let private nameParts = ["Shen"; "Runtime"]
-let private joinedName = String.Join(".", nameParts)
+let private joinedName = String.Join(".", generatedAssemblyName)
 let private dllName = sprintf "%s.dll" joinedName
 let private pdbName = sprintf "%s.pdb" joinedName
 let private searchPattern = sprintf "%s.*" joinedName
@@ -64,9 +64,9 @@ let private copy source destination =
 let make sourcePath sourceFiles outputPath =
     let globals = import sourcePath sourceFiles
     printfn "Generating installation code..."
-    let ast = buildInstallationFile nameParts globals
+    let ast = buildInstallationFile generatedAssemblyName globals
     printfn "Compiling installation code..."
-    emit [ast; parseFile sharedMetadataPath; buildMetadataFile "Shen.Runtime"]
+    emit [ast; parseFile sharedMetadataPath; buildMetadataFile joinedName]
     printfn "Copying artifacts to output path..."
     for file in Directory.GetFiles(".", searchPattern) do
         copy file (combine [outputPath; file])

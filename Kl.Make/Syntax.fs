@@ -301,13 +301,12 @@ let extnAttr =
             "Extension"])
         unitExpr
 let assemblyAttrDecl name value = SynModuleDecl.Attributes([attr (Some(ident "assembly")) name value], loc)
-let sjoin sep (parts: string list) = String.Join(sep, parts)
 let moduleFile nameParts attrs decls =
     ParsedInput.ImplFile(
         ParsedImplFileInput.ParsedImplFileInput(
             fileName,
             false,
-            QualifiedNameOfFile.QualifiedNameOfFile(ident(sjoin "." nameParts)),
+            QualifiedNameOfFile.QualifiedNameOfFile(ident(String.Join(".", (nameParts: string list)))),
             [],
             [],
             [SynModuleOrNamespace.SynModuleOrNamespace(
