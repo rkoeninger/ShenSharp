@@ -165,13 +165,3 @@ let apply globals f args =
     match applyw globals f args with
     | Done value -> value
     | Pending(locals, expr) -> evalv (globals, locals) expr
-
-// TODO: replace vapply with asFunction: Value -> Function
-
-/// <summary>
-/// Interprets a value as a function and applies it to a list of values.
-/// </summary>
-let vapply globals value args =
-    match value with
-    | Func f -> apply globals f args
-    | _ -> failwith "Operator expression must evaluate to a function"

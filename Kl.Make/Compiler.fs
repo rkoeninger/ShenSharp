@@ -13,6 +13,7 @@ open Syntax
 // or F# keywords
 let private rename = sprintf "kl_%s"
 
+// TODO: add Function type here to do `Func`/`asFunction`
 type private ExprType =
     | KlValue
     | FsBoolean
@@ -41,21 +42,21 @@ let rec private buildApp ((globals, locals) as context) (f: Expr) args =
     match f with
     | Constant(Sym s) ->
         if Set.contains s locals then
-            // vapply globals ~(rename s) ~args
-            appIdExprN "vapply"
+            // apply globals (asFunction ~(rename s)) ~args
+            appIdExprN "apply"
                 [idExpr "globals"
-                 idExpr(rename s)
+                 appIdExpr "asFunction" (idExpr(rename s))
                  listExpr args]
         else
             match !(intern globals s).Func with
             | Some systemf ->
                 let arity = functionArity systemf
                 if args.Length > arity then
-                    // vapply globals ~(buildApp context f args0) args1
+                    // apply globals (asFunction ~(buildApp context f args0)) args1
                     let (args0, args1) = List.splitAt arity args
-                    appIdExprN "vapply"
+                    appIdExprN "apply"
                         [idExpr "globals"
-                         buildApp context f args0
+                         appIdExpr "asFunction" (buildApp context f args0)
                          listExpr args1]
                 elif args.Length < arity then
                     // Func(Partial(Compiled(~arity, ~(rename s)), ~args))
@@ -80,10 +81,10 @@ let rec private buildApp ((globals, locals) as context) (f: Expr) args =
                              stringExpr s])
                      listExpr args]
     | f ->
-        // vapply globals ~f ~args
-        appIdExprN "vapply"
+        // apply globals (asFunction ~f) ~args
+        appIdExprN "apply"
             [idExpr "globals"
-             buildExpr context f |> toType KlValue
+             appIdExpr "asFunction" (buildExpr context f |> toType KlValue)
              listExpr args]
 
 and private buildExpr ((globals, locals) as context) (expr : Expr) =

@@ -35,6 +35,10 @@ module Values =
         | Num x when x % 1.0m = 0.0m -> Some(int x)
         | _ -> None
 
+    let asFunction = function
+        | Func f -> f
+        | _ -> failwith "Operator must be a function"
+
     let inRange min max value = min <= value && value < max
 
     let argsErr name types args =
