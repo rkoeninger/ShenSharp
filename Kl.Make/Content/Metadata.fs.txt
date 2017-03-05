@@ -1,9 +1,0 @@
-module ShenSharp.Metadata
-
-open System.Reflection
-open System.Runtime.Versioning
-open ShenSharp.Shared
-
-[<AssemblyTitle(GeneratedModule)>]
-[<TargetFramework ".NETFramework,Version=v4.5">]
-do ()

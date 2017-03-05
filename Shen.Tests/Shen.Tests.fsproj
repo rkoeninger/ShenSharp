@@ -59,6 +59,11 @@
     <Compile Include="Symbols.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Shen.Api\Shen.Api.fsproj">
+      <Name>Shen.Api</Name>
+      <Project>{1885a119-975d-43f6-8a8d-8200c89a943c}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <Reference Include="FSharp.Core">
       <HintPath>..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.dll</HintPath>
       <Private>True</Private>

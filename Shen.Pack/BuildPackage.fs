@@ -12,7 +12,8 @@ let private fromRoot = combine << (@) [".."; ".."; ".."]
 let private outDir = combine ["bin"; BuildConfig]
 let private artifactsRoot = fromRoot ["Artifacts"; BuildConfig]
 let private klDllPath = fromRoot ["Kl"; outDir; "Kl.dll"]
-let private shenLanguageDllPath = combine [artifactsRoot; sprintf "%s.dll" GeneratedModule]
+let private shenLanguageDllPath = combine [artifactsRoot; sprintf "%s.dll" generatedModule]
+let private shenApiDllPath = fromRoot ["Shen.Api"; outDir; "Shen.Api.dll"]
 let private shenReplExePath = fromRoot ["Shen.Repl"; outDir; "Shen.Repl.exe"]
 let private packageRoot = combine [artifactsRoot; "Package"]
 let private shenDllPath = combine [packageRoot; "lib"; "net45"; "Shen.dll"]
@@ -89,10 +90,12 @@ let private packageNuget() =
 let main _ =
     repackAssemblies ILRepack.Kind.Dll shenDllPath [
         shenLanguageDllPath
+        shenApiDllPath
         klDllPath]
     repackAssemblies ILRepack.Kind.Exe shenExePath [
         shenReplExePath
         shenLanguageDllPath
+        shenApiDllPath
         klDllPath]
     printfn "Generating NuGet package..."
     packageNuget()
