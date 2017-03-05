@@ -73,12 +73,6 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
-    <Reference Include="Shen.Implementation" Condition="'$(Configuration)'=='Debug'">
-      <HintPath>..\Artifacts\Debug\Shen.Implementation.dll</HintPath>
-    </Reference>
-    <Reference Include="Shen.Implementation" Condition="'$(Configuration)'=='Release'">
-      <HintPath>..\Artifacts\Release\Shen.Implementation.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />

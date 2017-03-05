@@ -3,7 +3,7 @@ module Shen.ExtensionMethods
 
 open System.Runtime.CompilerServices
 open Kl
-open Shen.Implementation
+open Shen.Language
 open Shen.Runtime
 
 [<Extension>]

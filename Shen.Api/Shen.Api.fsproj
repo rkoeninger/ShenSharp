@@ -42,11 +42,11 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <Reference Include="Shen.Implementation" Condition="'$(Configuration)'=='Debug'">
-      <HintPath>..\Artifacts\Debug\Shen.Implementation.dll</HintPath>
+    <Reference Include="Shen.Language" Condition="'$(Configuration)'=='Debug'">
+      <HintPath>..\Artifacts\Debug\Shen.Language.dll</HintPath>
     </Reference>
-    <Reference Include="Shen.Implementation" Condition="'$(Configuration)'=='Release'">
-      <HintPath>..\Artifacts\Release\Shen.Implementation.dll</HintPath>
+    <Reference Include="Shen.Language" Condition="'$(Configuration)'=='Release'">
+      <HintPath>..\Artifacts\Release\Shen.Language.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -54,7 +54,7 @@
       <Link>Properties\Shared.fs</Link>
     </Compile>
     <Compile Include="Properties\Metadata.fs" />
-    <Compile Include="Api.fs" />
+    <Compile Include="Runtime.fs" />
     <Compile Include="ExtensionMethods.fs" />
   </ItemGroup>
   <ItemGroup>

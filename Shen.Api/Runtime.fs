@@ -3,7 +3,7 @@
 open Kl
 open Kl.Values
 open Kl.Startup
-open Shen.Implementation
+open Shen.Language
 
 [<CompiledName "NewRuntime">]
 let newRuntime() = install(baseGlobals())

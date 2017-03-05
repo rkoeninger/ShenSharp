@@ -38,7 +38,7 @@ let BuildConfig = "Release"
 [<assembly: ComVisible false>]
 do ()
 
-let generatedModule = "Shen.Implementation"
+let generatedModule = "Shen.Language"
 
 /// <summary>
 /// Combines file path fragments in platform specific way.
