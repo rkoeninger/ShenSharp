@@ -71,7 +71,7 @@ and Value =
     override this.ToString() =
         match this with
         | Empty      -> "()"
-        | Num x      -> x.ToString("0.################")
+        | Num x      -> x.ToString "0.################"
         | Str s      -> sprintf "\"%s\"" s
         | Sym s      -> s
         | Vec a      -> sprintf "<Vector %i>" a.Length

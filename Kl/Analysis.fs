@@ -10,7 +10,7 @@ let rec private butLast = function
     | [] | [_] -> []
     | x :: xs -> x :: butLast xs
 
-let rec flattenDo = function
+let rec private flattenDo = function
     | DoExpr(first, second) -> flattenDo first @ flattenDo second
     | klExpr -> [klExpr]
 
@@ -76,6 +76,44 @@ let rec populate locals = function
 
     // Anything else just gets passed through
     | expr -> expr
+
+let rec private removeAll keys m =
+    match keys with
+    | [] -> m
+    | k :: ks -> removeAll ks (Map.remove k m)
+
+let rec substitute locals expr =
+    let proceed = substitute locals
+    match expr with
+    | Constant(Sym id) ->
+        match Map.tryFind id locals with
+        | Some value -> Constant value
+        | None -> Constant(Sym id)
+    | Conjunction(left, right) ->
+        Conjunction(proceed left, proceed right)
+    | Disjunction(left, right) ->
+        Disjunction(proceed left, proceed right)
+    | Conditional(condition, consequent, alternative) ->
+        Conditional(proceed condition, proceed consequent, proceed alternative)
+    | Binding(param, value, body) ->
+        Binding(param, proceed value, substitute (Map.remove param locals) value)
+    | Anonymous(Some param, body) ->
+        Anonymous(Some param, substitute (Map.remove param locals) body)
+    | Anonymous(None, body) ->
+        Anonymous(None, proceed body)
+    | Catch(body, handler) ->
+        Catch(proceed body, proceed handler)
+    | Sequential(exprs, last) ->
+        Sequential(List.map proceed exprs, proceed last)
+    | Definition(name, paramz, body) ->
+        Definition(name, paramz, substitute (removeAll paramz locals) body)
+    | Assignment(symbol, expr) ->
+        Assignment(symbol, proceed expr)
+    | GlobalCall(symbol, args) ->
+        GlobalCall(symbol, List.map proceed args)
+    | Application(f, args) ->
+        Application(proceed f, List.map proceed args)
+    | other -> other
 
 // TODO: substitute local variables in Exprs
 // TODO: locals can be function scoped since captured variables are substituted.
