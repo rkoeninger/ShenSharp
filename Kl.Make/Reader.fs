@@ -11,10 +11,8 @@ open FParsec
 open Kl
 open Kl.Values
 
-// TODO: parsing of numbers can be simplified?
 let private pValue, pValueRef = createParserForwardedToRef<Value, unit>()
-let private number (n: string) = if (n.Contains(".")) then Num(decimal n) else Int(int n)
-let private pNum = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> number
+let private pNum = regex "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" |>> decimal |>> Num
 let private pStr = between (pchar '"') (pchar '"') (manySatisfy ((<>) '"')) |>> Str
 let private pSym = regex "[^\\s\\x28\\x29]+" |>> Sym
 let private pList = between (pchar '(') (pchar ')') (sepBy pValue spaces1) |>> toCons
