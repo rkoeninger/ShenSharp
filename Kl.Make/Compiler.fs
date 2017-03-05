@@ -258,14 +258,3 @@ let buildInstallationFile (name: string) globals =
                     [List.map (installSymbol globals) symbols
                      List.map installDefun defuns
                      [idExpr "globals"]]))]
-
-let buildMetadataFile name =
-    moduleFile ["ShenSharp"; "Metadata"]
-        [openDecl ["System"; "Reflection"]
-         openDecl ["System"; "Runtime"; "Versioning"]
-         assemblyAttrDecl
-            (longIdentWithDots ["AssemblyTitle"])
-            (stringExpr name)
-         assemblyAttrDecl
-            (longIdentWithDots ["TargetFramework"])
-            (stringExpr ".NETFramework,Version=v4.5")]

@@ -116,8 +116,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Tests", "Shen.Tests\Sh
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Pack", "Shen.Pack\Shen.Pack.fsproj", "{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Api", "Shen.Api\Shen.Api.fsproj", "{1885A119-975D-43F6-8A8D-8200C89A943C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -144,10 +142,6 @@ Global
 		{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1885A119-975D-43F6-8A8D-8200C89A943C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1885A119-975D-43F6-8A8D-8200C89A943C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1885A119-975D-43F6-8A8D-8200C89A943C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1885A119-975D-43F6-8A8D-8200C89A943C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

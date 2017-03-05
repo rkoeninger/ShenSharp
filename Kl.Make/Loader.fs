@@ -12,11 +12,15 @@ open Reader
 open Compiler
 open ShenSharp.Shared
 
-let private dllName = sprintf "%s.dll" generatedModule
-let private pdbName = sprintf "%s.pdb" generatedModule
-let private searchPattern = sprintf "%s.*" generatedModule
+let private dllName = sprintf "%s.dll" GeneratedModule
+let private pdbName = sprintf "%s.pdb" GeneratedModule
+let private searchPattern = sprintf "%s.*" GeneratedModule
 let private deps = ["Kl.dll"]
 let private sharedMetadataPath = combine [".."; ".."; ".."; "Shared.fs"]
+let private contentPath = "Content"
+let private metadataPath = combine [contentPath; "Metadata.fs.txt"]
+let private runtimePath = combine [contentPath; "Runtime.fs.txt"]
+let private extensionMethodsPath = combine [contentPath; "ExtensionMethods.fs.txt"]
 
 let private import sourcePath sourceFiles =
     let globals = baseGlobals()
@@ -32,17 +36,19 @@ let private import sourcePath sourceFiles =
     globals
 
 let private raiseErrors messages =
-    let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
+    let isError (m: FSharpErrorInfo) = m.Severity = FSharpErrorSeverity.Error
+    let errors = Seq.filter isError messages
     raise(Exception(String.Join("\r\n\r\n", Seq.map string errors)))
 
 let private parseFile file =
     let input = File.ReadAllText file
+    let trimmedFile = file.Replace(".txt", "")
     let checker = FSharpChecker.Create()
     let projOptions =
-        checker.GetProjectOptionsFromScript(file, input)
+        checker.GetProjectOptionsFromScript(trimmedFile, input)
         |> Async.RunSynchronously
     let result =
-        checker.ParseFileInProject(file, input, projOptions)
+        checker.ParseFileInProject(trimmedFile, input, projOptions)
         |> Async.RunSynchronously
     match result.ParseTree with
     | Some tree -> tree
@@ -53,7 +59,7 @@ let private emit asts =
     let (errors, returnCode) =
         service.Compile(
             asts,
-            generatedModule,
+            GeneratedModule,
             dllName,
             deps,
             pdbName,
@@ -71,11 +77,13 @@ let private copy source destination =
 let make sourcePath sourceFiles outputPath =
     let globals = import sourcePath sourceFiles
     printfn "Generating installation code..."
-    let ast = buildInstallationFile generatedModule globals
+    let installationAst = buildInstallationFile GeneratedModule globals
     let sharedAst = parseFile sharedMetadataPath
-    let metadataAst = buildMetadataFile generatedModule
+    let metadataAst = parseFile metadataPath
+    let runtimeAst = parseFile runtimePath
+    let extensionMethodsAst = parseFile extensionMethodsPath
     printfn "Compiling installation code..."
-    emit [ast; sharedAst; metadataAst]
+    emit [sharedAst; metadataAst; installationAst; runtimeAst; extensionMethodsAst]
     printfn "Copying artifacts to output path..."
     for file in Directory.GetFiles(".", searchPattern) do
         copy file (combine [outputPath; file])
