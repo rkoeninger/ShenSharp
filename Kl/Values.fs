@@ -115,7 +115,7 @@ module Values =
         | x :: xs -> Cons(x, toCons xs)
 
     let pipeString (s: string) =
-        let stream = MemoryStream(Encoding.UTF8.GetBytes s)
+        let stream = new MemoryStream(Encoding.UTF8.GetBytes s)
         Pipe {
             Name = "String"
             Read = stream.ReadByte

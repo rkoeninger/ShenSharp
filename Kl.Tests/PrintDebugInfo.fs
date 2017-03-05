@@ -25,6 +25,8 @@ let ``demo ToString() for values``() =
     printfn "%O" Empty
     printfn "%O" (Cons(Int 1, Empty))
     printfn "%O" (Cons(Int 1, Cons(Int 2, Cons(Int 3, Empty))))
+    printfn "%O" (Cons(Int 1, Cons(Int 2, Int 3)))
+    printfn "%O" (Cons(Int 1, Int 2))
     printfn "%O" (Vec(Array.create 10 Empty))
     printfn "%O" (Err "Something went wrong")
     printfn "%O" (Func(Compiled(2, ``kl_+``)))

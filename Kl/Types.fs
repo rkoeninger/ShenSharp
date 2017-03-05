@@ -4,6 +4,8 @@ open System
 open System.Collections.Concurrent
 open System.Collections.Generic
 open System.Diagnostics
+open System.Text
+open Microsoft.FSharp.Core.Printf
 
 /// <summary>
 /// A wrapper around a stream. Has a Name property
@@ -43,7 +45,7 @@ and Locals = Map<string, Value>
 /// <summary>
 /// The different types of functions in KL.
 /// </summary>
-and [<ReferenceEquality; DebuggerDisplay("{ToString(),nq}")>] Function =
+and [<ReferenceEquality>] Function =
     | Interpreted of Locals * string list * Expr
     | Compiled    of int * (Globals -> Value list -> Value)
     | Partial     of Function * Value list
@@ -56,7 +58,7 @@ and [<ReferenceEquality; DebuggerDisplay("{ToString(),nq}")>] Function =
 /// <summary>
 /// A value in KL.
 /// </summary>
-and [<DebuggerDisplay("{ToString(),nq}")>] Value =
+and Value =
     | Empty
     | Num  of decimal
     | Str  of string
@@ -66,21 +68,26 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
     | Err  of string
     | Func of Function
     | Pipe of IO
-    // TODO: clean up ToString for Cons and show dotted pairs
     override this.ToString() =
-        let rec toList = function
-            | Cons(x, y) -> x :: toList y
-            | _ -> []
         match this with
-        | Empty   -> "()"
-        | Num x   -> x.ToString("0.################")
-        | Str s   -> sprintf "\"%s\"" s
-        | Sym s   -> s
-        | Cons _  -> sprintf "(%s)" (String.Join(" ", toList this))
-        | Vec a   -> sprintf "<Vector %i>" a.Length
-        | Err s   -> sprintf "<Error \"%s\">" s
-        | Func f  -> string f
-        | Pipe io -> sprintf "<Stream %s>" io.Name
+        | Empty      -> "()"
+        | Num x      -> x.ToString("0.################")
+        | Str s      -> sprintf "\"%s\"" s
+        | Sym s      -> s
+        | Vec a      -> sprintf "<Vector %i>" a.Length
+        | Err s      -> sprintf "<Error \"%s\">" s
+        | Func f     -> string f
+        | Pipe io    -> sprintf "<Stream %s>" io.Name
+        | Cons(x, y) ->
+            let builder = StringBuilder()
+            bprintf builder "(%O" x
+            let rec build = function
+                | Empty -> ()
+                | Cons(x, y) -> bprintf builder " %O" x; build y
+                | x -> bprintf builder " . %O" x
+            build y
+            bprintf builder ")"
+            builder.ToString()
 
 /// <summary>
 /// An optimized KL expression.
