@@ -9,14 +9,9 @@ open System.Threading
 
 module Values =
 
-    let rec combine = function
-        | [] -> "."
-        | [x] -> x
-        | x :: xs -> Path.Combine(x, combine xs)
-
     // Runs continuation on separate thread with 16MB of stack space
     let separateThread (f: unit -> unit) =
-        let thread = new Thread(f, 16777216)
+        let thread = Thread(f, 16777216)
         thread.Start()
         thread.Join()
         0
@@ -120,7 +115,7 @@ module Values =
         | x :: xs -> Cons(x, toCons xs)
 
     let pipeString (s: string) =
-        let stream = new MemoryStream(Encoding.UTF8.GetBytes s)
+        let stream = MemoryStream(Encoding.UTF8.GetBytes s)
         Pipe {
             Name = "String"
             Read = stream.ReadByte

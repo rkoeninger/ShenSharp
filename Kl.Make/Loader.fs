@@ -12,10 +12,9 @@ open Reader
 open Compiler
 open ShenSharp.Shared
 
-let private joinedName = String.Join(".", generatedAssemblyName)
-let private dllName = sprintf "%s.dll" joinedName
-let private pdbName = sprintf "%s.pdb" joinedName
-let private searchPattern = sprintf "%s.*" joinedName
+let private dllName = sprintf "%s.dll" generatedModule
+let private pdbName = sprintf "%s.pdb" generatedModule
+let private searchPattern = sprintf "%s.*" generatedModule
 let private deps = ["Kl.dll"]
 let private sharedMetadataPath = combine [".."; ".."; ".."; "Shared.fs"]
 
@@ -34,7 +33,7 @@ let private import sourcePath sourceFiles =
 
 let private raiseErrors messages =
     let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
-    raise(new Exception(String.Join("\r\n\r\n", Seq.map string errors)))
+    raise(Exception(String.Join("\r\n\r\n", Seq.map string errors)))
 
 let private parseFile file =
     let input = File.ReadAllText file
@@ -50,8 +49,16 @@ let private parseFile file =
     | None -> raiseErrors result.Errors
 
 let private emit asts =
-    let service = new SimpleSourceCodeServices()
-    let (errors, returnCode) = service.Compile(asts, joinedName, dllName, deps, pdbName, false, false)
+    let service = SimpleSourceCodeServices()
+    let (errors, returnCode) =
+        service.Compile(
+            asts,
+            generatedModule,
+            dllName,
+            deps,
+            pdbName,
+            false,
+            false)
     if returnCode <> 0 then
         raiseErrors errors
 
@@ -64,9 +71,11 @@ let private copy source destination =
 let make sourcePath sourceFiles outputPath =
     let globals = import sourcePath sourceFiles
     printfn "Generating installation code..."
-    let ast = buildInstallationFile generatedAssemblyName globals
+    let ast = buildInstallationFile generatedModule globals
+    let sharedAst = parseFile sharedMetadataPath
+    let metadataAst = buildMetadataFile generatedModule
     printfn "Compiling installation code..."
-    emit [ast; parseFile sharedMetadataPath; buildMetadataFile joinedName]
+    emit [ast; sharedAst; metadataAst]
     printfn "Copying artifacts to output path..."
     for file in Directory.GetFiles(".", searchPattern) do
         copy file (combine [outputPath; file])

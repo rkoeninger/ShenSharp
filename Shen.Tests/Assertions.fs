@@ -6,8 +6,8 @@ open Shen.Runtime
 
 let assertTrue syntax =
     let globals = newRuntime()
-    Assert.IsTrue((True = Eval(globals, syntax)))
+    Assert.IsTrue((True = evalSyntax globals syntax))
 
 let assertFalse syntax =
     let globals = newRuntime()
-    Assert.IsTrue((False = Eval(globals, syntax)))
+    Assert.IsTrue((False = evalSyntax globals syntax))

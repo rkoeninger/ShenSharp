@@ -5,6 +5,7 @@ open Kl
 open Kl.Values
 open Kl.Evaluator
 open Shen.Runtime
+open ShenSharp.Shared
 
 let testFolder = combine [".."; ".."; ".."; "Distribution"; "Tests"]
 

@@ -16,7 +16,7 @@ let runRepl files () =
             printfn "shen -e <expr>  : Evaluates expr and prints result"
             printfn "shen <file>*    : Loads files in given order"
         | "-e" :: rest ->
-            printfn "%O" (Eval(globals, String.Join(" ", rest)))
+            printfn "%O" (evalSyntax globals (String.Join(" ", rest)))
         | [] ->
             eval globals (toCons [Sym "shen"]) |> ignore
         | _ ->

@@ -188,7 +188,7 @@ let private compileDefun globals (name, f) =
         if not(Map.isEmpty locals) then
             failwith "Top-level should not have locals when compiled"
         let arity = List.length paramz
-        letBindingPrivate
+        letBinding
             (rename name)
             [param "globals" "Globals"]
             (matchLambdaExpr
@@ -239,54 +239,27 @@ let private installSymbol (globals as context) (id, value) =
         stringExpr id
         buildValue context value]
 
-let buildInstallationFile nameParts globals =
+let buildInstallationFile (name: string) globals =
     let symbols = nonPrimitiveSymbols globals
     let defuns = nonPrimitiveFunctions globals
-    let compiledNameAttr name =
-        attr None
-            (longIdentWithDots ["CompiledName"])
-            (stringExpr name)
-    moduleFile nameParts
-        [extnAttr]
+    moduleFile (name.Split('.') |> Array.toList)
         [openDecl ["Kl"]
          openDecl ["Kl"; "Values"]
          openDecl ["Kl"; "Evaluator"]
          openDecl ["Kl"; "Builtins"]
          openDecl ["Kl"; "Startup"]
          letMultiDecl(List.map (compileDefun globals) defuns)
-         letAttrsDecl
-            [compiledNameAttr "Install"]
+         letDecl
             "install"
             [param "globals" "Globals"]
             (sequentialExpr
                 (List.concat
                     [List.map (installSymbol globals) symbols
                      List.map installDefun defuns
-                     [idExpr "globals"]]))
-         letUnitAttrsDecl
-            [compiledNameAttr "NewRuntime"]
-            "newRuntime"
-            (appIdExpr "unprotectAll"
-                (appIdExpr "install"
-                    (appIdExpr "baseGlobals" unitExpr)))
-         letAttrsUncurriedDecl
-            [extnAttr]
-            "Eval"
-            [param "globals" "Globals"; param "syntax" "string"]
-            (appKl "eval"
-                [appKl "read"
-                    [appIdExpr "pipeString" (idExpr "syntax")]])
-         letAttrsUncurriedDecl
-            [extnAttr]
-            "Load"
-            [param "globals" "Globals"; param "path" "string"]
-            (appIgnore
-                (appKl "load"
-                    [appIdExpr "Str" (idExpr "path")]))]
+                     [idExpr "globals"]]))]
 
 let buildMetadataFile name =
     moduleFile ["ShenSharp"; "Metadata"]
-        []
         [openDecl ["System"; "Reflection"]
          openDecl ["System"; "Runtime"; "Versioning"]
          assemblyAttrDecl

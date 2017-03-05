@@ -2,34 +2,36 @@
 
 open System
 open System.IO
+open System.Runtime.Versioning
 open System.Text.RegularExpressions
 open ILRepacking
 open NuGet
-open Kl.Values
 open ShenSharp.Shared
 
 let private fromRoot = combine << (@) [".."; ".."; ".."]
-let private klDllPath = fromRoot ["Kl"; "bin"; BuildConfig; "Kl.dll"]
-let private shenReplExePath = fromRoot ["Shen.Repl"; "bin"; BuildConfig; "Shen.Repl.exe"]
+let private outDir = combine ["bin"; BuildConfig]
 let private artifactsRoot = fromRoot ["Artifacts"; BuildConfig]
-let private shenRuntimeDllPath = fromRoot [artifactsRoot; String.Join(".", generatedAssemblyName)]
-let private packageRoot = fromRoot [artifactsRoot; "Package"]
-let private shenDllPath = fromRoot [packageRoot; "lib"; "net45"; "Shen.dll"]
-let private shenExePath = fromRoot [packageRoot; "tools"; "Shen.exe"]
+let private klDllPath = fromRoot ["Kl"; outDir; "Kl.dll"]
+let private shenImplementationDllPath = combine [artifactsRoot; sprintf "%s.dll" generatedModule]
+let private shenApiDllPath = fromRoot ["Shen.Api"; outDir; "Shen.Api.dll"]
+let private shenReplExePath = fromRoot ["Shen.Repl"; outDir; "Shen.Repl.exe"]
+let private packageRoot = combine [artifactsRoot; "Package"]
+let private shenDllPath = combine [packageRoot; "lib"; "net45"; "Shen.dll"]
+let private shenExePath = combine [packageRoot; "tools"; "Shen.exe"]
 let private packageFileName = sprintf "%s.%s.nupkg" Product Revision
-let private packagePath = fromRoot [artifactsRoot; packageFileName]
+let private packagePath = combine [artifactsRoot; packageFileName]
 let private tags = ["Shen"] // TODO: pull from github api?
 
 let private repackAssemblies kind target sources =
     let options =
-        new RepackOptions(
+        RepackOptions(
             ["/target:library"
              "/targetplatform:v4"
              "/allowdup:ShenSharp.Shared"
              "/allowdup:ShenSharp.Metadata"
              "/out:" + target]
             @ sources)
-    let repacker = new ILRepack(options)
+    let repacker = ILRepack(options)
     repacker.Repack()
 
 let private regex pattern s = Regex.Match(s, pattern, RegexOptions.Multiline).Value
@@ -49,7 +51,7 @@ let private iconUrlFromReadme() =
     new Uri((regex "http.*\)" iconMarkup).TrimEnd(')'))
 
 let private addFile (builder: PackageBuilder) source target =
-    let file = new PhysicalPackageFile()
+    let file = PhysicalPackageFile()
     file.SourcePath <- source
     file.TargetPath <- target
     builder.Files.Add file
@@ -62,7 +64,7 @@ let rec private addFiles (builder: PackageBuilder) (root: string) folder =
         addFiles builder root folderPath
 
 let private packageNuget() =
-    let builder = new PackageBuilder()
+    let builder = PackageBuilder()
     builder.Id <- Product
     builder.Title <- Product
     builder.Description <- Description
@@ -78,15 +80,22 @@ let private packageNuget() =
     //builder.ReleaseNotes // TODO: pull from CHANGELOG.md
     builder.IconUrl <- iconUrlFromReadme()
     addFiles builder packageRoot packageRoot
-    let core = new PackageDependency("FSharp.Core", new VersionSpec(new SemanticVersion(4, 0, 0, 1)))
-    let deps = new PackageDependencySet(Runtime.Versioning.FrameworkName(".NETFramework,Version=v4.5"), [core])
+    let core = PackageDependency("FSharp.Core", VersionSpec(SemanticVersion(4, 0, 0, 1)))
+    let deps = PackageDependencySet(FrameworkName(".NETFramework,Version=v4.5"), [core])
     builder.DependencySets.Add deps
     use stream = File.Open(packagePath, FileMode.OpenOrCreate)
     builder.Save stream
 
 [<EntryPoint>]
 let main _ =
-    repackAssemblies ILRepack.Kind.Dll shenDllPath [shenRuntimeDllPath; klDllPath]
-    repackAssemblies ILRepack.Kind.Exe shenExePath [shenReplExePath; shenRuntimeDllPath; klDllPath]
+    repackAssemblies ILRepack.Kind.Dll shenDllPath [
+        shenImplementationDllPath
+        shenApiDllPath
+        klDllPath]
+    repackAssemblies ILRepack.Kind.Exe shenExePath [
+        shenReplExePath
+        shenImplementationDllPath
+        shenApiDllPath
+        klDllPath]
     packageNuget()
     0

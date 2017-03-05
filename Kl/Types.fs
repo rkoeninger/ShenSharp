@@ -66,6 +66,7 @@ and [<DebuggerDisplay("{ToString(),nq}")>] Value =
     | Err  of string
     | Func of Function
     | Pipe of IO
+    // TODO: clean up ToString for Cons and show dotted pairs
     override this.ToString() =
         let rec toList = function
             | Cons(x, y) -> x :: toList y

@@ -59,6 +59,11 @@
     <Compile Include="Symbols.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Shen.Api\Shen.Api.fsproj">
+      <Name>Shen.Api</Name>
+      <Project>{1885a119-975d-43f6-8a8d-8200c89a943c}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <Reference Include="FSharp.Core">
       <HintPath>..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.dll</HintPath>
       <Private>True</Private>
@@ -68,11 +73,11 @@
       <HintPath>..\packages\NUnit.3.6.0\lib\net45\nunit.framework.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Debug'">
-      <HintPath>..\Artifacts\Debug\Shen.Runtime.dll</HintPath>
+    <Reference Include="Shen.Implementation" Condition="'$(Configuration)'=='Debug'">
+      <HintPath>..\Artifacts\Debug\Shen.Implementation.dll</HintPath>
     </Reference>
-    <Reference Include="Shen.Runtime" Condition="'$(Configuration)'=='Release'">
-      <HintPath>..\Artifacts\Release\Shen.Runtime.dll</HintPath>
+    <Reference Include="Shen.Implementation" Condition="'$(Configuration)'=='Release'">
+      <HintPath>..\Artifacts\Release\Shen.Implementation.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

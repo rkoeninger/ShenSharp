@@ -292,16 +292,8 @@ let letDecl name paramz body =
 let letUnitAttrsDecl attrs name body =
     SynModuleDecl.Let(false, [letUnitBinding attrs name body], loc)
 let letMultiDecl bindings = SynModuleDecl.Let(true, bindings, loc)
-let extnAttr =
-    attr None
-        (longIdentWithDots [
-            "System"
-            "Runtime"
-            "CompilerServices"
-            "Extension"])
-        unitExpr
 let assemblyAttrDecl name value = SynModuleDecl.Attributes([attr (Some(ident "assembly")) name value], loc)
-let moduleFile nameParts attrs decls =
+let moduleFile nameParts decls =
     ParsedInput.ImplFile(
         ParsedImplFileInput.ParsedImplFileInput(
             fileName,
@@ -315,7 +307,7 @@ let moduleFile nameParts attrs decls =
                 true,
                 decls,
                 PreXmlDoc.Empty,
-                attrs,
+                [],
                 None,
                 loc)],
             (false, false)))

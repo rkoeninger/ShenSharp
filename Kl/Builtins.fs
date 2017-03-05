@@ -6,6 +6,7 @@ open System.Diagnostics
 open System.IO
 open Kl.Values
 open Kl.Evaluator
+open ShenSharp.Shared
 
 let kl_if _ = function
     | [Bool c; x; y] -> if c then x else y
@@ -142,7 +143,7 @@ let kl_cd globals = function
             match retrieve globals "*home-directory*" with
             | Str s -> s
             | _ -> Environment.CurrentDirectory
-        let fullPath = Path.GetFullPath(Path.Combine(current, path))
+        let fullPath = Path.GetFullPath(combine [current; path])
         Environment.CurrentDirectory <- fullPath
         assign globals "*home-directory*" (Str fullPath)
         Str fullPath
@@ -165,12 +166,12 @@ let kl_ls globals = function
 
 let console = Pipe {
     Name = "Console"
-    Read = (new ConsoleReader()).ReadByte
+    Read = ConsoleReader().ReadByte
     Write = Console.OpenStandardOutput().WriteByte
     Close = fun () -> failwith "Can't close Console"
 }
 
-let private epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+let private epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
 let private startTime = DateTime.UtcNow
 let private stopwatch = Stopwatch.StartNew()
 

@@ -1,5 +1,6 @@
 module ShenSharp.Shared
 
+open System.IO
 open System.Reflection
 open System.Runtime.InteropServices
 
@@ -37,4 +38,12 @@ let BuildConfig = "Release"
 [<assembly: ComVisible false>]
 do ()
 
-let generatedAssemblyName = ["Shen"; "Runtime"]
+let generatedModule = "Shen.Implementation"
+
+/// <summary>
+/// Combines file path fragments in platform specific way.
+/// </summary>
+let rec combine = function
+    | [] -> "."
+    | [x] -> x
+    | x :: xs -> Path.Combine(x, combine xs)
