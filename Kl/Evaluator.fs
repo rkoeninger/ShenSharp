@@ -2,43 +2,43 @@
 
 open Values
 
-let rec private flattenDo = function
-    | Form(Sym "do" :: exprs) -> List.collect flattenDo exprs
-    | expr -> [expr]
-
-let rec private substitute locals expr =
-    let proceed = substitute locals
-    match expr with
+// Inlines captured scope into function body expression tree.
+let rec private scope locals = function
     | Constant(Sym id) ->
         match Map.tryFind id locals with
-        | Some value -> Constant value
-        | None -> Constant(Sym id)
-    | Conjunction(left, right) ->
-        Conjunction(proceed left, proceed right)
-    | Disjunction(left, right) ->
-        Disjunction(proceed left, proceed right)
-    | Conditional(condition, consequent, alternative) ->
-        Conditional(proceed condition, proceed consequent, proceed alternative)
+        | Some value -> Constant value // Local variables get substituted.
+        | None -> Constant(Sym id)     // Other symbols are unaffected.
+
+    // Bindings, Lambdas and Definintions recur excluding their paramters.
     | Binding(param, value, body) ->
-        Binding(param, proceed value, substitute (Map.remove param locals) value)
+        Binding(param, scope locals value, scope (Map.remove param locals) value)
     | Anonymous(Some param, body) ->
-        Anonymous(Some param, substitute (Map.remove param locals) body)
-    | Anonymous(None, body) ->
-        Anonymous(None, proceed body)
-    | Catch(body, handler) ->
-        Catch(proceed body, proceed handler)
-    | Sequential(exprs, last) ->
-        Sequential(List.map proceed exprs, proceed last)
+        Anonymous(Some param, scope (Map.remove param locals) body)
     | Definition(name, paramz, body) ->
-        Definition(name, paramz, substitute (removeAll paramz locals) body)
+        Definition(name, paramz, scope (removeAll paramz locals) body)
+
+    // All other expressions just recur or are unaffected.
+    | Conjunction(left, right) ->
+        Conjunction(scope locals left, scope locals right)
+    | Disjunction(left, right) ->
+        Disjunction(scope locals left, scope locals right)
+    | Conditional(condition, consequent, alternative) ->
+        Conditional(scope locals condition, scope locals consequent, scope locals alternative)
+    | Anonymous(None, body) ->
+        Anonymous(None, scope locals body)
+    | Catch(body, handler) ->
+        Catch(scope locals body, scope locals handler)
+    | Sequential(exprs, last) ->
+        Sequential(List.map (scope locals) exprs, scope locals last)
     | Assignment(symbol, expr) ->
-        Assignment(symbol, proceed expr)
+        Assignment(symbol, scope locals expr)
     | GlobalCall(symbol, args) ->
-        GlobalCall(symbol, List.map proceed args)
+        GlobalCall(symbol, List.map (scope locals) args)
     | Application(f, args) ->
-        Application(proceed f, List.map proceed args)
+        Application(scope locals f, List.map (scope locals) args)
     | other -> other
 
+// Parses a raw KL AST into an optimized expression tree
 let rec private parse ((globals, locals) as env) = function
     | Form [Sym "and"; left; right] ->
         Conjunction(parse env left, parse env right)
@@ -64,6 +64,9 @@ let rec private parse ((globals, locals) as env) = function
     | Form [Sym "trap-error"; body; handler] ->
         Catch(parse env body, parse env handler)
     | Form(Sym "do" :: _) as expr ->
+        let rec flattenDo = function
+            | Form(Sym "do" :: exprs) -> List.collect flattenDo exprs
+            | expr -> [expr]
         let exprs = List.map (parse env) (flattenDo expr)
         Sequential(butLast exprs, List.last exprs)
     | DefunForm(name, paramz, body) ->
@@ -77,6 +80,11 @@ let rec private parse ((globals, locals) as env) = function
     | Form(f :: args) ->
         Application(parse env f, List.map (parse env) args)
     | value -> Constant value
+
+/// <summary>
+/// An immutable map of local variable definitions.
+/// </summary>
+type private Locals = Map<string, Value>
 
 // Work that may be deferred. Used as trampolines for tail-call optimization.
 type private Work =
@@ -127,7 +135,7 @@ and private evalw ((globals, locals) as env) = function
     // Symbols in operand position are either defined locally or they are idle.
     | Constant(Sym id) -> Done(defaultArg (Map.tryFind id locals) (Sym id))
 
-    // Other constants are self-evaluating
+    // Other constants are self-evaluating.
     | Constant value -> Done value
 
     // Short-circuit evaluation. Both left and right must eval to Bool.
@@ -151,11 +159,11 @@ and private evalw ((globals, locals) as env) = function
 
     // Lambdas capture local scope.
     | Anonymous(Some param, body) ->
-        Done(Func(Interpreted([param], substitute (Map.remove param locals) body)))
+        Done(Func(Interpreted([param], scope (Map.remove param locals) body)))
 
     // Freezes capture local scope.
     | Anonymous(None, body) ->
-        Done(Func(Interpreted([], substitute locals body)))
+        Done(Func(Interpreted([], scope locals body)))
 
     // Handler expression only evaluated if body results in an error.
     // Handler expression must evaluate to a Function.

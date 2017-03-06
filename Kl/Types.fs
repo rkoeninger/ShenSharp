@@ -37,11 +37,6 @@ type Symbol = {
 and Globals = ConcurrentDictionary<string, Symbol>
 
 /// <summary>
-/// An immutable map of local variable definitions.
-/// </summary>
-and Locals = Map<string, Value>
-
-/// <summary>
 /// The different types of functions in KL.
 /// </summary>
 and [<ReferenceEquality>] Function =
