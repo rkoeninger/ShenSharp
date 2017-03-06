@@ -32,18 +32,6 @@ let nonPrimitiveFunctions (globals: Globals) =
             else Option.map (fun f -> (kv.Key, f)) !kv.Value.Func
     filterSome(Seq.toList(Seq.map pf globals))
 
-let private specialSymbols = [
-    "and"
-    "or"
-    "if"
-    "cond"
-    "let"
-    "lambda"
-    "freeze"
-    "trap-error"
-    "do"
-]
-
 let rec private removeAll keys m =
     match keys with
     | [] -> m
