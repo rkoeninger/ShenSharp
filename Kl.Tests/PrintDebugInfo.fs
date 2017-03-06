@@ -16,7 +16,6 @@ let ``print platform information``() =
 
 [<Test>]
 let ``demo ToString() for values``() =
-    let pars = parse (newGlobals(), Set.empty)
     printfn "%O" (Int 12)
     printfn "%O" (Num 34.12m)
     printfn "%O" (Sym "hello")
@@ -29,8 +28,8 @@ let ``demo ToString() for values``() =
     printfn "%O" (Vec(Array.create 10 Empty))
     printfn "%O" (Err "Something went wrong")
     printfn "%O" (Func(Compiled(2, ``kl_+``)))
-    printfn "%O" (Func(Interpreted(["X"; "Y"], pars <| toCons [Sym "+"; Sym "X"; Sym "Y"])))
-    printfn "%O" (Func(Interpreted(["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])))
-    printfn "%O" (Func(Interpreted([], pars <| toCons [Sym "get-time"; Sym "run"])))
+    printfn "%O" (Func(Interpreted(["X"; "Y"], Application(Constant(Sym "+"), [Constant(Sym "X"); Constant(Sym "Y")]))))
+    printfn "%O" (Func(Interpreted(["X"], Application(Constant(Sym "+"), [Constant(Sym "X"); Constant(Int 1)]))))
+    printfn "%O" (Func(Interpreted([], Application(Constant(Sym "get-time"), [Constant(Sym "run")]))))
     printfn "%O" (Func(Partial(Compiled(2, ``kl_+``), [Int 1])))
     printfn "%O" console

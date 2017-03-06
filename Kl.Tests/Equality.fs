@@ -57,13 +57,13 @@ let ``Err values can be compared for equality``() =
 
 [<Test>]
 let ``Functions can be compared for reference equality``() =
-    let pars = parse (newGlobals(), Set.empty)
     let f = Interpreted([], Constant Empty)
     assertEq (Func f) (Func f)
-    let l = Interpreted(["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])
+    let l =
+        Interpreted(
+            ["X"],
+            Application(Constant(Sym "+"), [Constant(Int 1); Constant(Sym "X")]))
     assertEq (Func l) (Func l)
-    let d = Interpreted(["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])
-    assertEq (Func d) (Func d)
     let inc _ = function
         | [Int x] -> Int(x + 1)
         | _ -> failwith "Must be integer"
