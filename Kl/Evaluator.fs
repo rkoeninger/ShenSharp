@@ -1,6 +1,5 @@
 ﻿module Kl.Evaluator
 
-open Extensions
 open Values
 open Analysis
 

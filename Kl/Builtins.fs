@@ -1,6 +1,5 @@
 ﻿module Kl.Builtins
 
-open Extensions
 open System
 open System.Diagnostics
 open System.IO

@@ -4,7 +4,6 @@ open System
 open System.Collections.Generic
 open Kl
 open Values
-open Extensions
 
 let rec private butLast = function
     | [] | [_] -> []

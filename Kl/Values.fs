@@ -166,7 +166,6 @@ module Values =
         | ConsExpr [Sym "do"; first; second] -> Some(first, second)
         | _ -> None
 
-module Extensions =
     type IDictionary<'a, 'b> with
         member this.GetMaybe(key: 'a) =
             match this.TryGetValue key with
