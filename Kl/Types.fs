@@ -53,7 +53,7 @@ and [<ReferenceEquality>] Function =
         match this with
         | Interpreted _ -> "<Interpreted Function>"
         | Compiled _    -> "<Compiled Function>"
-        | Partial(f, _) -> "<Partial Application>"
+        | Partial _     -> "<Partial Application>"
 
 /// <summary>
 /// A value in KL.
