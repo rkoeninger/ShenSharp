@@ -224,9 +224,7 @@ and private evalf ((globals, locals) as env) expr =
         | Some _ -> failwithf "Function \"%s\" not defined" id
         | None -> lookup globals id
     | _ ->
-        match evalv env expr with
-        | Func f -> f
-        | _ -> failwith "Operator expression must evaluate to a function"
+        asFunction(evalv env expr)
 
 // Evaluates an expression, running all deferred work.
 // Must be tail recursive. This is where tail call optimization happens.
