@@ -115,9 +115,6 @@ let rec substitute locals expr =
         Application(proceed f, List.map proceed args)
     | other -> other
 
-// TODO: substitute local variables in Exprs
-// TODO: locals can be function scoped since captured variables are substituted.
-
 let rec parse ((globals, locals) as env) = function
     | ConsExpr [Sym "and"; left; right] ->
         Conjunction(parse env left, parse env right)
