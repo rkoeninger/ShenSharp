@@ -16,6 +16,20 @@ module Values =
         thread.Join()
         0
 
+    let rec removeAll keys m =
+        match keys with
+        | [] -> m
+        | k :: ks -> removeAll ks (Map.remove k m)
+
+    let rec butLast = function
+        | [] | [_] -> []
+        | x :: xs -> x :: butLast xs
+
+    let rec filterSome = function
+        | [] -> []
+        | Some x :: xs -> x :: filterSome xs
+        | None :: xs -> filterSome xs
+
     // Booleans are just these two particular symbols.
     let True = Sym "true"
     let False = Sym "false"
@@ -39,6 +53,11 @@ module Values =
         | Func f -> f
         | _ -> failwith "Operator must be a function"
 
+    let rec functionArity = function
+        | Interpreted(paramz, _) -> List.length paramz
+        | Compiled(arity, _) -> arity
+        | Partial(f, args) -> functionArity f - args.Length
+
     let inRange min max value = min <= value && value < max
 
     let argsErr name types args =
@@ -47,6 +66,20 @@ module Values =
             else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
     let newGlobals() = new ConcurrentDictionary<string, Symbol>()
+
+    let nonPrimitiveSymbols (globals: Globals) =
+        let ps (kv: KeyValuePair<_, _>) =
+            if !kv.Value.IsProtected
+                then None
+                else Option.map (fun value -> (kv.Key, value)) !kv.Value.Val
+        filterSome(Seq.toList(Seq.map ps globals))
+
+    let nonPrimitiveFunctions (globals: Globals) =
+        let pf (kv: KeyValuePair<_, _>) =
+            if !kv.Value.IsProtected
+                then None
+                else Option.map (fun f -> (kv.Key, f)) !kv.Value.Func
+        filterSome(Seq.toList(Seq.map pf globals))
 
     let intern (globals: Globals) id =
         globals.GetOrAdd(id,
@@ -124,11 +157,6 @@ module Values =
             Write = stream.WriteByte
             Close = stream.Close
         }
-
-    let rec filterSome = function
-        | [] -> []
-        | Some x :: xs -> x :: filterSome xs
-        | None :: xs -> filterSome xs
 
     let private sequenceOption xs =
         let combine x xs = Option.bind (fun v -> Option.map (fun vs -> v :: vs) xs) x

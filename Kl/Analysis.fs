@@ -5,37 +5,9 @@ open System.Collections.Generic
 open Kl
 open Values
 
-let rec private butLast = function
-    | [] | [_] -> []
-    | x :: xs -> x :: butLast xs
-
 let rec private flattenDo = function
     | Form(Sym "do" :: exprs) -> List.collect flattenDo exprs
     | expr -> [expr]
-
-let rec functionArity = function
-    | Interpreted(paramz, _) -> List.length paramz
-    | Compiled(arity, _) -> arity
-    | Partial(f, args) -> functionArity f - args.Length
-
-let nonPrimitiveSymbols (globals: Globals) =
-    let ps (kv: KeyValuePair<_, _>) =
-        if !kv.Value.IsProtected
-            then None
-            else Option.map (fun value -> (kv.Key, value)) !kv.Value.Val
-    filterSome(Seq.toList(Seq.map ps globals))
-
-let nonPrimitiveFunctions (globals: Globals) =
-    let pf (kv: KeyValuePair<_, _>) =
-        if !kv.Value.IsProtected
-            then None
-            else Option.map (fun f -> (kv.Key, f)) !kv.Value.Func
-    filterSome(Seq.toList(Seq.map pf globals))
-
-let rec private removeAll keys m =
-    match keys with
-    | [] -> m
-    | k :: ks -> removeAll ks (Map.remove k m)
 
 let rec substitute locals expr =
     let proceed = substitute locals
