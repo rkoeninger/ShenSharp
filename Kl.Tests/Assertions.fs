@@ -3,7 +3,6 @@
 open NUnit.Framework
 open Kl
 open Kl.Values
-open Kl.Extensions
 open Kl.Evaluator
 open Kl.Startup
 open Kl.Make.Reader

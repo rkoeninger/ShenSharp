@@ -13,7 +13,7 @@ let check recognizer strings =
 
 [<Test>]
 let ``cond expressions when they start with 'cond, have 1+ forms total and clauses are cons lists of length 2``() =
-    check (|CondExpr|_|) [
+    check (|CondForm|_|) [
         true,  "(cond)"
         true,  "(cond (x x))"
         true,  "(cond (x x) (x x) (x x))"
@@ -23,18 +23,10 @@ let ``cond expressions when they start with 'cond, have 1+ forms total and claus
 
 [<Test>]
 let ``defun expressions when they start with 'defun and have 4 forms total``() =
-    check (|DefunExpr|_|) [
+    check (|DefunForm|_|) [
         true,  "(defun x () y)"
         true,  "(defun x (a) y)"
         true,  "(defun x (a b) y)"
         false, "(defun x (x () x) y)"
         false, "(defun x ())"
         false, "(defun () () ())"]
-
-[<Test>]
-let ``do expressions when they start with 'do and have 1+ forms total``() =
-    check (|DoExpr|_|) [
-        true,  "(do x y)"
-        false, "(do)"
-        false, "(do x y z)"
-        false, "()"]

@@ -1,7 +1,6 @@
 ﻿module Kl.Tests.``Print Debug Info``
 
 open NUnit.Framework
-open Kl.Extensions
 open Kl
 open Kl.Values
 open Kl.Analysis
