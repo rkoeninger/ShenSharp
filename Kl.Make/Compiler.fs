@@ -4,7 +4,6 @@ open System
 open System.Collections.Generic
 open Kl
 open Kl.Values
-open Kl.Analysis
 open Reader
 open Syntax
 

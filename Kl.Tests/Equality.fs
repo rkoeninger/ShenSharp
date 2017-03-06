@@ -4,7 +4,6 @@ open System.IO
 open NUnit.Framework
 open Kl
 open Kl.Values
-open Kl.Analysis
 open Assertions
 
 [<Test>]
