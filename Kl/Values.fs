@@ -140,16 +140,16 @@ module Values =
         | Cons(x, y) -> Option.map (fun xs -> x :: xs) (toListOption y)
         | _ -> None
 
-    let (|ConsExpr|_|) = toListOption
+    let (|Form|_|) = toListOption
 
     let private condClause = function
-        | ConsExpr [x; y] -> Some(x, y)
+        | Form [x; y] -> Some(x, y)
         | _ -> None
 
     let private (|CondClauses|_|) = List.map condClause >> sequenceOption
 
-    let (|CondExpr|_|) = function
-        | ConsExpr(Sym "cond" :: CondClauses clauses) -> Some clauses
+    let (|CondForm|_|) = function
+        | Form(Sym "cond" :: CondClauses clauses) -> Some clauses
         | _ -> None
 
     let private param = function
@@ -158,12 +158,8 @@ module Values =
 
     let private (|ParamList|_|) = toListOption >> Option.bind (List.map param >> sequenceOption)
 
-    let (|DefunExpr|_|) = function
-        | ConsExpr [Sym "defun"; Sym name; ParamList paramz; body] -> Some(name, paramz, body)
-        | _ -> None
-
-    let (|DoExpr|_|) = function
-        | ConsExpr [Sym "do"; first; second] -> Some(first, second)
+    let (|DefunForm|_|) = function
+        | Form [Sym "defun"; Sym name; ParamList paramz; body] -> Some(name, paramz, body)
         | _ -> None
 
     type IDictionary<'a, 'b> with

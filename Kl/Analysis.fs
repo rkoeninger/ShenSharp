@@ -10,8 +10,8 @@ let rec private butLast = function
     | x :: xs -> x :: butLast xs
 
 let rec private flattenDo = function
-    | DoExpr(first, second) -> flattenDo first @ flattenDo second
-    | klExpr -> [klExpr]
+    | Form(Sym "do" :: exprs) -> List.collect flattenDo exprs
+    | expr -> [expr]
 
 let rec functionArity = function
     | Interpreted(paramz, _) -> List.length paramz
@@ -44,6 +44,7 @@ let private specialSymbols = [
     "do"
 ]
 
+// TODO: remove
 let rec populate locals = function
 
     // Value is either substituted or remains a symbol
@@ -53,7 +54,7 @@ let rec populate locals = function
         | None -> Sym id
 
     // Let binding param is new variable masking old one
-    | ConsExpr [Sym "let"; Sym param; binding; body] ->
+    | Form [Sym "let"; Sym param; binding; body] ->
         toCons [
             Sym "let"
             Sym param
@@ -61,14 +62,14 @@ let rec populate locals = function
             populate (Map.remove param locals) body]
 
     // Lambda param is new variable masking old one
-    | ConsExpr [Sym "lambda"; Sym param; body] ->
+    | Form [Sym "lambda"; Sym param; body] ->
         toCons [
             Sym "lambda"
             Sym param
             populate (Map.remove param locals) body]
 
     // Don't substitute special symbols: 'if, 'let, etc.
-    | ConsExpr(Sym f :: args) when List.contains f specialSymbols ->
+    | Form(Sym f :: args) when List.contains f specialSymbols ->
         toCons(Sym f :: (List.map (populate locals) args))
 
     | Cons(x, y) -> Cons(populate locals x, populate locals y)
@@ -115,13 +116,13 @@ let rec substitute locals expr =
     | other -> other
 
 let rec parse ((globals, locals) as env) = function
-    | ConsExpr [Sym "and"; left; right] ->
+    | Form [Sym "and"; left; right] ->
         Conjunction(parse env left, parse env right)
-    | ConsExpr [Sym "or"; left; right] ->
+    | Form [Sym "or"; left; right] ->
         Disjunction(parse env left, parse env right)
-    | ConsExpr [Sym "if"; condition; consequent; alternative] ->
+    | Form [Sym "if"; condition; consequent; alternative] ->
         Conditional(parse env condition, parse env consequent, parse env alternative)
-    | CondExpr clauses ->
+    | CondForm clauses ->
         let rec parseClauses = function
             | [] -> 
                 GlobalCall(intern globals "simple-error", [Constant(Str "No condition was true")])
@@ -130,25 +131,25 @@ let rec parse ((globals, locals) as env) = function
             | (condition, consequent) :: rest ->
                 Conditional(parse env condition, parse env consequent, parseClauses rest)
         parseClauses clauses
-    | ConsExpr [Sym "let"; Sym param; value; body] ->
+    | Form [Sym "let"; Sym param; value; body] ->
         Binding(param, parse env value, parse (globals, Set.add param locals) body)
-    | ConsExpr [Sym "lambda"; Sym param; body] ->
+    | Form [Sym "lambda"; Sym param; body] ->
         Anonymous(Some param, parse (globals, Set.add param locals) body)
-    | ConsExpr [Sym "freeze"; body] ->
+    | Form [Sym "freeze"; body] ->
         Anonymous(None, parse env body)
-    | ConsExpr [Sym "trap-error"; body; handler] ->
+    | Form [Sym "trap-error"; body; handler] ->
         Catch(parse env body, parse env handler)
-    | DoExpr _ as expr ->
+    | Form(Sym "do" :: _) as expr ->
         let exprs = List.map (parse env) (flattenDo expr)
         Sequential(butLast exprs, List.last exprs)
-    | DefunExpr(name, paramz, body) ->
+    | DefunForm(name, paramz, body) ->
         Definition(intern globals name, paramz, parse (globals, Set.union (Set.ofList paramz) locals) body)
-    | ConsExpr [Sym "set"; Sym id; value] when not(Set.contains id locals) ->
+    | Form [Sym "set"; Sym id; value] when not(Set.contains id locals) ->
         Assignment(intern globals id, parse env value)
-    | ConsExpr [Sym "value"; Sym id] when not(Set.contains id locals) ->
+    | Form [Sym "value"; Sym id] when not(Set.contains id locals) ->
         Retrieval(intern globals id)
-    | ConsExpr(Sym id :: args) when not(Set.contains id locals) ->
+    | Form(Sym id :: args) when not(Set.contains id locals) ->
         GlobalCall(intern globals id, List.map (parse env) args)
-    | ConsExpr(f :: args) ->
+    | Form(f :: args) ->
         Application(parse env f, List.map (parse env) args)
     | value -> Constant value
