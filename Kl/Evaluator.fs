@@ -19,15 +19,15 @@ let rec private applyw globals f (args: Value list) =
     match f with
 
     // Application of Interpreted functions is deferred if not over-applied.
-    | Interpreted(locals, paramz, body) ->
+    | Interpreted(paramz, body) ->
         if argc < paramz.Length then
             Done(Func(if argc = 0 then f else Partial(f, args)))
         elif argc > paramz.Length then
             let (args0, args1) = List.splitAt paramz.Length args
-            let locals = merge locals (Map(List.zip paramz args0))
+            let locals = Map(List.zip paramz args0)
             curried (evalv (globals, locals) body) args1
         else
-            Pending(merge locals (Map(List.zip paramz args)), body)
+            Pending(Map(List.zip paramz args), body)
 
     // Compiled functions are always applied immediately.
     | Compiled(arity, native) ->
@@ -77,11 +77,11 @@ and private evalw ((globals, locals) as env) = function
 
     // Lambdas capture local scope.
     | Anonymous(Some param, body) ->
-        Done(Func(Interpreted(locals, [param], body)))
+        Done(Func(Interpreted([param], substitute (Map.remove param locals) body)))
 
     // Freezes capture local scope.
     | Anonymous(None, body) ->
-        Done(Func(Interpreted(locals, [], body)))
+        Done(Func(Interpreted([], substitute locals body)))
 
     // Handler expression only evaluated if body results in an error.
     // Handler expression must evaluate to a Function.
@@ -113,7 +113,7 @@ and private evalw ((globals, locals) as env) = function
     // Ignore attempts to redefine a primitive.
     | Definition(symbol, paramz, body) ->
         if not(!symbol.IsProtected) then
-            symbol.Func := Some(Interpreted(Map.empty, paramz, body))
+            symbol.Func := Some(Interpreted(paramz, body))
         Done(Sym symbol.Name)
 
     // Immediate lookup for global functions.

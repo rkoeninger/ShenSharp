@@ -30,8 +30,8 @@ let ``demo ToString() for values``() =
     printfn "%O" (Vec(Array.create 10 Empty))
     printfn "%O" (Err "Something went wrong")
     printfn "%O" (Func(Compiled(2, ``kl_+``)))
-    printfn "%O" (Func(Interpreted(Map.empty, ["X"; "Y"], pars <| toCons [Sym "+"; Sym "X"; Sym "Y"])))
-    printfn "%O" (Func(Interpreted(Map.empty, ["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])))
-    printfn "%O" (Func(Interpreted(Map.empty, [], pars <| toCons [Sym "get-time"; Sym "run"])))
+    printfn "%O" (Func(Interpreted(["X"; "Y"], pars <| toCons [Sym "+"; Sym "X"; Sym "Y"])))
+    printfn "%O" (Func(Interpreted(["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])))
+    printfn "%O" (Func(Interpreted([], pars <| toCons [Sym "get-time"; Sym "run"])))
     printfn "%O" (Func(Partial(Compiled(2, ``kl_+``), [Int 1])))
     printfn "%O" console

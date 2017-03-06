@@ -41,3 +41,19 @@ let ``preserves the value of closed-over local variables``() =
     assertEq (Int 0) (runIn globals "((<-address (value foo) 0))")
     assertEq (Int 1) (runIn globals "((<-address (value foo) 1))")
     assertEq (Int 2) (runIn globals "((<-address (value foo) 2))")
+
+[<Test>]
+let ``inner function scope should override outer function scope``() =
+    assertEq (Int 2) (run "((lambda X (lambda X X)) 1 2)")
+
+[<Test>]
+let ``inner lexical scope should override outer function scope``() =
+    assertEq (Int 2) (run "((lambda X (let X 2 X)) 1)")
+
+[<Test>]
+let ``inner function scope should override outer lexical scope``() =
+    assertEq (Int 2) (run "(let X 1 ((lambda X X) 2))")
+
+[<Test>]
+let ``inner lexical scope should override outer lexical scope``() =
+    assertEq (Int 2) (run "(let X 1 (let X 2 X))")

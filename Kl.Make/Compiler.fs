@@ -185,9 +185,7 @@ let private compileDefun globals (name, f) =
     //     | [~@(map rename paramz)] -> ~body
     //     | args -> argsErr ~name ~(replicate arity "value") args
     match f with
-    | Interpreted(locals, paramz, body) ->
-        if not(Map.isEmpty locals) then
-            failwith "Top-level should not have locals when compiled"
+    | Interpreted(paramz, body) ->
         let arity = List.length paramz
         letBinding
             (rename name)
@@ -228,9 +226,7 @@ let rec private buildValue (globals as context) = function
         appIdExpr "Vec"
             (arrayExpr(List.map (buildValue context) (Seq.toList array)))
     | Err s -> appIdExpr "Err" (stringExpr s)
-    | Func(Interpreted(locals, paramz, body)) ->
-        if not(Map.isEmpty locals) then
-            failwith "Can't build non-empty Locals"
+    | Func(Interpreted(paramz, body)) ->
         compileF globals Set.empty paramz body
     | value -> failwithf "Can't build value: %A" value
 

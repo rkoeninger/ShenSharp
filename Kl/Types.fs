@@ -46,7 +46,7 @@ and Locals = Map<string, Value>
 /// The different types of functions in KL.
 /// </summary>
 and [<ReferenceEquality>] Function =
-    | Interpreted of Locals * string list * Expr
+    | Interpreted of string list * Expr
     | Compiled    of int * (Globals -> Value list -> Value)
     | Partial     of Function * Value list
     override this.ToString() =

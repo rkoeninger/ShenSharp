@@ -58,19 +58,19 @@ let ``Err values can be compared for equality``() =
 [<Test>]
 let ``Functions can be compared for reference equality``() =
     let pars = parse (newGlobals(), Set.empty)
-    let f = Interpreted(Map.empty, [], Constant Empty)
+    let f = Interpreted([], Constant Empty)
     assertEq (Func f) (Func f)
-    let l = Interpreted(Map.empty, ["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])
+    let l = Interpreted(["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])
     assertEq (Func l) (Func l)
-    let d = Interpreted(Map.empty, ["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])
+    let d = Interpreted(["X"], pars <| toCons [Sym "+"; Int 1; Sym "X"])
     assertEq (Func d) (Func d)
     let inc _ = function
         | [Int x] -> Int(x + 1)
         | _ -> failwith "Must be integer"
     let n = Compiled(1, inc)
     assertEq (Func n) (Func n)
-    assertNotEq (Func(Interpreted(Map.empty, [], Constant Empty)))
-                (Func(Interpreted(Map.empty, [], Constant Empty)))
+    assertNotEq (Func(Interpreted([], Constant Empty)))
+                (Func(Interpreted([], Constant Empty)))
 
 [<Test>]
 let ``Hash codes can be generated for all value types``() =

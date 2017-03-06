@@ -15,7 +15,7 @@ let rec private flattenDo = function
     | klExpr -> [klExpr]
 
 let rec functionArity = function
-    | Interpreted(_, paramz, _) -> List.length paramz
+    | Interpreted(paramz, _) -> List.length paramz
     | Compiled(arity, _) -> arity
     | Partial(f, args) -> functionArity f - args.Length
 
