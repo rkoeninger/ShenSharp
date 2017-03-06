@@ -25,7 +25,7 @@ let private tags = ["Shen"] // TODO: pull from github api?
 let private repackAssemblies kind target sources =
     let options =
         RepackOptions(
-            ["/target:library"
+            ["/target:" + kind
              "/targetplatform:v4"
              "/allowdup:ShenSharp.Shared"
              "/allowdup:ShenSharp.Metadata"
@@ -88,11 +88,11 @@ let private packageNuget() =
 
 [<EntryPoint>]
 let main _ =
-    repackAssemblies ILRepack.Kind.Dll shenDllPath [
+    repackAssemblies "library" shenDllPath [
         shenLanguageDllPath
         shenApiDllPath
         klDllPath]
-    repackAssemblies ILRepack.Kind.Exe shenExePath [
+    repackAssemblies "exe" shenExePath [
         shenReplExePath
         shenLanguageDllPath
         shenApiDllPath
