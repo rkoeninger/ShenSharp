@@ -70,7 +70,7 @@ and Value =
     | Pipe of IO
     override this.ToString() =
         match this with
-        | Empty      -> "()"
+        | Empty      -> "[]"
         | Num x      -> x.ToString "0.################"
         | Str s      -> sprintf "\"%s\"" s
         | Sym s      -> s
@@ -80,13 +80,13 @@ and Value =
         | Pipe io    -> sprintf "<Stream %s>" io.Name
         | Cons(x, y) ->
             let builder = StringBuilder()
-            bprintf builder "(%O" x
+            bprintf builder "[%O" x
             let rec build = function
                 | Empty -> ()
                 | Cons(x, y) -> bprintf builder " %O" x; build y
-                | x -> bprintf builder " . %O" x
+                | x -> bprintf builder " | %O" x
             build y
-            bprintf builder ")"
+            bprintf builder "]"
             builder.ToString()
 
 /// <summary>
