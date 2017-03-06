@@ -44,39 +44,6 @@ let private specialSymbols = [
     "do"
 ]
 
-// TODO: remove
-let rec populate locals = function
-
-    // Value is either substituted or remains a symbol
-    | Sym id ->
-        match Map.tryFind id locals with
-        | Some value -> value
-        | None -> Sym id
-
-    // Let binding param is new variable masking old one
-    | Form [Sym "let"; Sym param; binding; body] ->
-        toCons [
-            Sym "let"
-            Sym param
-            binding
-            populate (Map.remove param locals) body]
-
-    // Lambda param is new variable masking old one
-    | Form [Sym "lambda"; Sym param; body] ->
-        toCons [
-            Sym "lambda"
-            Sym param
-            populate (Map.remove param locals) body]
-
-    // Don't substitute special symbols: 'if, 'let, etc.
-    | Form(Sym f :: args) when List.contains f specialSymbols ->
-        toCons(Sym f :: (List.map (populate locals) args))
-
-    | Cons(x, y) -> Cons(populate locals x, populate locals y)
-
-    // Anything else just gets passed through
-    | expr -> expr
-
 let rec private removeAll keys m =
     match keys with
     | [] -> m
