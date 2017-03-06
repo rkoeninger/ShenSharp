@@ -195,16 +195,3 @@ module Values =
             match this.TryGetValue key with
             | true, x -> Some x
             | false, _ -> None
-
-// Console reader is an adapter that buffers input by line to provide
-// character stream to Shen REPL in expected format.
-type internal ConsoleReader() =
-    let reader = new StreamReader(Console.OpenStandardInput())
-    let mutable line: byte[] = [||]
-    let mutable index = 0
-    member this.ReadByte() =
-        if index >= line.Length then
-            line <- Encoding.ASCII.GetBytes(reader.ReadLine() + Environment.NewLine)
-            index <- 0
-        index <- index + 1
-        int (line.[index - 1])

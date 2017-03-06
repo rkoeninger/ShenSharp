@@ -2,8 +2,7 @@
 
 open System
 open System.Collections.Concurrent
-open System.Collections.Generic
-open System.Diagnostics
+open System.IO
 open System.Text
 open Microsoft.FSharp.Core.Printf
 
@@ -106,3 +105,16 @@ and Expr =
     | Definition  of Symbol * string list * Expr
     | GlobalCall  of Symbol * Expr list
     | Application of Expr * Expr list
+
+// Console reader is an adapter that buffers input by line to provide
+// character stream to Shen REPL in expected format.
+type internal ConsoleReader() =
+    let reader = new StreamReader(Console.OpenStandardInput())
+    let mutable line: byte[] = [||]
+    let mutable index = 0
+    member this.ReadByte() =
+        if index >= line.Length then
+            line <- Encoding.ASCII.GetBytes(reader.ReadLine() + Environment.NewLine)
+            index <- 0
+        index <- index + 1
+        int (line.[index - 1])
