@@ -28,54 +28,37 @@ type ExtensionMethods() =
         load globals path
 
     /// <summary>
-    /// Defines a zero-parameter native function that requires global environment.
-    /// </summary>
-    [<Extension>]
-    static member DefineFunction(globals: Globals,
-                                 name: string,
-                                 native: Func<Globals, Value>) =
-        defineFunction0 globals name native.Invoke
-
-    /// <summary>
     /// Defines a zero-parameter native function.
     /// </summary>
+    [<Extension>]
     static member DefineFunction(globals: Globals,
                                  name: string,
                                  native: Func<Value>) =
         defineFunction0 globals name (fun _ -> native.Invoke())
 
     /// <summary>
-    /// Defines a one-paramter native function that requires global environment.
-    /// </summary>
-    [<Extension>]
-    static member DefineFunction(globals: Globals,
-                                 name: string,
-                                 native: Func<Globals, Value, Value>) =
-        defineFunction1 globals name (fun g x -> native.Invoke(g, x))
-
-    /// <summary>
-    /// Defines a one-paramter native function.
+    /// Defines a one-parameter native function.
     /// </summary>
     [<Extension>]
     static member DefineFunction(globals: Globals,
                                  name: string,
                                  native: Func<Value, Value>) =
-        defineFunction1 globals name (fun _ -> native.Invoke)
+        defineFunction1 globals name (fun _ x -> native.Invoke(x))
 
     /// <summary>
-    /// Defines a two-paramter native function that requires global environment.
-    /// </summary>
-    [<Extension>]
-    static member DefineFunction(globals: Globals,
-                                 name: string,
-                                 native: Func<Globals, Value, Value, Value>) =
-        defineFunction2 globals name (fun g x y -> native.Invoke(g, x, y))
-
-    /// <summary>
-    /// Defines a two-paramter native function.
+    /// Defines a two-parameter native function.
     /// </summary>
     [<Extension>]
     static member DefineFunction(globals: Globals,
                                  name: string,
                                  native: Func<Value, Value, Value>) =
         defineFunction2 globals name (fun _ x y -> native.Invoke(x, y))
+
+    /// <summary>
+    /// Defines a three-parameter native function.
+    /// </summary>
+    [<Extension>]
+    static member DefineFunction(globals: Globals,
+                                 name: string,
+                                 native: Func<Value, Value, Value, Value>) =
+        defineFunction3 globals name (fun _ x y z -> native.Invoke(x, y, z))

@@ -24,17 +24,17 @@ let evalSyntax globals syntax = kl_eval globals [kl_read globals [pipeString syn
 let load globals path = kl_load globals [Str path] |> ignore
 
 /// <summary>
-/// Defines a zero-paramter native function.
+/// Defines a zero-parameter native function.
 /// </summary>
 [<CompiledName "DefineFunction0">]
 let defineFunction0 globals name native =
     let f globals = function
         | [] -> native globals
-        | args -> argsErr name ["value"] args
+        | args -> argsErr name [] args
     define globals name (Compiled(0, f))
     
 /// <summary>
-/// Defines a one-paramter native function.
+/// Defines a one-parameter native function.
 /// </summary>
 [<CompiledName "DefineFunction1">]
 let defineFunction1 globals name native =
@@ -44,14 +44,24 @@ let defineFunction1 globals name native =
     define globals name (Compiled(1, f))
     
 /// <summary>
-/// Defines a two-paramter native function.
+/// Defines a two-parameter native function.
 /// </summary>
-[<CompiledName "DefineFunction1">]
+[<CompiledName "DefineFunction2">]
 let defineFunction2 globals name native =
     let f globals = function
         | [x; y] -> native globals x y
-        | args -> argsErr name ["value"] args
+        | args -> argsErr name ["value"; "value"] args
     define globals name (Compiled(2, f))
+    
+/// <summary>
+/// Defines a three-parameter native function.
+/// </summary>
+[<CompiledName "DefineFunction3">]
+let defineFunction3 globals name native =
+    let f globals = function
+        | [x; y; z] -> native globals x y z
+        | args -> argsErr name ["value"; "value"; "value"] args
+    define globals name (Compiled(3, f))
     
 /// <summary>
 /// Defines a Shen macro using a native function.
