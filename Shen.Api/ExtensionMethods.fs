@@ -28,7 +28,7 @@ type ExtensionMethods() =
         load globals path
 
     /// <summary>
-    /// Defines a zero-parameter native function.
+    /// Defines a zero-parameter native function that requires global environment.
     /// </summary>
     [<Extension>]
     static member DefineFunction(globals: Globals,
@@ -37,7 +37,15 @@ type ExtensionMethods() =
         defineFunction0 globals name native.Invoke
 
     /// <summary>
-    /// Defines a one-paramter native function.
+    /// Defines a zero-parameter native function.
+    /// </summary>
+    static member DefineFunction(globals: Globals,
+                                 name: string,
+                                 native: Func<Value>) =
+        defineFunction0 globals name (fun _ -> native.Invoke())
+
+    /// <summary>
+    /// Defines a one-paramter native function that requires global environment.
     /// </summary>
     [<Extension>]
     static member DefineFunction(globals: Globals,
@@ -46,7 +54,16 @@ type ExtensionMethods() =
         defineFunction1 globals name (fun g x -> native.Invoke(g, x))
 
     /// <summary>
-    /// Defines a two-paramter native function.
+    /// Defines a one-paramter native function.
+    /// </summary>
+    [<Extension>]
+    static member DefineFunction(globals: Globals,
+                                 name: string,
+                                 native: Func<Value, Value>) =
+        defineFunction1 globals name (fun _ -> native.Invoke)
+
+    /// <summary>
+    /// Defines a two-paramter native function that requires global environment.
     /// </summary>
     [<Extension>]
     static member DefineFunction(globals: Globals,
@@ -55,8 +72,10 @@ type ExtensionMethods() =
         defineFunction2 globals name (fun g x y -> native.Invoke(g, x, y))
 
     /// <summary>
-    /// Defines a Shen macro using a native function.
+    /// Defines a two-paramter native function.
     /// </summary>
     [<Extension>]
-    static member DefineMacro(globals: Globals, name: string, native: Func<Value, Value>) =
-        defineMacro globals name native.Invoke
+    static member DefineFunction(globals: Globals,
+                                 name: string,
+                                 native: Func<Value, Value, Value>) =
+        defineFunction2 globals name (fun _ x y -> native.Invoke(x, y))
