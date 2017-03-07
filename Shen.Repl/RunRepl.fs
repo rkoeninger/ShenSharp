@@ -37,4 +37,4 @@ let runRepl files () =
         e -> printfn "Unhandled error: %s" e.Message
 
 [<EntryPoint>]
-let main args = separateThread (runRepl (Array.toList args))
+let main args = separateThread16MB(runRepl(Array.toList args))

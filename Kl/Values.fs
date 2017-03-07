@@ -7,12 +7,19 @@ open System.IO
 open System.Text
 open System.Threading
 
-// Runs continuation on separate thread with 16MB of stack space
-let separateThread (f: unit -> unit) =
-    let thread = Thread(f, 16777216)
+/// <summary>
+/// Runs continuation on separate thread with given amount of stack space.
+/// </summary>
+let separateThread stackSize (f: unit -> unit) =
+    let thread = Thread(f, stackSize)
     thread.Start()
     thread.Join()
     0
+
+/// <summary>
+/// Runs continuation on separate thread with 16MB of stack space.
+/// </summary>
+let separateThread16MB = separateThread 16777216
 
 let rec removeAll keys m =
     match keys with
