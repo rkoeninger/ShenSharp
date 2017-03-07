@@ -33,7 +33,7 @@ let private toType targetType (fsExpr, currentType) =
     | x, y when x = y -> fsExpr
     | FsBoolean, KlValue -> appIdExpr "Bool" fsExpr
     | FsUnit, KlValue -> sequentialExpr [fsExpr; idExpr "Empty"]
-    | KlValue, FsBoolean -> appIdExpr "isTrue" fsExpr
+    | KlValue, FsBoolean -> appIdExpr "asBool" fsExpr
     | _, FsUnit -> appIgnore fsExpr
     | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 

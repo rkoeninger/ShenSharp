@@ -38,7 +38,7 @@ let (|Bool|_|) = function
     | x when x = False -> Some false
     | _ -> None
 
-let isTrue = function
+let asBool = function
     | Bool b -> b
     | _ -> failwith "Conditional must evaluate to boolean"
 

@@ -140,15 +140,15 @@ and private evalw ((globals, locals) as env) = function
 
     // Short-circuit evaluation. Both left and right must eval to Bool.
     | Conjunction(left, right) ->
-        Done(Bool(isTrue(evalv env left) && isTrue(evalv env right)))
+        Done(Bool(asBool(evalv env left) && asBool(evalv env right)))
 
     // Short-circuit evaluation. Both left and right must eval to Bool.
     | Disjunction(left, right) ->
-        Done(Bool(isTrue(evalv env left) || isTrue(evalv env right)))
+        Done(Bool(asBool(evalv env left) || asBool(evalv env right)))
 
     // Condition must evaluate to Bool. Consequent and alternative are in tail position.
     | Conditional(condition, consequent, alternative) ->
-        if isTrue(evalv env condition)
+        if asBool(evalv env condition)
             then Pending(locals, consequent)
             else Pending(locals, alternative)
 
