@@ -76,7 +76,7 @@ let nonPrimitiveFunctions (globals: Globals) =
     let pf (kv: KeyValuePair<_, _>) =
         if !kv.Value.IsProtected
             then None
-            else Option.map (fun f -> (kv.Key, f)) !kv.Value.Func
+            else Option.map (fun f -> (kv.Key, f)) !kv.Value.Fun
     filterSome(Seq.toList(Seq.map pf globals))
 
 let intern (globals: Globals) id =
@@ -85,7 +85,7 @@ let intern (globals: Globals) id =
             {Name = id
              IsProtected = ref false
              Val = ref None
-             Func = ref None})
+             Fun = ref None})
 
 let unprotectAll (globals: Globals) =
     for kv in globals do
@@ -100,7 +100,7 @@ let getValue symbol =
     | None -> failwithf "Symbol \"%s\" is not defined" symbol.Name
 
 let getFunction symbol =
-    match !symbol.Func with
+    match !symbol.Fun with
     | Some f -> f
     | None -> failwithf "Function \"%s\" is not defined" symbol.Name
 
@@ -119,14 +119,14 @@ let assignProtected globals id value =
 
 let defineProtected globals id f =
     let symbol = intern globals id
-    symbol.Func := Some f
+    symbol.Fun := Some f
     symbol.IsProtected := true
 
 let assign globals id value = (intern globals id).Val := Some value
 
 let retrieve globals id = getValue(intern globals id)
 
-let define globals id f = (intern globals id).Func := Some f
+let define globals id f = (intern globals id).Fun := Some f
 
 /// <summary>
 /// Looks up id in the global function namespace.

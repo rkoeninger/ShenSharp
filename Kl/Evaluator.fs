@@ -195,7 +195,7 @@ and private evalw ((globals, locals) as env) = function
     // Ignore attempts to redefine a primitive.
     | Definition(symbol, paramz, body) ->
         if not(!symbol.IsProtected) then
-            symbol.Func := Some(Interpreted(paramz, body))
+            symbol.Fun := Some(Interpreted(paramz, body))
         Done(Sym symbol.Name)
 
     // Immediate lookup for global functions.

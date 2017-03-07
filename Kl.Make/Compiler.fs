@@ -12,9 +12,9 @@ open Syntax
 // or F# keywords
 let private rename = sprintf "kl_%s"
 
-// TODO: add Function type here to do `Func`/`asFunction`
 type private ExprType =
     | KlValue
+    | KlFunction
     | FsBoolean
     | FsUnit
 
@@ -25,6 +25,8 @@ let private param id typeName = id, shortType typeName
 let private appIgnore expr =
     infixIdExpr "op_PipeRight" expr (idExpr "ignore")
 
+let private idKl name = idExpr(rename name), KlValue
+
 let private appKl name args =
     parens (appIdExprN (rename name) [idExpr "globals"; listExpr args])
 
@@ -32,44 +34,50 @@ let private toType targetType (fsExpr, currentType) =
     match currentType, targetType with
     | x, y when x = y -> fsExpr
     | FsBoolean, KlValue -> appIdExpr "Bool" fsExpr
+    | KlFunction, KlValue -> appIdExpr "Func" fsExpr
     | FsUnit, KlValue -> sequentialExpr [fsExpr; idExpr "Empty"]
     | KlValue, FsBoolean -> appIdExpr "asBool" fsExpr
+    | KlValue, KlFunction -> appIdExpr "asFunction" fsExpr
     | _, FsUnit -> appIgnore fsExpr
     | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
 let rec private buildApp ((globals, locals) as context) (f: Expr) args =
     match f with
     | Constant(Sym s) ->
+        // Apply local variable as function
         if Set.contains s locals then
             // apply globals (asFunction ~(rename s)) ~args
             appIdExprN "apply"
                 [idExpr "globals"
-                 appIdExpr "asFunction" (idExpr(rename s))
+                 idKl s |> toType KlFunction
                  listExpr args]
         else
-            match !(intern globals s).Func with
+            match !(intern globals s).Fun with
             | Some systemf ->
                 let arity = functionArity systemf
+                // Curried application of overapplied function
                 if args.Length > arity then
                     // apply globals (asFunction ~(buildApp context f args0)) args1
                     let (args0, args1) = List.splitAt arity args
                     appIdExprN "apply"
                         [idExpr "globals"
-                         appIdExpr "asFunction" (buildApp context f args0)
+                         (buildApp context f args0, KlValue) |> toType KlFunction
                          listExpr args1]
+                // Create partial application of native function
                 elif args.Length < arity then
                     // Func(Partial(Compiled(~arity, ~(rename s)), ~args))
-                    appIdExpr "Func"
-                        (appIdExpr "Partial"
-                            (tupleExpr
-                                [appIdExpr "Compiled"
-                                    (tupleExpr
-                                        [intExpr arity
-                                         idExpr (rename s)])
-                                 listExpr args]))
+                    (appIdExpr "Partial"
+                        (tupleExpr
+                            [appIdExpr "Compiled"
+                                (tupleExpr
+                                    [intExpr arity
+                                     idExpr(rename s)])
+                             listExpr args]), KlFunction) |> toType KlValue
+                // Apply native function directly
                 else
                     // ~(rename s) globals ~args
                     appKl s args
+            // Lookup and apply global function
             | None ->
                 // apply globals (lookup globals ~s) ~args
                 appIdExprN "apply"
@@ -79,11 +87,12 @@ let rec private buildApp ((globals, locals) as context) (f: Expr) args =
                             [idExpr "globals"
                              stringExpr s])
                      listExpr args]
+    // Apply function expression
     | f ->
         // apply globals (asFunction ~f) ~args
         appIdExprN "apply"
             [idExpr "globals"
-             appIdExpr "asFunction" (buildExpr context f |> toType KlValue)
+             buildExpr context f |> toType KlFunction
              listExpr args]
 
 and private buildExpr ((globals, locals) as context) (expr : Expr) =
@@ -95,7 +104,7 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
     | Constant(Sym s) ->
         // ``kl_symbol-name`` OR Sym "symbol-name"
         if Set.contains s locals
-            then idExpr (rename s), KlValue
+            then idKl s
             else appIdExpr "Sym" (stringExpr s), KlValue
     | Conjunction(left, right) ->
         infixIdExpr "op_BooleanAnd"
@@ -160,24 +169,23 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
 
 and private compileF globals locals paramz body =
     let arity = List.length paramz
-    appIdExpr "Func"
-        (appIdExpr "Compiled"
-            (tupleExpr
-                [intExpr arity
-                 (lambdaExpr
-                    [param "globals" "Globals"]
-                    (matchLambdaExpr
-                        [matchClause
-                            (listPat(List.map (rename >> namePat) paramz))
-                            (buildExpr
-                                (globals, Set.union locals (Set.ofList paramz))
-                                body |> toType KlValue)
-                         matchClause
-                            (namePat "args")
-                            (appIdExprN "argsErr"
-                                [stringExpr "Compiled Function" // TODO: better name
-                                 listExpr(List.replicate arity (stringExpr "value"))
-                                 idExpr "args"])]))]))
+    ((appIdExpr "Compiled"
+        (tupleExpr
+            [intExpr arity
+             (lambdaExpr
+                [param "globals" "Globals"]
+                (matchLambdaExpr
+                    [matchClause
+                        (listPat(List.map (rename >> namePat) paramz))
+                        (buildExpr
+                            (globals, Set.union locals (Set.ofList paramz))
+                            body |> toType KlValue)
+                     matchClause
+                        (namePat "args")
+                        (appIdExprN "argsErr"
+                            [stringExpr "Compiled Function" // TODO: better name
+                             listExpr(List.replicate arity (stringExpr "value"))
+                             idExpr "args"])]))])), KlFunction) |> toType KlValue
 
 let private compileDefun globals (name, f) =
     // and ~(rename name) (globals: Globals) = function

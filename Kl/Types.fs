@@ -25,7 +25,7 @@ type Symbol = {
     Name: string
     IsProtected: bool ref
     Val: Value option ref
-    Func: Function option ref
+    Fun: Function option ref
 }
 
 /// <summary>
