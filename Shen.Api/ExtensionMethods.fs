@@ -1,5 +1,6 @@
 ﻿namespace Shen
 
+open System
 open System.Runtime.CompilerServices
 open Kl
 open Shen.Language
@@ -32,8 +33,8 @@ type ExtensionMethods() =
     [<Extension>]
     static member DefineFunction(globals: Globals,
                                  name: string,
-                                 native: Globals -> Value) =
-        defineFunction0 globals name native
+                                 native: Func<Globals, Value>) =
+        defineFunction0 globals name native.Invoke
 
     /// <summary>
     /// Defines a one-paramter native function.
@@ -41,8 +42,8 @@ type ExtensionMethods() =
     [<Extension>]
     static member DefineFunction(globals: Globals,
                                  name: string,
-                                 native: Globals -> Value -> Value) =
-        defineFunction1 globals name native
+                                 native: Func<Globals, Value, Value>) =
+        defineFunction1 globals name (fun g x -> native.Invoke(g, x))
 
     /// <summary>
     /// Defines a two-paramter native function.
@@ -50,12 +51,12 @@ type ExtensionMethods() =
     [<Extension>]
     static member DefineFunction(globals: Globals,
                                  name: string,
-                                 native: Globals -> Value -> Value -> Value) =
-        defineFunction2 globals name native
+                                 native: Func<Globals, Value, Value, Value>) =
+        defineFunction2 globals name (fun g x y -> native.Invoke(g, x, y))
 
     /// <summary>
     /// Defines a Shen macro using a native function.
     /// </summary>
     [<Extension>]
-    static member DefineMacro(globals: Globals, name: string, native: Value -> Value) =
-        defineMacro globals name native
+    static member DefineMacro(globals: Globals, name: string, native: Func<Value, Value>) =
+        defineMacro globals name native.Invoke
