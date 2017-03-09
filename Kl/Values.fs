@@ -154,6 +154,15 @@ let rec toCons = function
     | [] -> Empty
     | x :: xs -> Cons(x, toCons xs)
 
+let rec toList = function
+    | Empty -> []
+    | Cons(x, y) -> x :: toList y
+    | _ -> failwith "Malformed list"
+
+let asObj = function
+    | Obj x -> x
+    | _ -> failwith "CLR Object expected"
+
 let pipeString (s: string) =
     let stream = new MemoryStream(Encoding.UTF8.GetBytes s)
     Pipe {

@@ -68,6 +68,18 @@ let baseGlobals () =
         "cd",              Compiled(1, kl_cd)
         "pwd",             Compiled(0, kl_pwd)
         "ls",              Compiled(0, kl_ls)
+        "clr.box",         Compiled(1, ``kl_clr.box``)
+        "clr.unbox",       Compiled(1, ``kl_clr.unbox``)
+        "clr.null",        Compiled(0, ``kl_clr.null``)
+        "clr.int",         Compiled(1, ``kl_clr.int``)
+        "clr.decimal",     Compiled(1, ``kl_clr.decimal``)
+        "clr.string",      Compiled(1, ``kl_clr.string``)
+        "clr.bool",        Compiled(1, ``kl_clr.bool``)
+        "clr.new",         Compiled(2, ``kl_clr.new``)
+        "clr.get",         Compiled(2, ``kl_clr.get``)
+        "clr.get-static",  Compiled(2, ``kl_clr.get-static``)
+        "clr.invoke",      Compiled(3, ``kl_clr.invoke``)
+        "clr.invoke-static", Compiled(3, ``kl_clr.invoke-static``)
     ]
     let globals = newGlobals()
     List.iter ((<||) (assignProtected globals)) symbols

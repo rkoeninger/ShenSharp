@@ -3,6 +3,7 @@
 open System
 open System.Diagnostics
 open System.IO
+open System.Reflection
 open Kl.Values
 open Kl.Evaluator
 open ShenSharp.Shared
@@ -239,3 +240,114 @@ let ``kl_absvector?`` _ = function
 let kl_exit _ = function
     | [Int x] -> exit x
     | args -> argsErr "exit" ["integer"] args
+
+let ``kl_clr.box`` _ = function
+    | [Num x] -> Obj x
+    | [Str s] -> Obj s
+    // TODO: need to handle more types
+    // TODO: need representation of Symbol
+    | args -> argsErr "clr.box" ["number|string"] args
+
+let ``kl_clr.unbox`` _ = function
+    | [Obj x] ->
+        match x with
+        | :? string as s -> Str s
+        | :? int as i -> Int i
+        | :? decimal as d -> Num d
+        // TODO: need to handle more types
+        // TODO: need representation of Symbol
+        | _ -> failwithf "CLR Object %O cannot be unboxed" x
+    | args -> argsErr "clr.unbox" ["clr.obj"] args
+
+let ``kl_clr.null`` _ = function
+    | [] -> Obj null
+    | args -> argsErr "clr.null" [] args
+
+let ``kl_clr.int`` _ = function
+    | [Int x] -> Obj x
+    | args -> argsErr "clr.int" ["integer"] args
+
+let ``kl_clr.decimal`` _ = function
+    | [Num x] -> Obj x
+    | args -> argsErr "clr.decimal" ["number"] args
+
+let ``kl_clr.string`` _ = function
+    | [Str s] -> Obj s
+    | args -> argsErr "clr.string" ["string"] args
+
+let ``kl_clr.bool`` _ = function
+    | [Bool b] -> Obj b
+    | args -> argsErr "clr.bool" ["boolean"] args
+
+let ``kl_clr.new`` _ = function
+    | [Sym name; klArgs] ->
+        // TODO: classname aliasing from globals
+        // TODO: better error handling
+        let clrArgs = toList klArgs |> List.map asObj
+        let clazz = Type.GetType name
+        Obj(Activator.CreateInstance(clazz, List.toArray clrArgs))
+    | args -> argsErr "clr.new" ["clr.obj"; "(list clr.obj)"] args
+
+// TODO: how to handle get/set with fields/properties?
+
+let ``kl_clr.get`` _ = function
+    | [Obj x; Sym name] ->
+        let clazz = x.GetType()
+        let property = clazz.GetProperty(name, BindingFlags.Instance ||| BindingFlags.Public)
+        if property = null then
+            failwithf "Property \"%s\" not defined on type \"%s\"" name clazz.Name
+        if property.GetIndexParameters().Length > 0 then
+            failwithf "Property \"%s\" has index parameters, use \"clr.get-index\" instead" name
+        Obj(property.GetValue x)
+    | args -> argsErr "clr.get" ["clr.obj"; "symbol"] args
+
+let ``kl_clr.get-static`` _ = function
+    | [Sym className; Sym name] ->
+        let clazz = Type.GetType className // TODO: resolve alias
+        let property = clazz.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public)
+        if property = null then
+            failwithf "Property \"%s\" not defined on type \"%s\"" name clazz.Name
+        if property.GetIndexParameters().Length > 0 then
+            failwithf "Property \"%s\" has index parameters, use \"clr.get-index-static\" instead" name
+        Obj(property.GetValue null)
+    | args -> argsErr "clr.get-static" ["symbol"; "symbol"] args
+
+let ``kl_clr.invoke`` _ = function
+    | [Obj x; Sym methodName; klArgs] ->
+        let clazz = x.GetType()
+        let methodInfo = clazz.GetMethod(methodName, BindingFlags.Instance ||| BindingFlags.Public)
+        if methodInfo = null then
+            failwithf "Method \"%s\" not defined on type \"%s\"" methodName clazz.Name
+        let clrArgs = toList klArgs |> List.map asObj
+        Obj(methodInfo.Invoke(x, List.toArray clrArgs))
+    | args -> argsErr "clr.invoke-static" ["clr.obj"; "symbol"; "(list clr.obj)"] args
+
+// TODO: clr.invoke-static getting Ambiguous match for method names
+//       need to use parameters types to identify method
+
+let ``kl_clr.invoke-static`` _ = function
+    | [Sym className; Sym methodName; klArgs] ->
+        let clazz = Type.GetType className // TODO: resolve alias
+        let methodInfo = clazz.GetMethod(methodName, BindingFlags.Static ||| BindingFlags.Public)
+        if methodInfo = null then
+            failwithf "Method \"%s\" not defined on type \"%s\"" methodName clazz.Name
+        let clrArgs = toList klArgs |> List.map asObj
+        Obj(methodInfo.Invoke(null, List.toArray clrArgs))
+    | args -> argsErr "clr.invoke-static" ["symbol"; "symbol"; "(list clr.obj)"] args
+
+
+
+// TODO: clr.set : clr.obj --> symbol --> clr.obj --> clr.obj --> ()
+// TODO: clr.set-static : symbol --> symbol --> clr.obj --> ()
+// TODO: clr.get-index : clr.obj --> symbol --> (list clr.obj) --> clr.obj
+// TODO: clr.set-index : clr.obj --> symbol --> (list clr.obj) --> clr.obj --> ()
+// TODO: clr.get-index-static / clr.set-index-static
+// TODO: clr.invoke : clr.obj --> symbol --> (list clr.obj) --> clr.obj
+// TODO: clr.invoke-static : symbol --> (list clr.obj) --> clr.obj
+// TODO: clr.using : symbol --> ()
+// TODO: clr.alias : symbol --> symbol --> ()
+
+// TODO: auto-apply `clr.value`?
+// TODO: parameterized type names can be deconstructed: System.Collections.Generic.List<System.String>
+
+// TODO: might have to move Interop into separate module

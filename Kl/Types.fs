@@ -62,6 +62,7 @@ and Value =
     | Err  of string
     | Func of Function
     | Pipe of IO
+    | Obj  of obj
     override this.ToString() =
         match this with
         | Empty      -> "[]"
@@ -72,6 +73,8 @@ and Value =
         | Err s      -> sprintf "<Error \"%s\">" s
         | Func f     -> string f
         | Pipe io    -> sprintf "<Stream %s>" io.Name
+        | Obj null   -> "<CLR null>"
+        | Obj x      -> sprintf "<CLR %s %O>" (x.GetType().Name) x
         | Cons(x, y) ->
             let builder = StringBuilder()
             bprintf builder "[%O" x
