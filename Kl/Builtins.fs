@@ -242,22 +242,16 @@ let kl_exit _ = function
     | [Int x] -> exit x
     | args -> argsErr "exit" ["integer"] args
 
-let ``kl_clr.box`` _ = function
-    | [Num x] -> Obj x
-    | [Str s] -> Obj s
-    // TODO: need to handle more types
-    // TODO: need representation of Symbol
-    | args -> argsErr "clr.box" ["number|string"] args
-
 let ``kl_clr.unbox`` _ = function
     | [Obj x] ->
         match x with
-        | :? string as s -> Str s
+        | null -> Empty
         | :? int as i -> Int i
+        | :? double as d -> Num(decimal d)
         | :? decimal as d -> Num d
-        // TODO: need to handle more types
-        // TODO: need representation of Symbol
-        | _ -> failwithf "CLR Object %O cannot be unboxed" x
+        | :? string as s -> Str s
+        | :? bool as b -> Bool b
+        | _ -> failwithf "CLR Object %O cannot be converted to a Shen value" x
     | args -> argsErr "clr.unbox" ["clr.obj"] args
 
 let ``kl_clr.null`` _ = function
@@ -267,6 +261,10 @@ let ``kl_clr.null`` _ = function
 let ``kl_clr.int`` _ = function
     | [Num x] -> Obj(int x)
     | args -> argsErr "clr.int" ["number"] args
+
+let ``kl_clr.double`` _ = function
+    | [Num x] -> Obj(double x)
+    | args -> argsErr "clr.double" ["number"] args
 
 let ``kl_clr.decimal`` _ = function
     | [Num x] -> Obj x
@@ -328,7 +326,7 @@ let ``kl_clr.set-static`` _ = function
         let property = findStaticProperty className name
         property.SetValue(null, value)
         Empty
-    | args -> argsErr "clr.get-static" ["symbol"; "symbol"] args
+    | args -> argsErr "clr.set-static" ["symbol"; "symbol"; "clr.obj"] args
 
 let ``kl_clr.invoke`` _ = function
     | [Obj target; Sym methodName; klArgs] ->
@@ -344,14 +342,13 @@ let ``kl_clr.invoke-static`` _ = function
         Obj(methodInfo.Invoke(null, List.toArray clrArgs))
     | args -> argsErr "clr.invoke-static" ["symbol"; "symbol"; "(list clr.obj)"] args
 
-
-
 // TODO: clr.using : symbol --> ()
 // TODO: clr.alias : symbol --> symbol --> ()
 
 // TODO: fields in addition to properties?
 
-// TODO: auto-apply `clr.value`?
 // TODO: parameterized type names can be deconstructed: System.Collections.Generic.List<System.String>
 
-// TODO: might have to move Interop into separate module
+let ``kl_shensharp.globals`` globals = function
+    | [] -> Obj globals
+    | args -> argsErr "shensharp.globals" [] args
