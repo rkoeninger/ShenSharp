@@ -4,8 +4,9 @@ open System
 open System.Diagnostics
 open System.IO
 open System.Reflection
-open Kl.Values
-open Kl.Evaluator
+open Values
+open Interop
+open Evaluator
 open ShenSharp.Shared
 
 let kl_if _ = function
@@ -264,8 +265,8 @@ let ``kl_clr.null`` _ = function
     | args -> argsErr "clr.null" [] args
 
 let ``kl_clr.int`` _ = function
-    | [Int x] -> Obj x
-    | args -> argsErr "clr.int" ["integer"] args
+    | [Num x] -> Obj(int x)
+    | args -> argsErr "clr.int" ["number"] args
 
 let ``kl_clr.decimal`` _ = function
     | [Num x] -> Obj x
@@ -288,64 +289,67 @@ let ``kl_clr.new`` _ = function
         Obj(Activator.CreateInstance(clazz, List.toArray clrArgs))
     | args -> argsErr "clr.new" ["clr.obj"; "(list clr.obj)"] args
 
-// TODO: how to handle get/set with fields/properties?
-
 let ``kl_clr.get`` _ = function
-    | [Obj x; Sym name] ->
-        let clazz = x.GetType()
-        let property = clazz.GetProperty(name, BindingFlags.Instance ||| BindingFlags.Public)
-        if property = null then
-            failwithf "Property \"%s\" not defined on type \"%s\"" name clazz.Name
-        if property.GetIndexParameters().Length > 0 then
-            failwithf "Property \"%s\" has index parameters, use \"clr.get-index\" instead" name
-        Obj(property.GetValue x)
+    | [Obj target; Sym name] ->
+        let property = findInstanceProperty target name
+        Obj(property.GetValue target)
     | args -> argsErr "clr.get" ["clr.obj"; "symbol"] args
+
+let ``kl_clr.set`` _ = function
+    | [Obj target; Sym name; Obj value] ->
+        let property = findInstanceProperty target name
+        property.SetValue(target, value)
+        Empty
+    | args -> argsErr "clr.set" ["clr.obj"; "symbol"; "clr.obj"] args
+
+let ``kl_clr.get-index`` _ = function
+    | [Obj target; klArgs] ->
+        let clrArgs = toList klArgs |> List.map asObj
+        let property = findIndexProperty target
+        Obj(property.GetValue(target, List.toArray clrArgs))
+    | args -> argsErr "clr.get-index" ["clr.obj"; "(list clr.obj)"] args
+
+let ``kl_clr.set-index`` _ = function
+    | [Obj target; klArgs; Obj value] ->
+        let clrArgs = toList klArgs |> List.map asObj
+        let property = findIndexProperty target
+        property.SetValue(target, value, List.toArray clrArgs)
+        Empty
+    | args -> argsErr "clr.set-index" ["clr.obj"; "(list clr.obj)"; "clr.obj"] args
 
 let ``kl_clr.get-static`` _ = function
     | [Sym className; Sym name] ->
-        let clazz = Type.GetType className // TODO: resolve alias
-        let property = clazz.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public)
-        if property = null then
-            failwithf "Property \"%s\" not defined on type \"%s\"" name clazz.Name
-        if property.GetIndexParameters().Length > 0 then
-            failwithf "Property \"%s\" has index parameters, use \"clr.get-index-static\" instead" name
+        let property = findStaticProperty className name
         Obj(property.GetValue null)
     | args -> argsErr "clr.get-static" ["symbol"; "symbol"] args
 
-let ``kl_clr.invoke`` _ = function
-    | [Obj x; Sym methodName; klArgs] ->
-        let clazz = x.GetType()
-        let methodInfo = clazz.GetMethod(methodName, BindingFlags.Instance ||| BindingFlags.Public)
-        if methodInfo = null then
-            failwithf "Method \"%s\" not defined on type \"%s\"" methodName clazz.Name
-        let clrArgs = toList klArgs |> List.map asObj
-        Obj(methodInfo.Invoke(x, List.toArray clrArgs))
-    | args -> argsErr "clr.invoke-static" ["clr.obj"; "symbol"; "(list clr.obj)"] args
+let ``kl_clr.set-static`` _ = function
+    | [Sym className; Sym name; Obj value] ->
+        let property = findStaticProperty className name
+        property.SetValue(null, value)
+        Empty
+    | args -> argsErr "clr.get-static" ["symbol"; "symbol"] args
 
-// TODO: clr.invoke-static getting Ambiguous match for method names
-//       need to use parameters types to identify method
+let ``kl_clr.invoke`` _ = function
+    | [Obj target; Sym methodName; klArgs] ->
+        let clrArgs = toList klArgs |> List.map asObj
+        let methodInfo = findInstanceMethod target methodName clrArgs
+        Obj(methodInfo.Invoke(target, List.toArray clrArgs))
+    | args -> argsErr "clr.invoke-static" ["clr.obj"; "symbol"; "(list clr.obj)"] args
 
 let ``kl_clr.invoke-static`` _ = function
     | [Sym className; Sym methodName; klArgs] ->
-        let clazz = Type.GetType className // TODO: resolve alias
-        let methodInfo = clazz.GetMethod(methodName, BindingFlags.Static ||| BindingFlags.Public)
-        if methodInfo = null then
-            failwithf "Method \"%s\" not defined on type \"%s\"" methodName clazz.Name
         let clrArgs = toList klArgs |> List.map asObj
+        let methodInfo = findStaticMethod className methodName clrArgs
         Obj(methodInfo.Invoke(null, List.toArray clrArgs))
     | args -> argsErr "clr.invoke-static" ["symbol"; "symbol"; "(list clr.obj)"] args
 
 
 
-// TODO: clr.set : clr.obj --> symbol --> clr.obj --> clr.obj --> ()
-// TODO: clr.set-static : symbol --> symbol --> clr.obj --> ()
-// TODO: clr.get-index : clr.obj --> symbol --> (list clr.obj) --> clr.obj
-// TODO: clr.set-index : clr.obj --> symbol --> (list clr.obj) --> clr.obj --> ()
-// TODO: clr.get-index-static / clr.set-index-static
-// TODO: clr.invoke : clr.obj --> symbol --> (list clr.obj) --> clr.obj
-// TODO: clr.invoke-static : symbol --> (list clr.obj) --> clr.obj
 // TODO: clr.using : symbol --> ()
 // TODO: clr.alias : symbol --> symbol --> ()
+
+// TODO: fields in addition to properties?
 
 // TODO: auto-apply `clr.value`?
 // TODO: parameterized type names can be deconstructed: System.Collections.Generic.List<System.String>
