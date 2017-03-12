@@ -70,6 +70,7 @@
     <Compile Include="PartialApplication.fs" />
     <Compile Include="ScopeCapture.fs" />
     <Compile Include="TailCallOptimization.fs" />
+    <Compile Include="ForeignFunctionInterface.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Core">

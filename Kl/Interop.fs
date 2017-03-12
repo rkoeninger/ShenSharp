@@ -54,37 +54,32 @@ let findStaticProperty className propertyName =
         failwithf "Property \"%s\" has index parameters, use \"clr.get-index-static\" instead" propertyName
     propertyInfo
 
-// TODO: fix type name presentation
-let rec private typeString (className: string) = function
-    | [] -> className
+let rec private typeString (baseName: string) leftBrace rightBrace = function
+    | [] -> baseName
     | typeArgNames ->
-        let backtickIndex = className.IndexOf '`'
+        let backtickIndex = baseName.IndexOf '`'
         let genericTypeName =
             if backtickIndex > 0 then
-                className.Substring(0, backtickIndex)
+                baseName.Substring(0, backtickIndex)
             else
-                className
-        let paramString = String.Join(", ", List.map typeString typeArgNames)
-        sprintf "%s(%s)" genericTypeName paramString
+                baseName
+        // TODO: nested parameterized types
+        let paramString = String.Join(", ", List.map string typeArgNames)
+        sprintf "%s%s%s%s" genericTypeName leftBrace paramString rightBrace
 
-let findInstanceMethod (target: obj) methodName (args: obj list) =
+let private findMethod instance (targetType: Type) methodName (args: obj list) =
     let argTypes = List.map (fun x -> x.GetType()) args
-    let clazz = target.GetType()
-    let methodInfo = clazz.GetMethod(methodName, List.toArray argTypes)
+    let className = targetType.Name
+    let methodInfo = targetType.GetMethod(methodName, List.toArray argTypes)
     if methodInfo = null then
-        let typeSig = typeString methodName (List.map string argTypes)
-        failwithf "Method \"%s\" is not defined on type \"%s\"" methodName clazz.Name
-    if methodInfo.IsStatic then
-        failwithf "Method \"%s\" is not an instance method" methodName
+        let methodSig = typeString methodName "(" ")" (List.map string argTypes)
+        let typeSig = typeString className "<" ">" (List.map string (targetType.GetGenericArguments() |> Array.toList))
+        failwithf "Method \"%s\" is not defined on type \"%s\"" methodSig typeSig
+    if instance = methodInfo.IsStatic then
+        let instanceType = if instance then "an instance" else "a static"
+        failwithf "Method \"%s\" is not %s method" methodName instanceType
     methodInfo
 
-let findStaticMethod className methodName (args: obj list) =
-    let argTypes = List.map (fun x -> x.GetType()) args
-    let clazz = findType className
-    let methodInfo = clazz.GetMethod(methodName, List.toArray argTypes)
-    if methodInfo = null then
-        let typeSig = typeString methodName (List.map string argTypes)
-        failwithf "Method \"%s\" is not defined on type \"%s\"" methodName clazz.Name
-    if not(methodInfo.IsStatic) then
-        failwithf "Method \"%s\" is not a static method" methodName
-    methodInfo
+let findInstanceMethod (target: obj) = findMethod true (target.GetType())
+
+let findStaticMethod className = findMethod false (findType className)
