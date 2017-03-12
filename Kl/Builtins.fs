@@ -280,10 +280,8 @@ let ``kl_clr.bool`` _ = function
 
 let ``kl_clr.new`` _ = function
     | [Sym name; klArgs] ->
-        // TODO: classname aliasing from globals
-        // TODO: better error handling
         let clrArgs = toList klArgs |> List.map asObj
-        let clazz = Type.GetType name
+        let clazz = findType name
         Obj(Activator.CreateInstance(clazz, List.toArray clrArgs))
     | args -> argsErr "clr.new" ["clr.obj"; "(list clr.obj)"] args
 
