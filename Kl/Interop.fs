@@ -4,26 +4,38 @@ open System
 open System.Reflection
 open ShenSharp.Shared
 
+// TODO: merge into global aliases
+let private primitiveAliases = [
+    "System.Boolean", "bool"
+    "System.Int32",   "int"
+    "System.Decimal", "decimal"
+    "System.String",  "string"
+    "System.Object",  "object"
+]
+
 // TODO: classname aliasing from globals
 let rec findType (typeName: string): Type =
-    let leftIndex = typeName.IndexOf '<'
-    let rightIndex = typeName.IndexOf '>'
-    if leftIndex > 0 && rightIndex > 0 then
-        let genericTypeName = typeName.Substring(0, leftIndex)
-        let typeArgNames =
-            typeName
-                .Substring(leftIndex + 1, rightIndex - 1 - leftIndex)
-                .Split ','
-            |> Array.map (fun x -> x.Trim())
-        let typeArgCount = Array.length typeArgNames
-        let genericType = findType(sprintf "%s`%i" genericTypeName typeArgCount)
-        let typeArgs = Array.map findType typeArgNames
-        genericType.MakeGenericType typeArgs
-    else
-        let result = Type.GetType typeName
-        if result = null then
-            failwithf "Type \"%O\" is not defined" result
-        result
+    match List.tryFind (snd >> (=) typeName) primitiveAliases with
+    | Some(proper, _) -> Type.GetType proper
+    | None ->
+        let leftIndex = typeName.IndexOf '<'
+        let rightIndex = typeName.IndexOf '>'
+        if leftIndex > 0 && rightIndex > 0 then
+            let genericTypeName = typeName.Substring(0, leftIndex)
+            let typeArgNames =
+                typeName
+                    .Substring(leftIndex + 1, rightIndex - 1 - leftIndex)
+                    .Split ','
+                |> Array.map (fun x -> x.Trim())
+            let typeArgCount = Array.length typeArgNames
+            let genericType = findType(sprintf "%s`%i" genericTypeName typeArgCount)
+            let typeArgs = Array.map findType typeArgNames
+            genericType.MakeGenericType typeArgs
+        else
+            let result = Type.GetType typeName
+            if result = null then
+                failwithf "Type \"%O\" is not defined" result
+            result
 
 let private publicInstance = BindingFlags.Public ||| BindingFlags.Instance
 
@@ -55,7 +67,10 @@ let findStaticProperty className propertyName =
     propertyInfo
 
 let rec private typeString (baseName: string) leftBrace rightBrace = function
-    | [] -> baseName
+    | [] ->
+        match List.tryFind (fst >> (=) baseName) primitiveAliases with
+        | Some(_, alias) -> alias
+        | _ -> baseName
     | typeArgNames ->
         let backtickIndex = baseName.IndexOf '`'
         let genericTypeName =
@@ -64,7 +79,7 @@ let rec private typeString (baseName: string) leftBrace rightBrace = function
             else
                 baseName
         // TODO: nested parameterized types
-        let paramString = String.Join(", ", List.map string typeArgNames)
+        let paramString = String.Join(", ", List.map (fun t -> typeString t "<" ">" []) typeArgNames)
         sprintf "%s%s%s%s" genericTypeName leftBrace paramString rightBrace
 
 let private findMethod instance (targetType: Type) methodName (args: obj list) =
