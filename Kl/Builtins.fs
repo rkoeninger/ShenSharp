@@ -345,8 +345,6 @@ let ``kl_clr.invoke-static`` _ = function
 
 // TODO: fields in addition to properties?
 
-// TODO: parameterized type names can be deconstructed: System.Collections.Generic.List<System.String>
-
 let ``kl_shensharp.globals`` globals = function
     | [] -> Obj globals
     | args -> argsErr "shensharp.globals" [] args
