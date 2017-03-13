@@ -14,12 +14,14 @@ let private primitiveAliases = [
 ]
 
 // TODO: classname aliasing from globals
+// TODO: properly parse nested parameterized types with multiple params:
+//       K<A,L<B,C>>    <-    String.Split won't work here
 let rec findType (typeName: string): Type =
     match List.tryFind (snd >> (=) typeName) primitiveAliases with
     | Some(proper, _) -> Type.GetType proper
     | None ->
         let leftIndex = typeName.IndexOf '<'
-        let rightIndex = typeName.IndexOf '>'
+        let rightIndex = typeName.LastIndexOf '>'
         if leftIndex > 0 && rightIndex > 0 then
             let genericTypeName = typeName.Substring(0, leftIndex)
             let typeArgNames =
@@ -34,7 +36,7 @@ let rec findType (typeName: string): Type =
         else
             let result = Type.GetType typeName
             if result = null then
-                failwithf "Type \"%O\" is not defined" result
+                failwithf "Type \"%s\" is not defined" typeName
             result
 
 let private publicInstance = BindingFlags.Public ||| BindingFlags.Instance
@@ -71,15 +73,15 @@ let rec private typeString (baseName: string) leftBrace rightBrace = function
         match List.tryFind (fst >> (=) baseName) primitiveAliases with
         | Some(_, alias) -> alias
         | _ -> baseName
-    | typeArgNames ->
+    | typeArgs ->
         let backtickIndex = baseName.IndexOf '`'
         let genericTypeName =
             if backtickIndex > 0 then
                 baseName.Substring(0, backtickIndex)
             else
                 baseName
-        // TODO: nested parameterized types
-        let paramString = String.Join(", ", List.map (fun t -> typeString t "<" ">" []) typeArgNames)
+        let argName (t: Type) = typeString t.Name "<" ">" (t.GetGenericArguments() |> Array.toList)
+        let paramString = String.Join(", ", List.map argName typeArgs)
         sprintf "%s%s%s%s" genericTypeName leftBrace paramString rightBrace
 
 let private findMethod instance (targetType: Type) methodName (args: obj list) =
@@ -87,8 +89,8 @@ let private findMethod instance (targetType: Type) methodName (args: obj list) =
     let className = targetType.Name
     let methodInfo = targetType.GetMethod(methodName, List.toArray argTypes)
     if methodInfo = null then
-        let methodSig = typeString methodName "(" ")" (List.map string argTypes)
-        let typeSig = typeString className "<" ">" (List.map string (targetType.GetGenericArguments() |> Array.toList))
+        let methodSig = typeString methodName "(" ")" argTypes
+        let typeSig = typeString className "<" ">" (targetType.GetGenericArguments() |> Array.toList)
         failwithf "Method \"%s\" is not defined on type \"%s\"" methodSig typeSig
     if instance = methodInfo.IsStatic then
         let instanceType = if instance then "an instance" else "a static"
