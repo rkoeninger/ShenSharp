@@ -4,12 +4,12 @@ open System
 open System.Reflection
 open ShenSharp.Shared
 
-let private csv (xs: string seq) = String.Join(",", xs)
 let private trim (s: string) = s.Trim()
 let private before i (s: string) = s.Substring(0, i)
 let private after i (s: string) = s.Substring(i + 1, s.Length - 1 - i)
 let private between i j (s: string) = s.Substring(i + 1, j - 1 - i)
 let private getType x = x.GetType()
+let private typeOf s = Type.GetType s
 
 // TODO: merge into global aliases
 let private primitiveAliases = [
@@ -40,7 +40,7 @@ let rec private parseTypeName (typeName: string) =
         let rightIndex = typeName.LastIndexOf '>'
         if rightIndex < 0 then
             failwithf "Malformed type name: \"%s\"" typeName
-        let genericTypeName = trim(before leftIndex typeName)
+        let genericTypeName = before leftIndex typeName |> trim
         let typeArgsString = between leftIndex rightIndex typeName
         Compound(genericTypeName, parseTypeArgs typeArgsString)
     else
@@ -55,7 +55,7 @@ and private parseTypeArgs (typeArgsString: string) =
         if commaIndex < 0 then
             [parseTypeName typeArgsString]
         elif commaIndex < bracketIndex then
-            let firstTypeName = trim(before commaIndex typeArgsString)
+            let firstTypeName = before commaIndex typeArgsString |> trim
             let restTypeNames = after commaIndex typeArgsString
             Simple firstTypeName :: parseTypeArgs restTypeNames
         else
@@ -64,7 +64,6 @@ and private parseTypeArgs (typeArgsString: string) =
                 parseTypeName(before rightBracketIndex typeArgsString),
                 parseTypeArgs(after rightBracketIndex typeArgsString))
 
-// TODO: render shorter name when aliased
 let rec private renderTypeName = function
     | Simple typeName ->
         match List.tryFind (fst >> (=) typeName) primitiveAliases with
@@ -76,7 +75,7 @@ let rec private renderTypeName = function
             if backtickIndex < 0
                 then typeName
                 else before backtickIndex typeName
-        sprintf "%s<%s>" trimmedName (csv(List.map renderTypeName typeArgs))
+        sprintf "%s<%s>" trimmedName (String.Join(",", List.map renderTypeName typeArgs))
 
 let rec private buildTypeName (t: Type) =
     let typeArgs = t.GetGenericArguments() |> Array.toList
@@ -86,23 +85,23 @@ let rec private buildTypeName (t: Type) =
 
 let rec private renderMethodSig methodName = function
     | [] -> sprintf "%s()" methodName
-    | typeArgs -> sprintf "%s(%s)" methodName (List.map renderTypeName typeArgs |> csv)
+    | typeArgs -> sprintf "%s(%s)" methodName (String.Join(",", List.map renderTypeName typeArgs))
 
 let rec private constructType = function
     | Simple name ->
         match List.tryFind (snd >> (=) name) primitiveAliases with
-        | Some(proper, _) -> Type.GetType proper
+        | Some(proper, _) -> typeOf proper
         | None ->
-            let result = Type.GetType name
+            let result = typeOf name
             if result = null then
                 failwithf "Type \"%s\" is not defined" name
             result
     | Compound(name, args) ->
-        let genericType = Type.GetType(sprintf "%s`%i" name args.Length)
+        let genericType = typeOf(sprintf "%s`%i" name args.Length)
         let typeArgs = List.map constructType args
         genericType.MakeGenericType(List.toArray typeArgs)
 
-let rec findType (typeName: string): Type = constructType(parseTypeName typeName)
+let rec findType = parseTypeName >> constructType
 
 let private publicInstance = BindingFlags.Public ||| BindingFlags.Instance
 
