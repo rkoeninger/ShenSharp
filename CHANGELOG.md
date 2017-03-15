@@ -67,12 +67,12 @@ Don't remember.
 
 Don't remember.
 
-[Unreleased]: https://github.com/Shen-Language/shen-sources/compare/v0.8.0.0...HEAD
-[0.8.0.0]: https://github.com/Shen-Language/shen-sources/compare/v0.7.0.0...v0.8.0.0
-[0.7.0.0]: https://github.com/Shen-Language/shen-sources/compare/v0.6.0.0...v0.7.0.0
-[0.6.0.0]: https://github.com/Shen-Language/shen-sources/compare/v0.5.0.0...v0.6.0.0
-[0.5.0.0]: https://github.com/Shen-Language/shen-sources/compare/v0.4.0.0...v0.5.0.0
-[0.4.0.0]: https://github.com/Shen-Language/shen-sources/compare/v0.3.0.0...v0.4.0.0
-[0.3.0.0]: https://github.com/Shen-Language/shen-sources/compare/v0.2.0.0...v0.3.0.0
-[0.2.0.0]: https://github.com/Shen-Language/shen-sources/compare/v0.1.0.0...v0.2.0.0
-[0.1.0.0]: https://github.com/Shen-Language/shen-sources/compare/cf371a7bd5829d6c1a39ac1b07782518e60e6d40...v0.1.0.0
+[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.8.0.0...HEAD
+[0.8.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.7.0.0...v0.8.0.0
+[0.7.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.6.0.0...v0.7.0.0
+[0.5.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.4.0.0...v0.5.0.0
+[0.4.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.3.0.0...v0.4.0.0
+[0.6.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.5.0.0...v0.6.0.0
+[0.3.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.2.0.0...v0.3.0.0
+[0.2.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.1.0.0...v0.2.0.0
+[0.1.0.0]: https://github.com/rkoeninger/ShenSharp/compare/cf371a7bd5829d6c1a39ac1b07782518e60e6d40...v0.1.0.0
