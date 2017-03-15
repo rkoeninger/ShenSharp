@@ -70,24 +70,27 @@ let argsErr name types args =
         then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
         else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
-let newGlobals() = new ConcurrentDictionary<string, Symbol>()
+let newGlobals() = {
+    Symbols = new ConcurrentDictionary<string, Symbol>()
+    ClrAliases = new ConcurrentDictionary<string, string>()
+}
 
 let nonPrimitiveSymbols (globals: Globals) =
     let ps (kv: KeyValuePair<_, _>) =
         if !kv.Value.IsProtected
             then None
             else Option.map (fun value -> (kv.Key, value)) !kv.Value.Val
-    filterSome(Seq.toList(Seq.map ps globals))
+    filterSome(Seq.toList(Seq.map ps globals.Symbols))
 
 let nonPrimitiveFunctions (globals: Globals) =
     let pf (kv: KeyValuePair<_, _>) =
         if !kv.Value.IsProtected
             then None
             else Option.map (fun f -> (kv.Key, f)) !kv.Value.Fun
-    filterSome(Seq.toList(Seq.map pf globals))
+    filterSome(Seq.toList(Seq.map pf globals.Symbols))
 
 let intern (globals: Globals) id =
-    globals.GetOrAdd(id,
+    globals.Symbols.GetOrAdd(id,
         fun _ ->
             {Name = id
              IsProtected = ref false
@@ -95,7 +98,7 @@ let intern (globals: Globals) id =
              Fun = ref None})
 
 let unprotectAll (globals: Globals) =
-    for kv in globals do
+    for kv in globals.Symbols do
         kv.Value.IsProtected := false
     globals
 

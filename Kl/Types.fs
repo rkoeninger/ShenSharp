@@ -34,7 +34,10 @@ type Symbol = {
 /// Primitives is a list of symbols that bootstrap the KL environment
 /// which should not be re-defined.
 /// </summary>
-and Globals = ConcurrentDictionary<string, Symbol>
+and Globals = {
+    Symbols: ConcurrentDictionary<string, Symbol>
+    ClrAliases: ConcurrentDictionary<string, string>
+}
 
 /// <summary>
 /// The different types of functions in KL.

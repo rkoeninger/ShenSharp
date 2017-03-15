@@ -10,7 +10,7 @@ open Assertions
 [<Test>]
 let ``print platform information``() =
     let globals = baseGlobals()
-    for pair in globals do
+    for pair in globals.Symbols do
         Option.iter (printfn "%s = %O" pair.Key) (getValueOption pair.Value)
 
 [<Test>]
