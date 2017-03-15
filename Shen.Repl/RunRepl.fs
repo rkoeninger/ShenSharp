@@ -29,7 +29,7 @@ let runRepl files () =
         | ("--eval" | "-e") :: rest ->
             printfn "%O" (evalSyntax globals (String.Join(" ", rest)))
         | [] ->
-            eval globals (toCons [Sym "shen"]) |> ignore
+            eval globals (toCons [Sym "shen.shen"]) |> ignore
         | _ ->
             for file in files do
                 eval globals (toCons [Sym "load"; Str file]) |> ignore
