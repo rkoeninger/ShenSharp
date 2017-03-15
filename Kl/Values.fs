@@ -70,10 +70,15 @@ let argsErr name types args =
         then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
         else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
-let newGlobals() = {
-    Symbols = new ConcurrentDictionary<string, Symbol>()
-    ClrAliases = new ConcurrentDictionary<string, string>()
-}
+let newGlobals() =
+    let symbols = new ConcurrentDictionary<string, Symbol>()
+    let aliases = new ConcurrentDictionary<string, string>()
+    aliases.["object"]  <- "System.Object"
+    aliases.["string"]  <- "System.String"
+    aliases.["int"]     <- "System.Int32"
+    aliases.["decimal"] <- "System.Decimal"
+    aliases.["bool"]    <- "System.Boolean"
+    { Symbols = symbols; ClrAliases = aliases }
 
 let nonPrimitiveSymbols (globals: Globals) =
     let ps (kv: KeyValuePair<_, _>) =

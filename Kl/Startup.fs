@@ -68,6 +68,7 @@ let baseGlobals () =
         "cd",                Compiled(1, kl_cd)
         "pwd",               Compiled(0, kl_pwd)
         "ls",                Compiled(0, kl_ls)
+        "clr.alias",         Compiled(2, ``kl_clr.alias``)
         "clr.unbox",         Compiled(1, ``kl_clr.unbox``)
         "clr.null",          Compiled(0, ``kl_clr.null``)
         "clr.int",           Compiled(1, ``kl_clr.int``)

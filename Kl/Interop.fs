@@ -2,6 +2,7 @@
 
 open System
 open System.Reflection
+open Values
 open ShenSharp.Shared
 
 let private trim (s: string) = s.Trim()
@@ -9,16 +10,10 @@ let private before i (s: string) = s.Substring(0, i)
 let private after i (s: string) = s.Substring(i + 1, s.Length - 1 - i)
 let private between i j (s: string) = s.Substring(i + 1, j - 1 - i)
 let private getType x = x.GetType()
-let private typeOf s = Type.GetType s
+let private typeOf s = Type.GetType(s, true)
 
-// TODO: merge into global aliases
-let private primitiveAliases = [
-    "System.Boolean", "bool"
-    "System.Int32",   "int"
-    "System.Decimal", "decimal"
-    "System.String",  "string"
-    "System.Object",  "object"
-]
+let setAlias globals alias original =
+    globals.ClrAliases.[alias] <- original
 
 type private TypeName =
     | Simple of string
@@ -33,7 +28,6 @@ let rec private findRightBracket depth index (s: string) =
             else findRightBracket (depth - 1) (index + 1) s
     | _ -> findRightBracket depth (index + 1) s
 
-// TODO: classname aliasing from globals
 let rec private parseTypeName (typeName: string) =
     let leftIndex = typeName.IndexOf '<'
     if leftIndex > 0 then
@@ -65,10 +59,7 @@ and private parseTypeArgs (typeArgsString: string) =
                 parseTypeArgs(after rightBracketIndex typeArgsString))
 
 let rec private renderTypeName = function
-    | Simple typeName ->
-        match List.tryFind (fst >> (=) typeName) primitiveAliases with
-        | Some(_, alias) -> alias
-        | None -> typeName
+    | Simple typeName -> typeName
     | Compound(typeName, typeArgs) ->
         let backtickIndex = typeName.IndexOf '`'
         let trimmedName =
@@ -87,21 +78,22 @@ let rec private renderMethodSig methodName = function
     | [] -> sprintf "%s()" methodName
     | typeArgs -> sprintf "%s(%s)" methodName (String.Join(",", List.map renderTypeName typeArgs))
 
-let rec private constructType = function
+let private arityName name arity = if arity = 0 then name else sprintf "%s`%i" name arity
+
+let rec private constructType globals = function
     | Simple name ->
-        match List.tryFind (snd >> (=) name) primitiveAliases with
-        | Some(proper, _) -> typeOf proper
-        | None ->
-            let result = typeOf name
-            if result = null then
-                failwithf "Type \"%s\" is not defined" name
-            result
+        match globals.ClrAliases.GetMaybe name with
+        | Some proper -> typeOf proper
+        | None -> typeOf name
     | Compound(name, args) ->
-        let genericType = typeOf(sprintf "%s`%i" name args.Length)
-        let typeArgs = List.map constructType args
+        let genericType =
+            match globals.ClrAliases.GetMaybe name with
+            | Some proper -> typeOf(arityName proper args.Length)
+            | None -> typeOf(arityName name args.Length)
+        let typeArgs = List.map (constructType globals) args
         genericType.MakeGenericType(List.toArray typeArgs)
 
-let rec findType = parseTypeName >> constructType
+let rec findType globals = parseTypeName >> constructType globals
 
 let private publicInstance = BindingFlags.Public ||| BindingFlags.Instance
 
@@ -123,8 +115,8 @@ let findIndexProperty target =
         failwithf "Indexer property is not defined on type \"%s\"" clazz.FullName
     propertyInfo
 
-let findStaticProperty className propertyName =
-    let clazz = findType className
+let findStaticProperty globals className propertyName =
+    let clazz = findType globals className
     let propertyInfo = clazz.GetProperty(propertyName, publicStatic)
     if propertyInfo = null then
         failwithf "Property \"%s\" is not defined on type \"%s\"" propertyName clazz.FullName
@@ -151,4 +143,4 @@ let private findMethod instance (targetType: Type) methodName (args: obj list) =
 
 let findInstanceMethod (target: obj) = findMethod true (getType target)
 
-let findStaticMethod className = findMethod false (findType className)
+let findStaticMethod globals className = findMethod false (findType globals className)
