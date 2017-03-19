@@ -23,9 +23,9 @@ This port passes all tests in the Shen standard test suite, making this a certif
   * [Mailing List](https://groups.google.com/forum/#!forum/qilang)
 
 ### CLR Platform Support Status
-  * [Microsoft.NET](https://www.microsoft.com/net) - Built in Visual Studio on Windows
-  * [Mono](http://www.mono-project.com/) - Tests build and run on Travis-CI in Ubuntu
-  * [.NET Core](https://www.microsoft.com/net/core#windowsvs2015) - Unknown/not yet supported
+  * [Microsoft.NET](https://www.microsoft.com/net) - v4.5
+  * [Mono](http://www.mono-project.com/) - v4.5
+  * [.NET Core](https://www.microsoft.com/net/core#windowsvs2015) - Not yet supported
 
 ### Guided Tour of the Code
   * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/Kl/Types.fs) -
@@ -40,6 +40,3 @@ This port passes all tests in the Shen standard test suite, making this a certif
     Parses Kλ code
   * [Compiler](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Compiler.fs) -
     Translates an environment of KL expressions into a F# module AST
-  * [Loader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Loader.fs) -
-    Reads and evaluates the Shen runtime from Kλ distribution or loads runtime from code
-	generated on previous run

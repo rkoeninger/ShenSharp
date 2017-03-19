@@ -68,7 +68,7 @@ let private packageNuget() =
     builder.Id <- Product
     builder.Title <- Product
     builder.Description <- Description
-    //builder.Summary <- Description // TODO: pull from README.md
+    builder.Summary <- Description
     builder.ProjectUrl <- urlFromGitConfig()
     List.iter (builder.Tags.Add >> ignore) tags
     builder.Authors.Add Author |> ignore
