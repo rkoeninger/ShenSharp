@@ -20,7 +20,7 @@ let private shenDllPath = combine [packageRoot; "lib"; "net45"; "Shen.dll"]
 let private shenExePath = combine [packageRoot; "tools"; "Shen.exe"]
 let private packageFileName = sprintf "%s.%s.nupkg" Product Revision
 let private packagePath = combine [artifactsRoot; packageFileName]
-let private tags = ["Shen"] // TODO: pull from github api?
+let private tags = ["Shen"]
 
 let private repackAssemblies kind target sources =
     let options =

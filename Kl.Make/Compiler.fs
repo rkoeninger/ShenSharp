@@ -41,7 +41,7 @@ let private toType targetType (fsExpr, currentType) =
     | _, FsUnit -> appIgnore fsExpr
     | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
-let rec private buildApp ((globals, locals) as context) (f: Expr) args =
+let rec private buildApp ((name, globals, locals) as context) (f: Expr) args =
     match f with
     | Constant(Sym s) ->
         // Apply local variable as function
@@ -92,10 +92,10 @@ let rec private buildApp ((globals, locals) as context) (f: Expr) args =
         // apply globals (asFunction ~f) ~args
         appIdExprN "apply"
             [idExpr "globals"
-             buildExpr context f |> toType KlFunction
+             buildExpr (name, globals, locals) f |> toType KlFunction
              listExpr args]
 
-and private buildExpr ((globals, locals) as context) (expr : Expr) =
+and private buildExpr ((name, globals, locals) as context) (expr : Expr) =
     match expr with
     | Constant Empty -> idExpr "Empty", KlValue
     | Constant(Num x) -> appIdExpr "Num" (decimalExpr x), KlValue
@@ -123,9 +123,9 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
         letExpr
             (rename param)
             (buildExpr context binding |> toType KlValue)
-            (buildExpr (globals, Set.add param locals) body |> toType KlValue), KlValue
+            (buildExpr (name, globals, Set.add param locals) body |> toType KlValue), KlValue
     | Anonymous(param, body) ->
-        compileF globals locals (Option.toList param) body, KlValue
+        compileF (name, globals) locals (Option.toList param) body, KlValue
     | Catch(body, handler) ->
         let errExpr = appIdExpr "Err" (longIdExpr ["e"; "Message"])
         let handlerExpr =
@@ -135,7 +135,7 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
                 (letExpr
                     (rename param)
                     errExpr
-                    (buildExpr (globals, Set.add param locals) body |> toType KlValue))
+                    (buildExpr (name, globals, Set.add param locals) body |> toType KlValue))
             | f -> buildApp context f [errExpr]
         tryWithExpr (buildExpr context body |> toType KlValue) "e" handlerExpr, KlValue
     | Sequential(exprs, last) ->
@@ -167,7 +167,7 @@ and private buildExpr ((globals, locals) as context) (expr : Expr) =
         buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
     | klExpr -> failwithf "Unable to compile: %O" klExpr
 
-and private compileF globals locals paramz body =
+and private compileF ((name, globals) as context) locals paramz body =
     let arity = List.length paramz
     ((appIdExpr "Compiled"
         (tupleExpr
@@ -178,12 +178,12 @@ and private compileF globals locals paramz body =
                     [matchClause
                         (listPat(List.map (rename >> namePat) paramz))
                         (buildExpr
-                            (globals, Set.union locals (Set.ofList paramz))
+                            (name, globals, Set.union locals (Set.ofList paramz))
                             body |> toType KlValue)
                      matchClause
                         (namePat "args")
                         (appIdExprN "argsErr"
-                            [stringExpr "Compiled Function" // TODO: better name
+                            [stringExpr("Lambda@" + name)
                              listExpr(List.replicate arity (stringExpr "value"))
                              idExpr "args"])]))])), KlFunction) |> toType KlValue
 
@@ -200,7 +200,7 @@ let private compileDefun globals (name, f) =
             (matchLambdaExpr
                 [matchClause
                     (listPat(List.map (rename >> namePat) paramz))
-                    (buildExpr (globals, Set.ofList paramz) body |> toType KlValue)
+                    (buildExpr (name, globals, Set.ofList paramz) body |> toType KlValue)
                  matchClause
                     (namePat "args")
                     (appIdExprN "argsErr"
@@ -219,7 +219,7 @@ let private installDefun (name, f) =
                 [intExpr(functionArity f)
                  idExpr(rename name)]))]
 
-let rec private buildValue (globals as context) = function
+let rec private buildValue ((name, globals) as context) = function
     | Empty -> idExpr "Empty"
     | Num x -> appIdExpr "Num" (decimalExpr x)
     | Str s -> appIdExpr "Str" (stringExpr s)
@@ -234,10 +234,10 @@ let rec private buildValue (globals as context) = function
             (arrayExpr(List.map (buildValue context) (Seq.toList array)))
     | Err s -> appIdExpr "Err" (stringExpr s)
     | Func(Interpreted(paramz, body)) ->
-        compileF globals Set.empty paramz body
+        compileF context Set.empty paramz body
     | value -> failwithf "Can't build value: %A" value
 
-let private installSymbol (globals as context) (id, value) =
+let private installSymbol ((name, globals) as context) (id, value) =
     appIdExprN "assign" [
         idExpr "globals"
         stringExpr id
@@ -258,7 +258,7 @@ let buildInstallationFile (name: string) globals =
             [param "globals" "Globals"]
             (sequentialExpr
                 (List.concat
-                    [List.map (installSymbol globals) symbols
+                    [List.map (installSymbol (name, globals)) symbols
                      List.map installDefun defuns
                      [idExpr "globals"]]))]
 
