@@ -45,6 +45,27 @@ let private urlFromGitConfig() =
     let urlString = regex @"http\S*" origin
     new Uri(urlString.Substring(0, urlString.Length - 4))
 
+let private releaseNotesFromChangeLog() =
+    let changeLogText = File.ReadAllText(fromRoot ["CHANGELOG.md"])
+    let revisionTag = sprintf "## [%s]" Revision
+    match changeLogText.IndexOf revisionTag with
+    | -1 ->
+        let unreleasedTag = "## [Unreleased]"
+        match changeLogText.IndexOf unreleasedTag with
+        | -1 -> null
+        | unreleasedIndex ->
+            match changeLogText.IndexOf("## [", unreleasedIndex + 1) with
+            | -1 -> null
+            | nextIndex ->
+                let startIndex = unreleasedIndex + unreleasedTag.Length
+                changeLogText.Substring(startIndex, nextIndex - startIndex).Trim()
+    | revisionIndex ->
+        match changeLogText.IndexOf("## [", revisionIndex + 1) with
+        | -1 -> null
+        | nextIndex ->
+            let startIndex = changeLogText.IndexOf('\n', revisionIndex)
+            changeLogText.Substring(startIndex, nextIndex - startIndex).Trim()
+
 let private iconUrlFromReadme() =
     let readmeText = File.ReadAllText(fromRoot ["README.md"])
     let iconMarkup = regex "\!\[.*Logo\]\(.*\)" readmeText
@@ -77,7 +98,7 @@ let private packageNuget() =
     builder.Version <- SemanticVersion.Parse Revision
     builder.LicenseUrl <- urlFromLicenseFile()
     builder.RequireLicenseAcceptance <- false
-    //builder.ReleaseNotes // TODO: pull from CHANGELOG.md
+    builder.ReleaseNotes <- releaseNotesFromChangeLog()
     builder.IconUrl <- iconUrlFromReadme()
     addFiles builder packageRoot packageRoot
     let core = PackageDependency("FSharp.Core", VersionSpec(SemanticVersion(4, 0, 0, 1)))
