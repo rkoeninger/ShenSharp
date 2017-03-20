@@ -39,4 +39,4 @@ This port passes all tests in the Shen standard test suite, making this a certif
   * [Reader](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Reader.fs) -
     Parses Kλ code
   * [Compiler](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Compiler.fs) -
-    Translates an environment of KL expressions into a F# module AST
+    Translates an environment of Kλ expressions into a F# module AST
