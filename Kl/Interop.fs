@@ -14,6 +14,7 @@ let private typeOf s = Type.GetType(s, true)
 
 let setAlias globals alias original =
     globals.ClrAliases.[alias] <- original
+    globals.ClrReverseAliases.[original] <- alias
 
 type private TypeName =
     | Simple of string
@@ -58,15 +59,18 @@ and private parseTypeArgs (typeArgsString: string) =
                 parseTypeName(before rightBracketIndex typeArgsString),
                 parseTypeArgs(after rightBracketIndex typeArgsString))
 
-let rec private renderTypeName = function
-    | Simple typeName -> typeName
+let rec private renderTypeName globals = function
+    | Simple typeName ->
+        match globals.ClrReverseAliases.GetMaybe typeName with
+        | Some alias -> alias
+        | _ -> typeName
     | Compound(typeName, typeArgs) ->
         let backtickIndex = typeName.IndexOf '`'
         let trimmedName =
             if backtickIndex < 0
                 then typeName
                 else before backtickIndex typeName
-        sprintf "%s<%s>" trimmedName (String.Join(",", List.map renderTypeName typeArgs))
+        sprintf "%s<%s>" trimmedName (String.Join(",", List.map (renderTypeName globals) typeArgs))
 
 let rec private buildTypeName (t: Type) =
     let typeArgs = t.GetGenericArguments() |> Array.toList
@@ -74,9 +78,9 @@ let rec private buildTypeName (t: Type) =
         then Simple t.FullName
         else Compound(t.FullName, List.map buildTypeName typeArgs)
 
-let rec private renderMethodSig methodName = function
+let rec private renderMethodSig globals methodName = function
     | [] -> sprintf "%s()" methodName
-    | typeArgs -> sprintf "%s(%s)" methodName (String.Join(",", List.map renderTypeName typeArgs))
+    | typeArgs -> sprintf "%s(%s)" methodName (String.Join(",", List.map (renderTypeName globals) typeArgs))
 
 let private arityName name arity = if arity = 0 then name else sprintf "%s`%i" name arity
 
@@ -124,23 +128,23 @@ let findStaticProperty globals className propertyName =
         failwithf "Property \"%s\" has index parameters, use \"clr.get-index-static\" instead" propertyName
     propertyInfo
 
-let private findMethod instance (targetType: Type) methodName (args: obj list) =
+let private findMethod globals instance (targetType: Type) methodName (args: obj list) =
     let argTypes = List.map getType args
     let className = targetType.FullName
     let methodInfo = targetType.GetMethod(methodName, List.toArray argTypes)
     if methodInfo = null then
-        let methodSig = renderMethodSig methodName (List.map buildTypeName argTypes)
+        let methodSig = renderMethodSig globals methodName (List.map buildTypeName argTypes)
         let typeArgs = targetType.GetGenericArguments() |> Array.toList
         let typeSig =
             if typeArgs.Length = 0
                 then Simple className
                 else Compound(className, (List.map buildTypeName typeArgs))
-        failwithf "Method \"%s\" is not defined on type \"%s\"" methodSig (renderTypeName typeSig)
+        failwithf "Method \"%s\" is not defined on type \"%s\"" methodSig (renderTypeName globals typeSig)
     if instance = methodInfo.IsStatic then
         let instanceType = if instance then "an instance" else "a static"
         failwithf "Method \"%s\" is not %s method" methodName instanceType
     methodInfo
 
-let findInstanceMethod (target: obj) = findMethod true (getType target)
+let findInstanceMethod globals (target: obj) = findMethod globals true (getType target)
 
-let findStaticMethod globals className = findMethod false (findType globals className)
+let findStaticMethod globals className = findMethod globals false (findType globals className)

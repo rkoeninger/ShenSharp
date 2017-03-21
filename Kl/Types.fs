@@ -31,12 +31,12 @@ type Symbol = {
 /// <summary>
 /// A global, mutable set of symbol definitions that contains separate
 /// symbol and function namespaces.
-/// Primitives is a list of symbols that bootstrap the KL environment
-/// which should not be re-defined.
+/// Also contains bi-directional mapping of aliases for CLR types.
 /// </summary>
 and Globals = {
     Symbols: ConcurrentDictionary<string, Symbol>
     ClrAliases: ConcurrentDictionary<string, string>
+    ClrReverseAliases: ConcurrentDictionary<string, string>
 }
 
 /// <summary>

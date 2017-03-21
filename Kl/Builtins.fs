@@ -332,10 +332,10 @@ let ``kl_clr.set-static`` globals = function
         Empty
     | args -> argsErr "clr.set-static" ["symbol"; "symbol"; "clr.obj"] args
 
-let ``kl_clr.invoke`` _ = function
+let ``kl_clr.invoke`` globals = function
     | [Obj target; Sym methodName; klArgs] ->
         let clrArgs = toList klArgs |> List.map asObj
-        let methodInfo = findInstanceMethod target methodName clrArgs
+        let methodInfo = findInstanceMethod globals target methodName clrArgs
         Obj(methodInfo.Invoke(target, List.toArray clrArgs))
     | args -> argsErr "clr.invoke-static" ["clr.obj"; "symbol"; "(list clr.obj)"] args
 

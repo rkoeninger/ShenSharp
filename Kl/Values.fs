@@ -73,6 +73,7 @@ let argsErr name types args =
 let newGlobals() =
     let symbols = new ConcurrentDictionary<string, Symbol>()
     let aliases = new ConcurrentDictionary<string, string>()
+    let reverseAliases = new ConcurrentDictionary<string, string>()
     aliases.["object"]  <- typedefof<obj>.FullName
     aliases.["string"]  <- typedefof<string>.FullName
     aliases.["char"]    <- typedefof<char>.FullName
@@ -88,7 +89,7 @@ let newGlobals() =
     aliases.["double"]  <- typedefof<double>.FullName
     aliases.["decimal"] <- typedefof<decimal>.FullName
     aliases.["bool"]    <- typedefof<bool>.FullName
-    { Symbols = symbols; ClrAliases = aliases }
+    { Symbols = symbols; ClrAliases = aliases; ClrReverseAliases = reverseAliases }
 
 let nonPrimitiveSymbols (globals: Globals) =
     let ps (kv: KeyValuePair<_, _>) =
