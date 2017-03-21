@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ### Added
 - This change log.
+- Additional default type aliases for all C# type keywords.
 
 ## [0.8.0.0] - 2017-03-15
 

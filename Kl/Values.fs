@@ -73,11 +73,21 @@ let argsErr name types args =
 let newGlobals() =
     let symbols = new ConcurrentDictionary<string, Symbol>()
     let aliases = new ConcurrentDictionary<string, string>()
-    aliases.["object"]  <- "System.Object"
-    aliases.["string"]  <- "System.String"
-    aliases.["int"]     <- "System.Int32"
-    aliases.["decimal"] <- "System.Decimal"
-    aliases.["bool"]    <- "System.Boolean"
+    aliases.["object"]  <- typedefof<obj>.FullName
+    aliases.["string"]  <- typedefof<string>.FullName
+    aliases.["char"]    <- typedefof<char>.FullName
+    aliases.["byte"]    <- typedefof<byte>.FullName
+    aliases.["short"]   <- typedefof<int16>.FullName
+    aliases.["int"]     <- typedefof<int>.FullName
+    aliases.["long"]    <- typedefof<int64>.FullName
+    aliases.["sbyte"]   <- typedefof<sbyte>.FullName
+    aliases.["ushort"]  <- typedefof<uint16>.FullName
+    aliases.["uint"]    <- typedefof<uint32>.FullName
+    aliases.["ulong"]   <- typedefof<uint64>.FullName
+    aliases.["float"]   <- typedefof<float>.FullName
+    aliases.["double"]  <- typedefof<double>.FullName
+    aliases.["decimal"] <- typedefof<decimal>.FullName
+    aliases.["bool"]    <- typedefof<bool>.FullName
     { Symbols = symbols; ClrAliases = aliases }
 
 let nonPrimitiveSymbols (globals: Globals) =
