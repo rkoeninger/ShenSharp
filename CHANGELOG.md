@@ -8,8 +8,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ### Added
 - This change log.
+- `Shen.Pack` can now pull release notes from change log.
 - Additional default type aliases for all C# type keywords.
 - CLR reverse aliasing to render typenames as aliases.
+- Normalized framework version to 4.5.
 
 ## [0.8.0.0] - 2017-03-15
 
