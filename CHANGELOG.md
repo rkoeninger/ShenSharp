@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
+nothing yet
+
+## [0.8.1.0] - 2017-03-29
+
 ### Added
 - This change log.
 - `Shen.Pack` can now pull release notes from change log.
@@ -71,7 +75,8 @@ Don't remember.
 
 Don't remember.
 
-[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.8.0.0...HEAD
+[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.8.1.0...HEAD
+[0.8.1.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.8.0.0...v0.8.1.0
 [0.8.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.7.0.0...v0.8.0.0
 [0.7.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.6.0.0...v0.7.0.0
 [0.5.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.4.0.0...v0.5.0.0
