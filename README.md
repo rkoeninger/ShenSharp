@@ -40,3 +40,9 @@ This port passes all tests in the Shen standard test suite, making this a certif
     Parses Kλ code
   * [Compiler](https://github.com/rkoeninger/ShenSharp/blob/master/Kl.Make/Compiler.fs) -
     Translates an environment of Kλ expressions into a F# module AST
+  * [Runtime](https://github.com/rkoeninger/ShenSharp/blob/master/Shen.Api/Runtime.fs) -
+    Helpful functions for embedding Shen in another application
+  * [ExtensionMethods](https://github.com/rkoeninger/ShenSharp/blob/master/Shen.Api/ExtensionMethods.fs) -
+    Extension method versions of functions in Runtime to give API a C# feel
+  * [RunRepl](https://github.com/rkoeninger/ShenSharp/blob/master/Shen.Repl/RunRepl.fs) -
+    Interpretation of command line arguments passed to `Shen.exe`
