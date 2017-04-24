@@ -235,6 +235,7 @@ let rec private buildValue ((name, globals) as context) = function
     | Err s -> appIdExpr "Err" (stringExpr s)
     | Func(Interpreted(paramz, body)) ->
         compileF context Set.empty paramz body
+    | Pipe io when io.Name = "Console" -> idExpr "console"
     | value -> failwithf "Can't build value: %A" value
 
 let private installSymbol ((name, globals) as context) (id, value) =
