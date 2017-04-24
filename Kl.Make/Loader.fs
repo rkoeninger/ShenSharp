@@ -70,11 +70,11 @@ let private copy source destination =
 
 let make sourcePath sourceFiles outputPath =
     let globals = import sourcePath sourceFiles
-    printfn "Generating installation code..."
+    printfn "Generating language kernel..."
     let ast = buildInstallationFile generatedModule globals
     let sharedAst = parseFile sharedMetadataPath
     let metadataAst = buildMetadataFile generatedModule
-    printfn "Compiling installation code..."
+    printfn "Compiling language kernel..."
     emit [ast; sharedAst; metadataAst]
     printfn "Copying artifacts to output path..."
     for file in Directory.GetFiles(".", searchPattern) do
