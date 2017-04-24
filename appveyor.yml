@@ -5,6 +5,9 @@ before_build:
 build_script:
   - msbuild /p:Configuration=Release Kl.sln
   - .\testrunner\NUnit.ConsoleRunner.3.6.0\tools\nunit3-console.exe .\Kl.Tests\bin\Release\Kl.Tests.dll
+  - cd .\Kl.Get\bin\Release
+  - Kl.Get.exe
+  - cd ..\..\..
   - cd .\Kl.Make\bin\Release
   - Kl.Make.exe
   - cd ..\..\..

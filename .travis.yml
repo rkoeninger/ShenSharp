@@ -11,6 +11,9 @@ install:
 script:
   - xbuild /p:Configuration=Release Kl.sln
   - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/Kl.Tests.dll
+  - pushd ./Kl.Get/bin/Release
+  - mono Kl.Get.exe
+  - popd
   - pushd ./Kl.Make/bin/Release
   - mono Kl.Make.exe
   - popd
