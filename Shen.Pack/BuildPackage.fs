@@ -45,24 +45,34 @@ let private urlFromGitConfig() =
     let urlString = regex @"http\S*" origin
     new Uri(urlString.Substring(0, urlString.Length - 4))
 
+let private indexOf (s: string) (sub: string) =
+    match s.IndexOf sub with
+    | -1 -> None
+    | x -> Some x
+
+let private indexOfFrom (s: string) (sub: string) (from: int) =
+    match s.IndexOf(sub, from) with
+    | -1 -> None
+    | x -> Some x
+
 let private releaseNotesFromChangeLog() =
     let changeLogText = File.ReadAllText(fromRoot ["CHANGELOG.md"])
     let revisionTag = sprintf "## [%s]" Revision
-    match changeLogText.IndexOf revisionTag with
-    | -1 ->
+    match indexOf changeLogText revisionTag with
+    | None ->
         let unreleasedTag = "## [Unreleased]"
-        match changeLogText.IndexOf unreleasedTag with
-        | -1 -> null
-        | unreleasedIndex ->
-            match changeLogText.IndexOf("## [", unreleasedIndex + 1) with
-            | -1 -> null
-            | nextIndex ->
+        match indexOf changeLogText unreleasedTag with
+        | None -> null
+        | Some unreleasedIndex ->
+            match indexOfFrom changeLogText "## [" (unreleasedIndex + 1) with
+            | None -> null
+            | Some nextIndex ->
                 let startIndex = unreleasedIndex + unreleasedTag.Length
                 changeLogText.Substring(startIndex, nextIndex - startIndex).Trim()
-    | revisionIndex ->
-        match changeLogText.IndexOf("## [", revisionIndex + 1) with
-        | -1 -> null
-        | nextIndex ->
+    | Some revisionIndex ->
+        match indexOfFrom changeLogText "## [" (revisionIndex + 1) with
+        | None -> null
+        | Some nextIndex ->
             let startIndex = changeLogText.IndexOf('\n', revisionIndex)
             changeLogText.Substring(startIndex, nextIndex - startIndex).Trim()
 
