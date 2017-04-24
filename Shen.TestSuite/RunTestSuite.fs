@@ -7,7 +7,7 @@ open Kl.Evaluator
 open Shen.Runtime
 open ShenSharp.Shared
 
-let testFolder = combine [".."; ".."; ".."; "Distribution"; "Tests"]
+let testFolder = combine [".."; ".."; ".."; "packages"; "ShenOSKernel.20.0.0"; "tests"]
 
 let runTestSuite () =
     let globals = newRuntime()
