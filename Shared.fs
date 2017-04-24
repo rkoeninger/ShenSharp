@@ -17,7 +17,7 @@ let Author = "Robert Koeninger"
 let Copyright = "Copyright © 2015-2017 " + Author
 
 [<Literal>]
-let Revision = "0.8.1.0"
+let Revision = "0.9.0.0"
 
 #if DEBUG
 [<Literal>]
