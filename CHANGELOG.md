@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
-nothing yet
+### Added
+- `Shen.Pack` also spits out `.zip` file for GitHub download.
 
 ## [0.9.0.0] - 2017-04-24
 

@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.IO.Compression
 open System.Runtime.Versioning
 open System.Text.RegularExpressions
 open ILRepacking
@@ -18,8 +19,10 @@ let private shenReplExePath = fromRoot ["Shen.Repl"; outDir; "Shen.Repl.exe"]
 let private packageRoot = combine [artifactsRoot; "Package"]
 let private shenDllPath = combine [packageRoot; "lib"; "net45"; "Shen.dll"]
 let private shenExePath = combine [packageRoot; "tools"; "Shen.exe"]
-let private packageFileName = sprintf "%s.%s.nupkg" Product Revision
-let private packagePath = combine [artifactsRoot; packageFileName]
+let private nupkgFileName = sprintf "%s.%s.nupkg" Product Revision
+let private nupkgPath = combine [artifactsRoot; nupkgFileName]
+let private zipFileName = sprintf "%s.%s.zip" Product Revision
+let private zipPath = combine [artifactsRoot; zipFileName]
 let private tags = ["Shen"]
 
 let private repackAssemblies kind target sources =
@@ -94,7 +97,7 @@ let rec private addFiles (builder: PackageBuilder) (root: string) folder =
     for folderPath in Directory.GetDirectories folder do
         addFiles builder root folderPath
 
-let private packageNuget() =
+let private buildNupkg() =
     let builder = PackageBuilder()
     builder.Id <- Product
     builder.Title <- Product
@@ -114,8 +117,10 @@ let private packageNuget() =
     let core = PackageDependency("FSharp.Core", VersionSpec(SemanticVersion(4, 0, 0, 1)))
     let deps = PackageDependencySet(FrameworkName(".NETFramework,Version=v4.5"), [core])
     builder.DependencySets.Add deps
-    use stream = File.Open(packagePath, FileMode.OpenOrCreate)
+    use stream = File.Open(nupkgPath, FileMode.OpenOrCreate)
     builder.Save stream
+
+let private buildZip () = ZipFile.CreateFromDirectory(packageRoot, zipPath)
 
 [<EntryPoint>]
 let main _ =
@@ -129,5 +134,6 @@ let main _ =
         shenApiDllPath
         klDllPath]
     printfn "Generating NuGet package..."
-    packageNuget()
+    buildNupkg()
+    buildZip()
     0
