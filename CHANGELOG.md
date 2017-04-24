@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
-nothing yet
+### Added
+- `Kl.Get`, which fetches the shen sources.
+
+### Changed
+- Updated shen sources to version 20.0.
+
+### Fixed
+- KL->F# compiler to handle `Pipe` values.
 
 ## [0.8.1.0] - 2017-03-29
 
