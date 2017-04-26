@@ -6,7 +6,7 @@ open ShenSharp.Shared
 
 let fromRoot = combine << (@) [".."; ".."; ".."]
 let outputPath = fromRoot ["Artifacts"; BuildConfig]
-let sourcePath = fromRoot ["packages"; "ShenOSKernel-20.0"; "klambda"]
+let sourcePath = fromRoot ["packages"; KernelFolderName; "klambda"]
 let sourceFiles = [
     "toplevel.kl"
     "core.kl"

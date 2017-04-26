@@ -19,6 +19,12 @@ let Copyright = "Copyright © 2015-2017 " + Author
 [<Literal>]
 let Revision = "0.9.0.0"
 
+[<Literal>]
+let KernelRevision = "20.0"
+
+[<Literal>]
+let KernelFolderName = "ShenOSKernel"
+
 #if DEBUG
 [<Literal>]
 let BuildConfig = "Debug"
