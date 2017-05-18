@@ -3,6 +3,7 @@
 open System
 open System.Diagnostics
 open System.IO
+open System.Net
 open System.Reflection
 open Values
 open Interop
@@ -132,6 +133,18 @@ let kl_open _ = function
         }
     | args -> argsErr "open" ["string"; "symbol"] args
 
+let ``kl_open-socket`` _ = function
+    | [Str url] ->
+        let client = new WebClient()
+        let stream = client.OpenRead url
+        Pipe {
+            Name = "Socket: " + url
+            Read = stream.ReadByte
+            Write = stream.WriteByte
+            Close = stream.Close
+        }
+    | args -> argsErr "open-socket" ["string"] args
+
 let kl_close _ = function
     | [Pipe io] ->
         io.Close()
@@ -242,6 +255,12 @@ let kl_exit _ = function
     | [Int x] -> exit x
     | args -> argsErr "exit" ["integer"] args
 
+let kl_download _ = function
+    | [Str url] ->
+        use client = new WebClient()
+        Str(client.DownloadString(url))
+    | args -> argsErr "download" ["string"] args
+
 let ``kl_clr.alias`` globals = function
     | [Sym alias; Sym original] ->
         setAlias globals alias original
@@ -285,10 +304,7 @@ let ``kl_clr.bool`` _ = function
     | args -> argsErr "clr.bool" ["boolean"] args
 
 let ``kl_clr.new`` globals = function
-    | [Sym name; klArgs] ->
-        let clrArgs = toList klArgs |> List.map asObj
-        let clazz = findType globals name
-        Obj(Activator.CreateInstance(clazz, List.toArray clrArgs))
+    | [Sym name; klArgs] -> create globals name klArgs
     | args -> argsErr "clr.new" ["clr.obj"; "(list clr.obj)"] args
 
 let ``kl_clr.get`` _ = function
@@ -346,6 +362,6 @@ let ``kl_clr.invoke-static`` globals = function
         Obj(methodInfo.Invoke(null, List.toArray clrArgs))
     | args -> argsErr "clr.invoke-static" ["symbol"; "symbol"; "(list clr.obj)"] args
 
-let ``kl_shensharp.globals`` globals = function
+let ``kl_shen-sharp.globals`` globals = function
     | [] -> Obj globals
-    | args -> argsErr "shensharp.globals" [] args
+    | args -> argsErr "shen-sharp.globals" [] args

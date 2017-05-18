@@ -148,3 +148,8 @@ let private findMethod globals instance (targetType: Type) methodName (args: obj
 let findInstanceMethod globals (target: obj) = findMethod globals true (getType target)
 
 let findStaticMethod globals className = findMethod globals false (findType globals className)
+
+let create globals name klArgs =
+    let clrArgs = toList klArgs |> List.map asObj
+    let clazz = findType globals name
+    Obj(Activator.CreateInstance(clazz, List.toArray clrArgs))
