@@ -120,7 +120,10 @@ let private buildNupkg() =
     use stream = File.Open(nupkgPath, FileMode.OpenOrCreate)
     builder.Save stream
 
-let private buildZip () = ZipFile.CreateFromDirectory(packageRoot, zipPath)
+let private buildZip () =
+    if File.Exists zipPath
+        then File.Delete zipPath
+    ZipFile.CreateFromDirectory(packageRoot, zipPath)
 
 [<EntryPoint>]
 let main _ =
