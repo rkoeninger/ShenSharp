@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
+## [0.9.2.0] - 2017-05-18
+
+### Changed
+- Updated command line argument evaluation to be more similar to [`shen-cl`](https://github.com/Shen-Language/shen-cl).
+
 ## [0.9.1.0] - 2017-05-18
 
 ### Added
