@@ -133,18 +133,6 @@ let kl_open _ = function
         }
     | args -> argsErr "open" ["string"; "symbol"] args
 
-let ``kl_open-socket`` _ = function
-    | [Str url] ->
-        let client = new WebClient()
-        let stream = client.OpenRead url
-        Pipe {
-            Name = "Socket: " + url
-            Read = stream.ReadByte
-            Write = stream.WriteByte
-            Close = stream.Close
-        }
-    | args -> argsErr "open-socket" ["string"] args
-
 let kl_close _ = function
     | [Pipe io] ->
         io.Close()
@@ -162,21 +150,6 @@ let kl_cd globals = function
         assign globals "*home-directory*" (Str fullPath)
         Str fullPath
     | args -> argsErr "cd" ["string"] args
-
-let kl_pwd globals = function
-    | [] -> retrieve globals "*home-directory*"
-    | args -> argsErr "pwd" [] args
-
-let kl_ls globals = function
-    | [] ->
-        match retrieve globals "*home-directory*" with
-        | Str path ->
-            Directory.GetFileSystemEntries path
-            |> Array.toList
-            |> List.map (Path.GetFileName >> Str)
-            |> toCons
-        | _ -> failwith "*home-directory* is expected to be a string"
-    | args -> argsErr "ls" [] args
 
 let console = Pipe {
     Name = "Console"
@@ -254,12 +227,6 @@ let ``kl_absvector?`` _ = function
 let kl_exit _ = function
     | [Int x] -> exit x
     | args -> argsErr "exit" ["integer"] args
-
-let kl_download _ = function
-    | [Str url] ->
-        use client = new WebClient()
-        Str(client.DownloadString(url))
-    | args -> argsErr "download" ["string"] args
 
 let ``kl_clr.alias`` globals = function
     | [Sym alias; Sym original] ->
@@ -365,3 +332,21 @@ let ``kl_clr.invoke-static`` globals = function
 let ``kl_shen-sharp.globals`` globals = function
     | [] -> Obj globals
     | args -> argsErr "shen-sharp.globals" [] args
+
+let ``kl_shen-sharp.open-socket`` _ = function
+    | [Str url] ->
+        let client = new WebClient()
+        let stream = client.OpenRead url
+        Pipe {
+            Name = "Socket: " + url
+            Read = stream.ReadByte
+            Write = stream.WriteByte
+            Close = stream.Close
+        }
+    | args -> argsErr "shen-sharp.open-socket" ["string"] args
+
+let ``kl_shen-sharp.download`` _ = function
+    | [Str url] ->
+        use client = new WebClient()
+        Str(client.DownloadString(url))
+    | args -> argsErr "shen-sharp.download" ["string"] args
