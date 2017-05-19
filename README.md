@@ -15,7 +15,7 @@ ShenSharp is built by translating the Shen sources from Kλ to F# ASTs and build
 
 This port passes all tests in the Shen standard test suite, making this a certifiable implementation. Current test run time is about 40 seconds in the Windows/.Net build on AppVeyor.
 
-Refer to the CI build scripts ([`appveyor.yml`](ttps://github.com/rkoeninger/ShenSharp/blob/master/appveyor.yml), [`.travis.yml`](ttps://github.com/rkoeninger/ShenSharp/blob/master/.travis.yml)) for build instructions.
+Refer to the CI build scripts ([`appveyor.yml`](https://github.com/rkoeninger/ShenSharp/blob/master/appveyor.yml), [`.travis.yml`](https://github.com/rkoeninger/ShenSharp/blob/master/.travis.yml)) for build instructions.
 
 ### Shen Resources
   * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
