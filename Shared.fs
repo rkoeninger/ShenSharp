@@ -17,13 +17,13 @@ let Author = "Robert Koeninger"
 let Copyright = "Copyright © 2015-2017 " + Author
 
 [<Literal>]
-let Revision = "0.9.0.0"
+let Revision = "0.9.1.0"
 
 [<Literal>]
-let KernelRevision = "20.0"
+let KernelRevision = "20.1"
 
 [<Literal>]
-let KernelFolderName = "ShenOSKernel"
+let KernelFolderName = "ShenOSKernel-" + KernelRevision
 
 #if DEBUG
 [<Literal>]

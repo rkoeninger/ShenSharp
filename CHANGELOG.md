@@ -6,8 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
+## [0.9.1.0] - 2017-05-18
+
 ### Added
 - `Shen.Pack` also spits out `.zip` file for GitHub download.
+
+### Changed
+- Moved `open-socket` and `download` under `shen-sharp.` prefix.
+
+### Removed
+- `ls` and `pwd` functions.
 
 ## [0.9.0.0] - 2017-04-24
 
@@ -87,7 +95,8 @@ Don't remember.
 
 Don't remember.
 
-[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.0.0...HEAD
+[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.1.0...HEAD
+[0.9.1.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.0.0...v0.9.1.0
 [0.9.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.8.1.0...v0.9.0.0
 [0.8.1.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.8.0.0...v0.8.1.0
 [0.8.0.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.7.0.0...v0.8.0.0
