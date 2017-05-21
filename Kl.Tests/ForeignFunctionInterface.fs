@@ -26,11 +26,11 @@ let ``demo error message for method not found``() =
 
 [<Test>]
 let ``CLR type parameter names can be referred to by primitive alias``() =
-    let l = run "(clr.new System.Collections.Generic.List<string> ())" |> asObj
+    let l = run "(clr.new \"System.Collections.Generic.List<string>\" ())" |> asObj
     Assert.IsInstanceOf<List<string>> l
 
 [<Test>]
 let ``CLR typenames can be aliased``() =
-    let l = runAll "(clr.alias List System.Collections.Generic.List)
-                    (clr.new List<string> ())" |> asObj
+    let l = runAll "(clr.alias \"List\" \"System.Collections.Generic.List\")
+                    (clr.new \"List<string>\" ())" |> asObj
     Assert.IsInstanceOf<List<string>> l
