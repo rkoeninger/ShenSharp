@@ -1,6 +1,7 @@
 ﻿module Kl.Interop
 
 open System
+open System.IO
 open System.Reflection
 open Values
 open ShenSharp.Shared
@@ -10,7 +11,12 @@ let private before i (s: string) = s.Substring(0, i)
 let private after i (s: string) = s.Substring(i + 1, s.Length - 1 - i)
 let private between i j (s: string) = s.Substring(i + 1, j - 1 - i)
 let private getType x = x.GetType()
-let private typeOf s = Type.GetType(s, true)
+
+let private typeOf s =
+    let typeNameMatches (t: TypeInfo) = t.FullName = s
+    let assemblyContainsType (a: Assembly) = Seq.exists typeNameMatches a.DefinedTypes
+    let assembly = AppDomain.CurrentDomain.GetAssemblies() |> Array.find assemblyContainsType
+    assembly.GetType s
 
 let setAlias globals alias original =
     globals.ClrAliases.[alias] <- original
@@ -153,3 +159,15 @@ let create globals name klArgs =
     let clrArgs = toList klArgs |> List.map asObj
     let clazz = findType globals name
     Obj(Activator.CreateInstance(clazz, List.toArray clrArgs))
+
+let reference globals (name: string) =
+    let name = if name.EndsWith ".dll" then name else name + ".dll"
+    if File.Exists name then
+        AppDomain.CurrentDomain.Load(name)
+    else
+        let mscorlibPath = UriBuilder(typedefof<obj>.Assembly.CodeBase).Uri.LocalPath
+        let standardPathRoot = Path.GetDirectoryName(mscorlibPath)
+        let inStandardPath = Path.Combine(standardPathRoot, name)
+        if File.Exists name
+            then AppDomain.CurrentDomain.Load(inStandardPath)
+            else failwithf "Assembly \"%s\" not found" name

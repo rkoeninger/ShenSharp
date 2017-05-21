@@ -74,6 +74,7 @@ let baseGlobals () =
         "clr.decimal",                  Compiled(1, ``kl_clr.decimal``)
         "clr.string",                   Compiled(1, ``kl_clr.string``)
         "clr.bool",                     Compiled(1, ``kl_clr.bool``)
+        "clr.reference",                Compiled(1, ``kl_clr.reference``)
         "clr.new",                      Compiled(2, ``kl_clr.new``)
         "clr.get",                      Compiled(2, ``kl_clr.get``)
         "clr.set",                      Compiled(3, ``kl_clr.set``)

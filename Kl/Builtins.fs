@@ -229,7 +229,7 @@ let kl_exit _ = function
     | args -> argsErr "exit" ["integer"] args
 
 let ``kl_clr.alias`` globals = function
-    | [Sym alias; Sym original] ->
+    | [Str alias; Str original] ->
         setAlias globals alias original
         Empty
     | args -> argsErr "alias" ["symbol"; "symbol"] args
@@ -270,18 +270,24 @@ let ``kl_clr.bool`` _ = function
     | [Bool b] -> Obj b
     | args -> argsErr "clr.bool" ["boolean"] args
 
+let ``kl_clr.reference`` _ = function
+    | [Str name] ->
+        reference name |> ignore
+        Empty
+    | args -> argsErr "clr.reference" ["string"] args
+
 let ``kl_clr.new`` globals = function
-    | [Sym name; klArgs] -> create globals name klArgs
+    | [Str name; klArgs] -> create globals name klArgs
     | args -> argsErr "clr.new" ["clr.obj"; "(list clr.obj)"] args
 
 let ``kl_clr.get`` _ = function
-    | [Obj target; Sym name] ->
+    | [Obj target; Str name] ->
         let property = findInstanceProperty target name
         Obj(property.GetValue target)
     | args -> argsErr "clr.get" ["clr.obj"; "symbol"] args
 
 let ``kl_clr.set`` _ = function
-    | [Obj target; Sym name; Obj value] ->
+    | [Obj target; Str name; Obj value] ->
         let property = findInstanceProperty target name
         property.SetValue(target, value)
         Empty
@@ -303,27 +309,27 @@ let ``kl_clr.set-index`` _ = function
     | args -> argsErr "clr.set-index" ["clr.obj"; "(list clr.obj)"; "clr.obj"] args
 
 let ``kl_clr.get-static`` globals = function
-    | [Sym className; Sym name] ->
+    | [Str className; Str name] ->
         let property = findStaticProperty globals className name
         Obj(property.GetValue null)
     | args -> argsErr "clr.get-static" ["symbol"; "symbol"] args
 
 let ``kl_clr.set-static`` globals = function
-    | [Sym className; Sym name; Obj value] ->
+    | [Str className; Str name; Obj value] ->
         let property = findStaticProperty globals className name
         property.SetValue(null, value)
         Empty
     | args -> argsErr "clr.set-static" ["symbol"; "symbol"; "clr.obj"] args
 
 let ``kl_clr.invoke`` globals = function
-    | [Obj target; Sym methodName; klArgs] ->
+    | [Obj target; Str methodName; klArgs] ->
         let clrArgs = toList klArgs |> List.map asObj
         let methodInfo = findInstanceMethod globals target methodName clrArgs
         Obj(methodInfo.Invoke(target, List.toArray clrArgs))
     | args -> argsErr "clr.invoke-static" ["clr.obj"; "symbol"; "(list clr.obj)"] args
 
 let ``kl_clr.invoke-static`` globals = function
-    | [Sym className; Sym methodName; klArgs] ->
+    | [Str className; Str methodName; klArgs] ->
         let clrArgs = toList klArgs |> List.map asObj
         let methodInfo = findStaticMethod globals className methodName clrArgs
         Obj(methodInfo.Invoke(null, List.toArray clrArgs))
