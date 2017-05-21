@@ -17,7 +17,7 @@ let Author = "Robert Koeninger"
 let Copyright = "Copyright © 2015-2017 " + Author
 
 [<Literal>]
-let Revision = "0.9.2.0"
+let Revision = "0.9.3.0"
 
 [<Literal>]
 let KernelRevision = "20.1"
