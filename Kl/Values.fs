@@ -178,6 +178,39 @@ let rec toList = function
     | Cons(x, y) -> x :: toList y
     | _ -> failwith "Malformed list"
 
+let rec klCons = function
+    | [] -> Empty
+    | x :: xs -> Cons(Sym "cons", Cons(x, Cons(klCons xs, Empty)))
+
+let rec typeSig args result =
+    match args with
+    | [] -> klCons [Sym "-->"; result]
+    | [x] -> klCons [x; Sym "-->"; result]
+    | x :: xs -> klCons [x; Sym "-->"; typeSig xs result]
+
+let declareArity name arity =
+    toCons [
+        Sym "put"
+        Sym name
+        Sym "arity"
+        Num(decimal arity)
+        toCons [
+            Sym "value"
+            Sym "*property-vector*"
+        ]
+    ]
+
+let declareType name args result = 
+    toCons [
+        Sym "do"
+        declareArity name (List.length args)
+        toCons [
+            Sym "declare"
+            Sym name
+            typeSig args result
+        ]
+    ]
+
 let asObj = function
     | Obj x -> x
     | _ -> failwith "CLR Object expected"

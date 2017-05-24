@@ -29,7 +29,8 @@ let private import sourcePath sourceFiles =
             eval globals ast |> ignore
         printfn ""
     printfn ""
-    globals
+    printfn "Applying post-import declarations..."
+    postImport globals
 
 let private raiseErrors messages =
     let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
@@ -70,12 +71,13 @@ let private copy source destination =
 
 let make sourcePath sourceFiles outputPath =
     let globals = import sourcePath sourceFiles
-    printfn "Generating language kernel..."
+    printfn "Translating kernel..."
     let ast = buildInstallationFile generatedModule globals
     let sharedAst = parseFile sharedMetadataPath
     let metadataAst = buildMetadataFile generatedModule
-    printfn "Compiling language kernel..."
+    printfn "Compiling kernel..."
     emit [ast; sharedAst; metadataAst]
     printfn "Copying artifacts to output path..."
     for file in Directory.GetFiles(".", searchPattern) do
         copy file (combine [outputPath; file])
+    printfn "Done."

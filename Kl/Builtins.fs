@@ -339,20 +339,14 @@ let ``kl_shen-sharp.globals`` globals = function
     | [] -> Obj globals
     | args -> argsErr "shen-sharp.globals" [] args
 
-let ``kl_shen-sharp.open-socket`` _ = function
-    | [Str url] ->
-        let client = new WebClient()
-        let stream = client.OpenRead url
-        Pipe {
-            Name = "Socket: " + url
-            Read = stream.ReadByte
-            Write = stream.WriteByte
-            Close = stream.Close
-        }
-    | args -> argsErr "shen-sharp.open-socket" ["string"] args
+let ``kl_shen-sharp.http-post`` _ = function
+    | [Str url; Str payload] ->
+        use client = new WebClient()
+        Str(client.UploadString(url, payload))
+    | args -> argsErr "shen-sharp.http-post" ["string"] args
 
-let ``kl_shen-sharp.download`` _ = function
+let ``kl_shen-sharp.curl`` _ = function
     | [Str url] ->
         use client = new WebClient()
         Str(client.DownloadString(url))
-    | args -> argsErr "shen-sharp.download" ["string"] args
+    | args -> argsErr "shen-sharp.curl" ["string"] args
