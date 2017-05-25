@@ -82,8 +82,6 @@
     </Compile>
     <Compile Include="Properties\Metadata.fs" />
     <Compile Include="Reader.fs" />
-    <Compile Include="Syntax.fs" />
-    <Compile Include="Compiler.fs" />
     <Compile Include="Loader.fs" />
     <Compile Include="BuildRuntime.fs" />
   </ItemGroup>

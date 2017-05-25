@@ -7,9 +7,9 @@ open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 open Microsoft.FSharp.Compiler.SourceCodeServices
 open Kl.Values
 open Kl.Evaluator
+open Kl.Compiler
 open Kl.Startup
 open Reader
-open Compiler
 open ShenSharp.Shared
 
 let private dllName = sprintf "%s.dll" generatedModule

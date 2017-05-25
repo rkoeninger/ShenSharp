@@ -1,10 +1,9 @@
-﻿module internal Kl.Make.Compiler
+﻿module Kl.Compiler
 
 open System
 open System.Collections.Generic
 open Kl
 open Kl.Values
-open Reader
 open Syntax
 
 // All symbols from KL code need to be renamed so
@@ -273,3 +272,47 @@ let buildMetadataFile name =
          assemblyAttrDecl
             (longIdentWithDots ["TargetFramework"])
             (stringExpr ".NETFramework,Version=v4.5")]
+
+let buildEntryPoint (name: string) main =
+    moduleFile (name.Split('.') |> Array.toList)
+        [openDecl ["Kl"]
+         openDecl ["Kl"; "Values"]
+         openDecl ["Kl"; "Evaluator"]
+         openDecl ["Shen"; "Runtime"]
+         letAttrsDecl
+            [attr None (longIdentWithDots ["EntryPoint"]) unitExpr]
+            "main"
+            ["args", arrayType (shortType "string")]
+            (letExpr "globals" (appExpr (idExpr "newRuntime") unitExpr)
+                (sequentialExpr
+                    [appExprN
+                        (idExpr "assign")
+                        [idExpr "globals"
+                         stringExpr "*argv*"
+                         appExpr
+                            (idExpr "toCons")
+                            (appExprN
+                                (longIdExpr ["List"; "map"])
+                                [idExpr "Str"
+                                 (appExpr (longIdExpr ["Array"; "toList"]) (idExpr "args"))])]
+                     appExprN
+                        (idExpr "eval")
+                        [(idExpr "globals")
+                         (appExpr
+                            (idExpr "toCons")
+                            (listExpr [appExpr (idExpr "Sym") (stringExpr main)]))]
+                     intExpr 0]))]
+
+(*
+let private runRepl args () =
+    let globals = newRuntime()
+    assign globals "*argv*" (toCons (List.map Str args))
+    try
+        if evalOptions globals args then
+            eval globals (toCons [Sym "shen.shen"]) |> ignore
+    with
+        e -> printfn "Unhandled error: %s" e.Message
+
+[<EntryPoint>]
+let main args = separateThread16MB(runRepl(Array.toList args))
+*)

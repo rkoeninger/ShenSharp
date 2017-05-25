@@ -7,7 +7,7 @@
 /// there is a clear separation between AST helpers and
 /// making decisions about transpiling KL to F#.
 /// </remarks>
-module internal Kl.Make.Syntax
+module internal Kl.Syntax
 
 open System
 open Microsoft.FSharp.Compiler.Ast
@@ -17,7 +17,7 @@ let private fileName = "file.fs"
 // Picked large values for line, col because there will be an unpredictable
 // ArrayIndexOutOfBoundsException if the numbers are too small
 let private loc = mkRange fileName (mkPos 512 512) (mkPos 1024 1024)
-let attr target name value : SynAttribute =  {
+let attr target name value : SynAttribute = {
     TypeName = name
     ArgExpr = value
     Target = target
@@ -36,6 +36,7 @@ let anonType = SynType.Anon loc
 let longType parts = SynType.LongIdent(longIdentWithDots parts)
 let shortType s = longType [s]
 let listType t = SynType.App(shortType "list", None, [t], [], None, true, loc)
+let arrayType t = SynType.App(shortType "array", None, [t], [], None, true, loc)
 let wildPat = SynPat.Wild loc
 let namePat s = SynPat.Named(wildPat, ident s, false, None, loc)
 let unparenTypedPat pat synType = SynPat.Typed(pat, synType, loc)

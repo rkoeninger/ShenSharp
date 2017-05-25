@@ -64,6 +64,8 @@
     <Compile Include="Values.fs" />
     <Compile Include="Interop.fs" />
     <Compile Include="Evaluator.fs" />
+    <Compile Include="Syntax.fs" />
+    <Compile Include="Compiler.fs" />
     <Compile Include="Builtins.fs" />
     <Compile Include="Startup.fs" />
   </ItemGroup>
