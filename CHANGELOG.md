@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
+## [0.9.4.0] - 2017-05-24
+
+### Added
+- `shen-sharp.curl`, `shen-sharp.http-post` with arities and type signatures declared.
+
+### Changed
+- Made CLR aliases for primitive types bi-directional.
+
 ## [0.9.3.0] - 2017-05-20
 
 ### Added
@@ -109,7 +117,8 @@ Don't remember.
 
 Don't remember.
 
-[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.3.0...HEAD
+[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.4.0...HEAD
+[0.9.4.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.3.0...v0.9.4.0
 [0.9.3.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.2.0...v0.9.3.0
 [0.9.2.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.1.0...v0.9.2.0
 [0.9.1.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.0.0...v0.9.1.0
