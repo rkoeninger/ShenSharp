@@ -1,3 +1,6 @@
+branches:
+  only:
+    - master
 before_build:
   - nuget restore Kl.sln
   - nuget restore Shen.sln
