@@ -88,6 +88,7 @@ let baseGlobals () =
         "shen-sharp.globals",           Compiled(0, ``kl_shen-sharp.globals``)
         "shen-sharp.http-post",         Compiled(2, ``kl_shen-sharp.http-post``)
         "shen-sharp.curl",              Compiled(1, ``kl_shen-sharp.curl``)
+        "shen-sharp.save-application",  Compiled(2, ``kl_shen-sharp.save-application``)
     ]
     let globals = newGlobals()
     List.iter ((<||) (assignProtected globals)) symbols
@@ -119,6 +120,7 @@ let postImport globals =
         declareArity "clr.invoke-static" 3
         declareType "shen-sharp.http-post" [Sym "string"; Sym "string"] (Sym "string")
         declareType "shen-sharp.curl" [Sym "string"] (Sym "string")
+        declareType "shen-sharp.save-application" [Sym "symbol"; Sym "string"] (Sym "string")
     ]
     List.iter (eval globals >> ignore) declarations
     globals

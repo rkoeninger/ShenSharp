@@ -5,9 +5,13 @@ open System.Diagnostics
 open System.IO
 open System.Net
 open System.Reflection
+open Microsoft.FSharp.Compiler
+open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
+open Microsoft.FSharp.Compiler.SourceCodeServices
 open Values
 open Interop
 open Evaluator
+open Compiler
 open ShenSharp.Shared
 
 let kl_if _ = function
@@ -350,3 +354,28 @@ let ``kl_shen-sharp.curl`` _ = function
         use client = new WebClient()
         Str(client.DownloadString(url))
     | args -> argsErr "shen-sharp.curl" ["string"] args
+
+let ``kl_shen-sharp.save-application`` globals = function
+    | [Sym main; Str path] ->
+        let folder = Path.GetDirectoryName path
+        let baseName = Path.GetFileNameWithoutExtension path
+        let exeName = combine [folder; sprintf "%s.exe" baseName]
+        let pdbName = combine [folder; sprintf "%s.pdb" baseName]
+        let service = SimpleSourceCodeServices()
+        let envAst = buildInstallationFile baseName globals
+        let entryPointAst = buildEntryPoint baseName main
+        let metadataAst = buildMetadataFile baseName
+        let (messages, returnCode) =
+            service.Compile(
+                [envAst; entryPointAst; metadataAst],
+                baseName,
+                exeName,
+                ["Kl.dll"],
+                pdbName,
+                true,
+                false)
+        if returnCode <> 0 then
+            let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
+            raise(Exception(String.Join("\r\n\r\n", Seq.map string errors)))
+        Str exeName
+    | args -> argsErr "shen-sharp.save-application" ["symbol"; "string"] args
