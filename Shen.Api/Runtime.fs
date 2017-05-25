@@ -18,6 +18,12 @@ let newRuntime() = install(baseGlobals())
 let evalSyntax globals syntax = kl_eval globals [kl_read globals [pipeString syntax]]
 
 /// <summary>
+/// Runs the standard Shen REPL.
+/// </summary>
+[<CompiledName "ShenRepl">]
+let shenRepl globals = ``kl_shen.shen`` globals [] |> ignore
+
+/// <summary>
 /// Loads Shen file at given path.
 /// </summary>
 [<CompiledName "Load">]

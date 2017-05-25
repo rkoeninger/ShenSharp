@@ -21,6 +21,13 @@ type ExtensionMethods() =
         evalSyntax globals syntax
 
     /// <summary>
+    /// Runs the standard Shen REPL.
+    /// </summary>
+    [<Extension>]
+    static member Repl(globals: Globals) =
+        shenRepl globals
+
+    /// <summary>
     /// Loads Shen file at given path.
     /// </summary>
     [<Extension>]

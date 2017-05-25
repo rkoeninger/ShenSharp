@@ -51,7 +51,7 @@ let private runRepl args () =
     assign globals "*argv*" (toCons (List.map Str args))
     try
         if evalOptions globals args then
-            eval globals (toCons [Sym "shen.shen"]) |> ignore
+            shenRepl globals
     with
         e -> printfn "Unhandled error: %s" e.Message
 
