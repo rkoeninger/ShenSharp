@@ -18,10 +18,6 @@ let private typeOf s =
     let assembly = AppDomain.CurrentDomain.GetAssemblies() |> Array.find assemblyContainsType
     assembly.GetType s
 
-let setAlias globals alias original =
-    globals.ClrAliases.[alias] <- original
-    globals.ClrReverseAliases.[original] <- alias
-
 type private TypeName =
     | Simple of string
     | Compound of string * TypeName list

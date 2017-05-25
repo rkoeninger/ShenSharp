@@ -70,26 +70,32 @@ let argsErr name types args =
         then failwithf "%s expected %i arguments, given %i" name types.Length args.Length
         else failwithf "%s expected arguments of type(s): %s" name (String.Join(", ", types))
 
+let setAlias globals alias original =
+    globals.ClrAliases.[alias] <- original
+    globals.ClrReverseAliases.[original] <- alias
+
 let newGlobals() =
-    let symbols = new ConcurrentDictionary<string, Symbol>()
-    let aliases = new ConcurrentDictionary<string, string>()
-    let reverseAliases = new ConcurrentDictionary<string, string>()
-    aliases.["object"]  <- typedefof<obj>.FullName
-    aliases.["string"]  <- typedefof<string>.FullName
-    aliases.["char"]    <- typedefof<char>.FullName
-    aliases.["byte"]    <- typedefof<byte>.FullName
-    aliases.["short"]   <- typedefof<int16>.FullName
-    aliases.["int"]     <- typedefof<int>.FullName
-    aliases.["long"]    <- typedefof<int64>.FullName
-    aliases.["sbyte"]   <- typedefof<sbyte>.FullName
-    aliases.["ushort"]  <- typedefof<uint16>.FullName
-    aliases.["uint"]    <- typedefof<uint32>.FullName
-    aliases.["ulong"]   <- typedefof<uint64>.FullName
-    aliases.["float"]   <- typedefof<float>.FullName
-    aliases.["double"]  <- typedefof<double>.FullName
-    aliases.["decimal"] <- typedefof<decimal>.FullName
-    aliases.["bool"]    <- typedefof<bool>.FullName
-    { Symbols = symbols; ClrAliases = aliases; ClrReverseAliases = reverseAliases }
+    let globals = {
+        Symbols = new ConcurrentDictionary<string, Symbol>()
+        ClrAliases = new ConcurrentDictionary<string, string>()
+        ClrReverseAliases = new ConcurrentDictionary<string, string>()
+    }
+    setAlias globals "object"  typedefof<obj>.FullName
+    setAlias globals "string"  typedefof<string>.FullName
+    setAlias globals "char"    typedefof<char>.FullName
+    setAlias globals "byte"    typedefof<byte>.FullName
+    setAlias globals "short"   typedefof<int16>.FullName
+    setAlias globals "int"     typedefof<int>.FullName
+    setAlias globals "long"    typedefof<int64>.FullName
+    setAlias globals "sbyte"   typedefof<sbyte>.FullName
+    setAlias globals "ushort"  typedefof<uint16>.FullName
+    setAlias globals "uint"    typedefof<uint32>.FullName
+    setAlias globals "ulong"   typedefof<uint64>.FullName
+    setAlias globals "float"   typedefof<float>.FullName
+    setAlias globals "double"  typedefof<double>.FullName
+    setAlias globals "decimal" typedefof<decimal>.FullName
+    setAlias globals "bool"    typedefof<bool>.FullName
+    globals
 
 let nonPrimitiveSymbols (globals: Globals) =
     let ps (kv: KeyValuePair<_, _>) =
