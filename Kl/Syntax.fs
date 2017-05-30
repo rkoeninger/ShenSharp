@@ -190,6 +190,7 @@ let infixExpr op left right =
         right,
         loc)
 let appIdExpr s arg = parens (appExpr (idExpr s) arg)
+let appLongIdExpr ids arg = parens (appExpr (longIdExpr ids) arg)
 let appIdExprN s args = appExprN (idExpr s) args
 let infixIdExpr s left right = parens (infixExpr (idExpr s) left right)
 let ifExpr condition consequent alternative =

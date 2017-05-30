@@ -192,9 +192,9 @@ and private evalw ((globals, locals) as env) = function
 
     // Evaluating a defun just takes the name, param list and body
     // and stores them in the global function scope.
-    // Ignore attempts to redefine a primitive.
+    // Ignore attempts to redefine a function when shen.*installing-kl* is true.
     | Definition(symbol, paramz, body) ->
-        if not(!symbol.IsProtected) then
+        if (!globals.InstallingKl <> Some True) || (!symbol.Fun = None) then
             symbol.Fun := Some(Interpreted(paramz, body))
         Done(Sym symbol.Name)
 

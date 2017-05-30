@@ -75,7 +75,15 @@ let setAlias globals alias original =
     globals.ClrReverseAliases.[original] <- alias
 
 let newGlobals() =
+    let symbols = new ConcurrentDictionary<string, Symbol>()
+    let installingKl =
+        symbols.GetOrAdd("shen.*installing-kl*",
+            fun _ ->
+                {Name = "shen.*installing-kl*"
+                 Val = ref (Some False)
+                 Fun = ref None})
     let globals = {
+        InstallingKl = installingKl.Val
         Symbols = new ConcurrentDictionary<string, Symbol>()
         ClrAliases = new ConcurrentDictionary<string, string>()
         ClrReverseAliases = new ConcurrentDictionary<string, string>()
@@ -97,34 +105,32 @@ let newGlobals() =
     setAlias globals "bool"    typedefof<bool>.FullName
     globals
 
-let nonPrimitiveSymbols (globals: Globals) =
-    let ps (kv: KeyValuePair<_, _>) =
-        if !kv.Value.IsProtected
-            then None
-            else Option.map (fun value -> (kv.Key, value)) !kv.Value.Val
-    filterSome(Seq.toList(Seq.map ps globals.Symbols))
+let funkv f (kv: KeyValuePair<_, _>) = f kv.Key kv.Value
 
-let nonPrimitiveFunctions (globals: Globals) =
-    let pf (kv: KeyValuePair<_, _>) =
-        if !kv.Value.IsProtected
-            then None
-            else Option.map (fun f -> (kv.Key, f)) !kv.Value.Fun
-    filterSome(Seq.toList(Seq.map pf globals.Symbols))
+let definedSymbols (globals: Globals) =
+    globals.Symbols
+    |> Seq.map (funkv (fun k v -> Option.map (fun f -> (k, f)) !v.Val))
+    |> Seq.toList
+    |> filterSome
+
+let someInterpreted = function
+    | Some(Interpreted(paramz, body)) -> Some(paramz, body)
+    | _ -> None
+
+let prependTuple x (y, z) = (x, y, z)
+
+let interpretedFunctions (globals: Globals) =
+    globals.Symbols
+    |> Seq.map (funkv (fun k v -> Option.map (prependTuple k) (someInterpreted (!v.Fun))))
+    |> Seq.toList
+    |> filterSome
 
 let intern (globals: Globals) id =
     globals.Symbols.GetOrAdd(id,
         fun _ ->
             {Name = id
-             IsProtected = ref false
              Val = ref None
              Fun = ref None})
-
-let unprotectAll (globals: Globals) =
-    for kv in globals.Symbols do
-        kv.Value.IsProtected := false
-    globals
-
-let getValueOption symbol = !symbol.Val
 
 let getValue symbol =
     match !symbol.Val with
@@ -143,16 +149,6 @@ let setValue symbol value =
 let setFunction symbol f =
     let (_, _, _, fref) = symbol
     fref := Some f
-
-let assignProtected globals id value =
-    let symbol = intern globals id
-    symbol.Val := Some value
-    symbol.IsProtected := true
-
-let defineProtected globals id f =
-    let symbol = intern globals id
-    symbol.Fun := Some f
-    symbol.IsProtected := true
 
 let assign globals id value = (intern globals id).Val := Some value
 

@@ -91,8 +91,8 @@ let baseGlobals () =
         "shen-sharp.save-application",  Compiled(2, ``kl_shen-sharp.save-application``)
     ]
     let globals = newGlobals()
-    List.iter ((<||) (assignProtected globals)) symbols
-    List.iter ((<||) (defineProtected globals)) functions
+    List.iter ((<||) (assign globals)) symbols
+    List.iter ((<||) (define globals)) functions
     globals
 
 /// <summary>

@@ -20,6 +20,7 @@ let private sharedMetadataPath = combine [".."; ".."; ".."; "Shared.fs"]
 
 let private import sourcePath sourceFiles =
     let globals = baseGlobals()
+    globals.InstallingKl := Some True
     for file in sourceFiles do
         printf "Loading %s " file
         stdout.Flush()
@@ -30,7 +31,9 @@ let private import sourcePath sourceFiles =
         printfn ""
     printfn ""
     printfn "Applying post-import declarations..."
-    postImport globals
+    postImport globals |> ignore
+    globals.InstallingKl := Some False
+    globals
 
 let private raiseErrors messages =
     let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages

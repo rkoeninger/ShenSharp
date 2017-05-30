@@ -186,36 +186,33 @@ and private compileF ((name, globals) as context) locals paramz body =
                              listExpr(List.replicate arity (stringExpr "value"))
                              idExpr "args"])]))])), KlFunction) |> toType KlValue
 
-let private compileDefun globals (name, f) =
+let private compileDefun globals (name, paramz, body) =
     // and ~(rename name) (globals: Globals) = function
     //     | [~@(map rename paramz)] -> ~body
     //     | args -> argsErr ~name ~(replicate arity "value") args
-    match f with
-    | Interpreted(paramz, body) ->
-        let arity = List.length paramz
-        letBinding
-            (rename name)
-            [param "globals" "Globals"]
-            (matchLambdaExpr
-                [matchClause
-                    (listPat(List.map (rename >> namePat) paramz))
-                    (buildExpr (name, globals, Set.ofList paramz) body |> toType KlValue)
-                 matchClause
-                    (namePat "args")
-                    (appIdExprN "argsErr"
-                        [stringExpr name
-                         listExpr(List.replicate arity (stringExpr "value"))
-                         idExpr "args"])])
-    | _ -> failwith "Can't compile functions other than interpreted defuns"
+    let arity = List.length paramz
+    letBinding
+        (rename name)
+        [param "globals" "Globals"]
+        (matchLambdaExpr
+            [matchClause
+                (listPat(List.map (rename >> namePat) paramz))
+                (buildExpr (name, globals, Set.ofList paramz) body |> toType KlValue)
+             matchClause
+                (namePat "args")
+                (appIdExprN "argsErr"
+                    [stringExpr name
+                     listExpr(List.replicate arity (stringExpr "value"))
+                     idExpr "args"])])
 
-let private installDefun (name, f) =
+let private installDefun (name, paramz, body) =
     // define globals ~name (Compiled(~argcount, ~(rename name)))
     appIdExprN "define"
         [idExpr "globals"
          stringExpr name
          (appIdExpr "Compiled"
             (tupleExpr
-                [intExpr(functionArity f)
+                [intExpr(List.length paramz)
                  idExpr(rename name)]))]
 
 let rec private buildValue ((name, globals) as context) = function
@@ -244,8 +241,8 @@ let private installSymbol ((name, globals) as context) (id, value) =
         buildValue context value]
 
 let buildInstallationFile (name: string) globals =
-    let symbols = nonPrimitiveSymbols globals
-    let defuns = nonPrimitiveFunctions globals
+    let symbols = definedSymbols globals
+    let defuns = interpretedFunctions globals
     moduleFile (name.Split('.') |> Array.toList)
         [openDecl ["Kl"]
          openDecl ["Kl"; "Values"]
@@ -278,41 +275,32 @@ let buildEntryPoint (name: string) main =
         [openDecl ["Kl"]
          openDecl ["Kl"; "Values"]
          openDecl ["Kl"; "Evaluator"]
+         openDecl ["Kl"; "Builtins"]
+         openDecl ["Kl"; "Startup"]
          openDecl ["Shen"; "Runtime"]
+         letDecl
+            "runEntryPoint"
+            ["args", listType (shortType "string")
+             "()", shortType "unit"]
+            (letExpr "globals" (appIdExpr "newRuntime" unitExpr)
+                (sequentialExpr
+                    [appIdExprN "assign"
+                        [idExpr "globals"
+                         stringExpr "*argv*"
+                         appIdExpr "toCons"
+                            (appExprN
+                                (longIdExpr ["List"; "map"])
+                                [idExpr "Str"; idExpr "args"])]
+                     appIdExprN "eval"
+                        [(idExpr "globals")
+                         (appIdExpr "toCons"
+                            (listExpr [appIdExpr "Sym" (stringExpr main)]))]
+                     intExpr 0]))
          letAttrsDecl
             [attr None (longIdentWithDots ["EntryPoint"]) unitExpr]
             "main"
             ["args", arrayType (shortType "string")]
-            (letExpr "globals" (appExpr (idExpr "newRuntime") unitExpr)
-                (sequentialExpr
-                    [appExprN
-                        (idExpr "assign")
-                        [idExpr "globals"
-                         stringExpr "*argv*"
-                         appExpr
-                            (idExpr "toCons")
-                            (appExprN
-                                (longIdExpr ["List"; "map"])
-                                [idExpr "Str"
-                                 (appExpr (longIdExpr ["Array"; "toList"]) (idExpr "args"))])]
-                     appExprN
-                        (idExpr "eval")
-                        [(idExpr "globals")
-                         (appExpr
-                            (idExpr "toCons")
-                            (listExpr [appExpr (idExpr "Sym") (stringExpr main)]))]
-                     intExpr 0]))]
-
-(*
-let private runRepl args () =
-    let globals = newRuntime()
-    assign globals "*argv*" (toCons (List.map Str args))
-    try
-        if evalOptions globals args then
-            eval globals (toCons [Sym "shen.shen"]) |> ignore
-    with
-        e -> printfn "Unhandled error: %s" e.Message
-
-[<EntryPoint>]
-let main args = separateThread16MB(runRepl(Array.toList args))
-*)
+            (appIdExpr "separateThread16MB"
+                (appIdExpr "runEntryPoint"
+                    (appLongIdExpr ["Array"; "toList"]
+                        (idExpr "args"))))]

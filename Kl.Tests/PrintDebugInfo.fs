@@ -11,7 +11,7 @@ open Assertions
 let ``print platform information``() =
     let globals = baseGlobals()
     for pair in globals.Symbols do
-        Option.iter (printfn "%s = %O" pair.Key) (getValueOption pair.Value)
+        Option.iter (printfn "%s = %O" pair.Key) !pair.Value.Val
 
 [<Test>]
 let ``demo ToString() for values``() =

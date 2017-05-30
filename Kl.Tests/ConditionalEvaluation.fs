@@ -10,7 +10,7 @@ let assertEffect eff syntax =
     let globals = baseGlobals()
     runIn globals "(defun effect (X) (do (set *effect* true) X))" |> ignore
     runIn globals syntax |> ignore
-    match getValueOption (intern globals "*effect*") with
+    match !(intern globals "*effect*").Val with
     | None -> if eff then Assert.Fail "Effect did not occurr" else ()
     | _ -> if not eff then Assert.Fail "Effect should not have occurred" else ()
 

@@ -23,7 +23,6 @@ type [<ReferenceEquality>] IO = {
 /// </summary>
 type Symbol = {
     Name: string
-    IsProtected: bool ref
     Val: Value option ref
     Fun: Function option ref
 }
@@ -34,6 +33,7 @@ type Symbol = {
 /// Also contains bi-directional mapping of aliases for CLR types.
 /// </summary>
 and Globals = {
+    InstallingKl: Value option ref
     Symbols: ConcurrentDictionary<string, Symbol>
     ClrAliases: ConcurrentDictionary<string, string>
     ClrReverseAliases: ConcurrentDictionary<string, string>
