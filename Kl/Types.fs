@@ -44,7 +44,7 @@ and Globals = {
 /// </summary>
 and [<ReferenceEquality>] Function =
     | Interpreted of string list * Expr
-    | Compiled    of int * (Globals -> Value list -> Value)
+    | Compiled    of int * (Globals -> Value list -> Value) * string list
     | Partial     of Function * Value list
     override this.ToString() =
         match this with

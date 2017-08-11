@@ -66,7 +66,7 @@ let ``Functions can be compared for reference equality``() =
     let inc _ = function
         | [Int x] -> Int(x + 1)
         | _ -> failwith "Must be integer"
-    let n = Compiled(1, inc)
+    let n = Compiled(1, inc, [])
     assertEq (Func n) (Func n)
     assertNotEq (Func(Interpreted([], Constant Empty)))
                 (Func(Interpreted([], Constant Empty)))

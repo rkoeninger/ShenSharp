@@ -26,9 +26,9 @@ let ``demo ToString() for values``() =
     printfn "%O" (Cons(Int 1, Int 2))
     printfn "%O" (Vec(Array.create 10 Empty))
     printfn "%O" (Err "Something went wrong")
-    printfn "%O" (Func(Compiled(2, ``kl_+``)))
+    printfn "%O" (Func(Compiled(2, ``kl_+``, ["Kl"; "Builtins"; "kl_+"])))
     printfn "%O" (Func(Interpreted(["X"; "Y"], Application(Constant(Sym "+"), [Constant(Sym "X"); Constant(Sym "Y")]))))
     printfn "%O" (Func(Interpreted(["X"], Application(Constant(Sym "+"), [Constant(Sym "X"); Constant(Int 1)]))))
     printfn "%O" (Func(Interpreted([], Application(Constant(Sym "get-time"), [Constant(Sym "run")]))))
-    printfn "%O" (Func(Partial(Compiled(2, ``kl_+``), [Int 1])))
+    printfn "%O" (Func(Partial(Compiled(2, ``kl_+``, ["Kl"; "Builtins"; "kl_+"]), [Int 1])))
     printfn "%O" console

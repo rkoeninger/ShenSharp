@@ -60,7 +60,7 @@ let asFunction = function
 
 let rec functionArity = function
     | Interpreted(paramz, _) -> List.length paramz
-    | Compiled(arity, _) -> arity
+    | Compiled(arity, _, _) -> arity
     | Partial(f, args) -> functionArity f - args.Length
 
 let inRange min max value = min <= value && value < max

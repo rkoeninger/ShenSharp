@@ -112,7 +112,7 @@ let rec private applyw globals f (args: Value list) =
             Pending(Map(List.zip paramz args), body)
 
     // Compiled functions are always applied immediately.
-    | Compiled(arity, native) ->
+    | Compiled(arity, native, _) ->
         if argc < arity then
             Done(Func(if argc = 0 then f else Partial(f, args)))
         elif argc > arity then
