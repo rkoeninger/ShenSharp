@@ -70,7 +70,8 @@ let rec private buildApp ((name, globals, locals) as context) (f: Expr) args =
                             [appIdExpr "Compiled"
                                 (tupleExpr
                                     [intExpr arity
-                                     idExpr(rename s)])
+                                     idExpr(rename s)
+                                     listExpr []])
                              listExpr args]), KlFunction) |> toType KlValue
                 // Apply native function directly
                 else
@@ -184,7 +185,8 @@ and private compileF ((name, globals) as context) locals paramz body =
                         (appIdExprN "argsErr"
                             [stringExpr("Lambda@" + name)
                              listExpr(List.replicate arity (stringExpr "value"))
-                             idExpr "args"])]))])), KlFunction) |> toType KlValue
+                             idExpr "args"])]))
+             listExpr []])), KlFunction) |> toType KlValue
 
 let private compileDefun globals (name, paramz, body) =
     // and ~(rename name) (globals: Globals) = function
@@ -206,14 +208,15 @@ let private compileDefun globals (name, paramz, body) =
                      idExpr "args"])])
 
 let private installDefun (name, paramz, body) =
-    // define globals ~name (Compiled(~argcount, ~(rename name)))
+    // define globals ~name (Compiled(~argcount, ~(rename name), ~source))
     appIdExprN "define"
         [idExpr "globals"
          stringExpr name
          (appIdExpr "Compiled"
             (tupleExpr
                 [intExpr(List.length paramz)
-                 idExpr(rename name)]))]
+                 idExpr(rename name)
+                 listExpr []]))]
 
 let rec private buildValue ((name, globals) as context) = function
     | Empty -> idExpr "Empty"
