@@ -20,7 +20,7 @@ let Copyright = "Copyright © 2015-2017 " + Author
 let Revision = "0.9.4.0"
 
 [<Literal>]
-let KernelRevision = "20.1"
+let KernelRevision = "21.0"
 
 [<Literal>]
 let KernelFolderName = "ShenOSKernel-" + KernelRevision
