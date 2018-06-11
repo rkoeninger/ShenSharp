@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Changed
+- Updated shen sources to version 21.0.
+
 ## [0.9.4.0] - 2017-05-24
 
 ### Added
