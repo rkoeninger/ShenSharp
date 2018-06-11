@@ -11,6 +11,7 @@ let sourceFiles = [
     "toplevel.kl"
     "core.kl"
     "sys.kl"
+    "dict.kl"
     "sequent.kl"
     "yacc.kl"
     "reader.kl"
