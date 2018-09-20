@@ -1,8 +1,5 @@
 notifications:
   email: false
-branches:
-  only:
-    - master
 language: csharp
 install:
   - nuget restore Kl.sln
