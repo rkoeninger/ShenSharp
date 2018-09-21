@@ -9,7 +9,6 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <Content Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Shared.fs">
@@ -21,6 +20,7 @@
     <Compile Include="Compiler.fs" />
     <Compile Include="Loader.fs" />
     <Compile Include="BuildRuntime.fs" />
+    <Content Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kl\Kl.fsproj" />
