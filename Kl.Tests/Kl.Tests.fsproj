@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net45</TargetFramework>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Shared.fs">
@@ -22,6 +23,7 @@
     <Compile Include="ScopeCapture.fs" />
     <Compile Include="TailCallOptimization.fs" />
     <Compile Include="ForeignFunctionInterface.fs" />
+    <Content Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
