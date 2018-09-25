@@ -14,7 +14,7 @@ let Description = "Shen for the Common Language Runtime"
 let Author = "Robert Koeninger"
 
 [<Literal>]
-let Copyright = "Copyright © 2015-2017 " + Author
+let Copyright = "Copyright © 2015-2018 " + Author
 
 [<Literal>]
 let Revision = "0.9.5.0"
