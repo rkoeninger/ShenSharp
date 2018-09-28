@@ -26,6 +26,6 @@
     <ProjectReference Include="..\Kl\Kl.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="4.0.0.1" />
+    <PackageReference Include="FSharp.Core" Version="4.5.2" />
   </ItemGroup>
 </Project>
