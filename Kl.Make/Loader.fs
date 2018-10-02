@@ -3,7 +3,6 @@
 open System
 open System.IO
 open Microsoft.FSharp.Compiler
-open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 open Microsoft.FSharp.Compiler.SourceCodeServices
 open Kl.Values
 open Kl.Evaluator
@@ -39,18 +38,19 @@ let private raiseErrors messages =
 let private parseFile file =
     let input = File.ReadAllText file
     let checker = FSharpChecker.Create()
-    let projOptions =
-        checker.GetProjectOptionsFromScript(file, input)
-        |> Async.RunSynchronously
-    let result =
-        checker.ParseFileInProject(file, input, projOptions)
-        |> Async.RunSynchronously
+    let result = (async {
+        let! projOptions =
+            checker.GetProjectOptionsFromScript(file, input)
+        let parseOptions =
+            checker.GetParsingOptionsFromProjectOptions(fst projOptions)
+        return! checker.ParseFile(file, input, fst parseOptions)
+    } |> Async.RunSynchronously)
     match result.ParseTree with
     | Some tree -> tree
     | None -> raiseErrors result.Errors
 
 let private emit asts =
-    let service = SimpleSourceCodeServices()
+    let service = FSharpChecker.Create()
     let (errors, returnCode) =
         service.Compile(
             asts,
@@ -59,7 +59,7 @@ let private emit asts =
             deps,
             pdbName,
             false,
-            false)
+            false) |> Async.RunSynchronously
     if returnCode <> 0 then
         raiseErrors errors
 
