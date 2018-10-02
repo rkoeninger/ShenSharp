@@ -40,7 +40,7 @@ let private repackAssemblies kind target sources =
 let private regex pattern s = Regex.Match(s, pattern, RegexOptions.Multiline).Value
 
 let private urlFromLicenseFile() =
-    new Uri(regex @"http\S*" (File.ReadAllText(fromRoot ["LICENSE.txt"])))
+    new Uri("https://opensource.org/licenses/BSD-3-Clause")
 
 let private urlFromGitConfig() =
     let configText = File.ReadAllText(fromRoot [".git"; "config"])
