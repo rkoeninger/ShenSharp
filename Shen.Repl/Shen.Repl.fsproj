@@ -27,6 +27,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="4.5.2/" />
+    <PackageReference Include="FSharp.Core" Version="4.5.2" />
   </ItemGroup>
 </Project>
