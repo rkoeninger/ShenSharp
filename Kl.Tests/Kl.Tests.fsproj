@@ -36,7 +36,7 @@
     <ProjectReference Include="..\Kl\Kl.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="4.5.2/" />
+    <PackageReference Include="FSharp.Core" Version="4.5.2" />
     <PackageReference Include="NUnit" Version="3.10.1" />
   </ItemGroup>
 </Project>
