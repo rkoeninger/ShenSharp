@@ -7,14 +7,14 @@ before_build:
 build_script:
   - msbuild /p:Configuration=Release Kl.sln
   - .\testrunner\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe .\Kl.Tests\bin\Release\net45\Kl.Tests.dll
-  - cd .\Kl.Get\bin\Release
-  - .\net45\Kl.Get.exe
-  - cd ..\..\..
-  - cd .\Kl.Make\bin\Release
-  - .\net45\Kl.Make.exe
-  - cd ..\..\..
+  - cd .\Kl.Get\bin\Release\net45
+  - .\Kl.Get.exe
+  - cd ..\..\..\..
+  - cd .\Kl.Make\bin\Release\net45
+  - .\Kl.Make.exe
+  - cd ..\..\..\..
   - msbuild /p:Configuration=Release Shen.sln
   - .\testrunner\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe .\Shen.Tests\bin\Release\net45\Shen.Tests.dll
-  - cd .\Shen.TestSuite\bin\Release
-  - .\net45\Shen.TestSuite.exe
-  - cd ..\..\..
+  - cd .\Shen.TestSuite\bin\Release\net45
+  - .\Shen.TestSuite.exe
+  - cd ..\..\..\..

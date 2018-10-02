@@ -4,7 +4,7 @@ open Kl.Values
 open Loader
 open ShenSharp.Shared
 
-let fromRoot = combine << (@) [".."; ".."; ".."]
+let fromRoot = combine << (@) [".."; ".."; ".."; ".."]
 let outputPath = fromRoot ["Artifacts"; BuildConfig]
 let sourcePath = fromRoot ["packages"; KernelFolderName; "klambda"]
 let sourceFiles = [
