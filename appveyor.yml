@@ -1,11 +1,11 @@
 image: Visual Studio 2017
 before_build:
-  - dotnet restore Kl.sln
-  - dotnet restore Shen.sln
+  - msbuild /t:Restore Kl.sln
+  - msbuild /t:Restore Shen.sln
   - nuget install NUnit.ConsoleRunner -Version 3.6.0 -OutputDirectory testrunner
   - mkdir packages
 build_script:
-  - dotnet build -c Release Kl.sln
+  - msbuild /p:Configuration=Release Kl.sln
   - .\testrunner\NUnit.ConsoleRunner.3.6.0\tools\nunit3-console.exe .\Kl.Tests\bin\Release\net45\Kl.Tests.dll
   - cd .\Kl.Get\bin\Release
   - .\net45\Kl.Get.exe
@@ -13,7 +13,7 @@ build_script:
   - cd .\Kl.Make\bin\Release
   - .\net45\Kl.Make.exe
   - cd ..\..\..
-  - dotnet build -c Release Shen.sln
+  - msbuild /p:Configuration=Release Shen.sln
   - .\testrunner\NUnit.ConsoleRunner.3.6.0\tools\nunit3-console.exe .\Shen.Tests\bin\Release\net45\Shen.Tests.dll
   - cd .\Shen.TestSuite\bin\Release
   - .\net45\Shen.TestSuite.exe
