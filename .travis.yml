@@ -4,11 +4,11 @@ language: csharp
 install:
   - msbuild /t:Restore Kl.sln
   - msbuild /t:Restore Shen.sln
-  - nuget install NUnit.ConsoleRunner -Version 3.6.0 -OutputDirectory testrunner
+  - nuget install NUnit.ConsoleRunner -Version 3.9.0 -OutputDirectory testrunner
   - mkdir packages
 script:
   - msbuild /p:Configuration=Release Kl.sln
-  - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/net45/Kl.Tests.dll
+  - mono ./testrunner/NUnit.ConsoleRunner.3.9.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/net45/Kl.Tests.dll
   - pushd ./Kl.Get/bin/Release
   - mono ./net45/Kl.Get.exe
   - popd
@@ -16,7 +16,7 @@ script:
   - mono ./net45/Kl.Make.exe
   - popd
   - msbuild /p:Configuration=Release Shen.sln
-  - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Shen.Tests/bin/Release/net45/Shen.Tests.dll
+  - mono ./testrunner/NUnit.ConsoleRunner.3.9.0/tools/nunit3-console.exe ./Shen.Tests/bin/Release/net45/Shen.Tests.dll
   - pushd ./Shen.TestSuite/bin/Release
   - mono ./net45/Shen.TestSuite.exe
   - popd
