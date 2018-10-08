@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
+## [0.9.6.0] - 2018-10-08
+
+### Changed
+- Updated shen sources to version 21.0.
+
 ## [0.9.5.0] - 2018-06-11
 
 ### Changed
@@ -122,7 +127,8 @@ Don't remember.
 
 Don't remember.
 
-[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.5.0...HEAD
+[Unreleased]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.6.0...HEAD
+[0.9.6.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.5.0...v0.9.6.0
 [0.9.5.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.4.0...v0.9.5.0
 [0.9.4.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.3.0...v0.9.4.0
 [0.9.3.0]: https://github.com/rkoeninger/ShenSharp/compare/v0.9.2.0...v0.9.3.0
