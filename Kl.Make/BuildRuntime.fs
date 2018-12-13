@@ -27,4 +27,4 @@ let sourceFiles = [
 let buildRuntime () = make sourcePath sourceFiles outputPath
 
 [<EntryPoint>]
-let main _ = separateThread16MB buildRuntime
+let main _ = moreRam buildRuntime

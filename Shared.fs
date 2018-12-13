@@ -54,4 +54,4 @@ let rec combine = function
     | [x] -> x
     | x :: xs -> Path.Combine(x, combine xs)
 
-let fromRoot = combine << (@) [".."; ".."; ".."; ".."; ".."]
+let fromRoot = combine << (@) [".."; ".."; ".."; ".."]
