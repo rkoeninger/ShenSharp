@@ -55,4 +55,4 @@ let private runRepl args () =
         e -> printfn "Unhandled error: %s" e.Message
 
 [<EntryPoint>]
-let main args = separateThread16MB(runRepl(Array.toList args))
+let main args = moreRam(runRepl(Array.toList args))

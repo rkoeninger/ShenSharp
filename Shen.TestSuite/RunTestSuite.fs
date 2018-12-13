@@ -17,4 +17,4 @@ let runTestSuite () =
     eval globals (toCons [Sym "load"; Str "tests.shen"]) |> ignore
 
 [<EntryPoint>]
-let main _ = separateThread16MB runTestSuite
+let main _ = moreRam runTestSuite
