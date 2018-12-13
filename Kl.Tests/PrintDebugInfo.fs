@@ -5,7 +5,6 @@ open Kl
 open Kl.Values
 open Kl.Builtins
 open Kl.Startup
-open Assertions
 
 [<Test>]
 let ``print platform information``() =

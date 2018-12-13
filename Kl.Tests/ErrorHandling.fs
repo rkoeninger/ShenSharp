@@ -2,7 +2,6 @@
 
 open NUnit.Framework
 open Kl
-open Kl.Startup
 open Kl.Values
 open Assertions
 

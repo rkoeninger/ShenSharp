@@ -9,7 +9,6 @@ open ILRepacking
 open NuGet
 open ShenSharp.Shared
 
-let private fromRoot = combine << (@) [".."; ".."; ".."; ".."]
 let private outDir = combine ["bin"; BuildConfig]
 let private artifactsRoot = fromRoot ["Artifacts"; BuildConfig]
 let private klDllPath = fromRoot ["Kl"; outDir; "Kl.dll"]

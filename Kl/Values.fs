@@ -166,15 +166,6 @@ let define globals id f = (intern globals id).Fun := Some f
 /// </summary>
 let lookup globals id = getFunction(intern globals id)
 
-let localIndex id locals =
-    List.tryFindIndex ((=) id) locals |> Option.map (fun x -> locals.Length - x - 1)
-
-let localInsert id locals =
-    List.length locals, (id :: locals)
-
-let localLookup x (locals: 'a list) =
-    locals.[locals.Length - x - 1]
-
 let rec toCons = function
     | [] -> Empty
     | x :: xs -> Cons(x, toCons xs)

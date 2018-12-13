@@ -1,13 +1,7 @@
 ﻿module Kl.Tests.``Tail Call Optimization``
 
 open NUnit.Framework
-open Kl
-open Kl.Values
-open Kl.Startup
 open Assertions
-
-let attempt body =
-    assertTrue (sprintf "(defun count-down (X) %s) (count-down 20000)" body)
 
 [<Test>]
 let ``optimize tail recursive calls in an if consequent expression``() =

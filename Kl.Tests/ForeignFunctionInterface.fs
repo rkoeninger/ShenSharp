@@ -1,7 +1,6 @@
 ﻿module Kl.Tests.``Foreign Function Interface``
 
 open System.Collections.Generic
-open Kl
 open Kl.Values
 open NUnit.Framework
 open Assertions

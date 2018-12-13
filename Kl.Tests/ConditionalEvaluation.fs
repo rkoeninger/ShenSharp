@@ -1,18 +1,8 @@
 ﻿module Kl.Tests.``Conditional Evaluation``
 
 open NUnit.Framework
-open Kl
 open Kl.Values
-open Kl.Startup
 open Assertions
-
-let assertEffect eff syntax =
-    let globals = baseGlobals()
-    runIn globals "(defun effect (X) (do (set *effect* true) X))" |> ignore
-    runIn globals syntax |> ignore
-    match getValueOption (intern globals "*effect*") with
-    | None -> if eff then Assert.Fail "Effect did not occurr" else ()
-    | _ -> if not eff then Assert.Fail "Effect should not have occurred" else ()
 
 [<Test>]
 let ``and expression evals to true if both argument expressions eval to true``() =

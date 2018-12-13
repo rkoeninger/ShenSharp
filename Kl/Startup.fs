@@ -1,7 +1,6 @@
 ﻿module Kl.Startup
 
 open System
-open System.Reflection
 open Values
 open Evaluator
 open Builtins

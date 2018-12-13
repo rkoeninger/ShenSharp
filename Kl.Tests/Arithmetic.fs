@@ -2,18 +2,7 @@
 
 open NUnit.Framework
 open Kl
-open Kl.Values
 open Assertions
-
-let assertDec expr =
-    match run expr with
-    | Num _ -> ()
-    | _ -> Assert.Fail "Decimal expected"
-
-let assertInt expr =
-    match run expr with
-    | Int _ -> ()
-    | _ -> Assert.Fail "Int expected"
 
 [<Test>]
 let ``return an integer when adding two integers``() =
