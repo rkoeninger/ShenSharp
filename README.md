@@ -5,7 +5,7 @@
 [![.Net Build Status](https://img.shields.io/appveyor/ci/rkoeninger/ShenSharp/master.svg?label=.net)](https://ci.appveyor.com/project/rkoeninger/shensharp/branch/master)
 [![Mono Build Status](https://img.shields.io/travis/rkoeninger/ShenSharp/master.svg?label=mono)](https://travis-ci.org/rkoeninger/ShenSharp)
 
-# ShenSharp
+# Shen for the Common Language Runtime
 
 ![ShenSharp Logo](https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/Assets/ShenSharp.png)
 
