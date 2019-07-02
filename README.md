@@ -1,5 +1,3 @@
-[![Visual Studio Version](https://img.shields.io/badge/vs-2015-68217a.svg)](https://www.visualstudio.com/vs/older-downloads/)
-[![F# Version](https://img.shields.io/badge/f%23-4.0-028fcc.svg)](http://fsharp.org/)
 [![Shen Version](https://img.shields.io/badge/shen-21.1-blue.svg)](https://github.com/Shen-Language)
 [![Latest Nuget](https://img.shields.io/nuget/v/ShenSharp.svg)](https://www.nuget.org/packages/ShenSharp)
 [![.Net Build Status](https://img.shields.io/appveyor/ci/rkoeninger/ShenSharp/master.svg?label=.net)](https://ci.appveyor.com/project/rkoeninger/shensharp/branch/master)
