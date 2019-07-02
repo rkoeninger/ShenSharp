@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 ## [0.9.6.0] - 2018-10-08
 
 ### Changed
-- Updated shen sources to version 21.0.
+- Updated shen sources to version 21.1.
 
 ## [0.9.5.0] - 2018-06-11
 
