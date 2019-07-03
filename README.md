@@ -5,7 +5,7 @@
 
 # Shen for the Common Language Runtime
 
-![ShenSharp Logo](https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/Assets/ShenSharp.png)
+<img src="https://raw.githubusercontent.com/rkoeninger/ShenSharp/master/Assets/ShenSharp.png" align="right">
 
 ShenSharp is a port of the [Shen language](http://shenlanguage.org/) to the CLR.
 
