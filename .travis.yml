@@ -4,21 +4,5 @@ branches:
   only:
     - master
 language: csharp
-install:
-  - nuget restore Kl.sln
-  - nuget restore Shen.sln
-  - nuget install NUnit.ConsoleRunner -Version 3.6.0 -OutputDirectory testrunner
 script:
-  - xbuild /p:Configuration=Release Kl.sln
-  - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Kl.Tests/bin/Release/Kl.Tests.dll
-  - pushd ./Kl.Get/bin/Release
-  - mono Kl.Get.exe
-  - popd
-  - pushd ./Kl.Make/bin/Release
-  - mono Kl.Make.exe
-  - popd
-  - xbuild /p:Configuration=Release Shen.sln
-  - mono ./testrunner/NUnit.ConsoleRunner.3.6.0/tools/nunit3-console.exe ./Shen.Tests/bin/Release/Shen.Tests.dll
-  - pushd ./Shen.TestSuite/bin/Release
-  - mono Shen.TestSuite.exe
-  - popd
+  - echo "temp disabling build"
