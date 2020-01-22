@@ -14,13 +14,13 @@ let Description = "Shen for the Common Language Runtime"
 let Author = "Robert Koeninger"
 
 [<Literal>]
-let Copyright = "Copyright © 2015-2018 " + Author
+let Copyright = "Copyright © 2015-2020 " + Author
 
 [<Literal>]
 let Revision = "0.9.6.0"
 
 [<Literal>]
-let KernelRevision = "21.2"
+let KernelRevision = "22.2"
 
 [<Literal>]
 let KernelFolderName = "ShenOSKernel-" + KernelRevision

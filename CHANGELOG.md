@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## [Unreleased]
 
-**Updated to Shen Open Source Kernel 21.2**
+**Updated to Shen Open Source Kernel 22.2**
 
 ## [0.9.6.0] - 2018-10-08
 
