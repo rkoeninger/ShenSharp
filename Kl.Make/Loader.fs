@@ -16,7 +16,7 @@ let private dllName = sprintf "%s.dll" generatedModule
 let private pdbName = sprintf "%s.pdb" generatedModule
 let private searchPattern = sprintf "%s.*" generatedModule
 let private deps = ["Kl.dll"]
-let private sharedMetadataPath = combine [".."; ".."; ".."; ".."; "Shared.fs"]
+let private sharedMetadataPath = fromRoot ["Shared.fs"]
 
 let private import sourcePath sourceFiles =
     let globals = baseGlobals()

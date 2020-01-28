@@ -1,5 +1,6 @@
 module ShenSharp.Shared
 
+open System
 open System.IO
 
 // TODO: fetch these from Directory.Build.props?
@@ -43,3 +44,18 @@ let rec combine = function
     | [] -> "."
     | [x] -> x
     | x :: xs -> Path.Combine(x, combine xs)
+    
+/// <summary>
+/// Path to the source root where the .sln files are.
+/// </summary>
+let sourceRoot =
+    let mutable current = Environment.CurrentDirectory
+    while not <| current.EndsWith("ShenSharp") do
+        current <- Path.GetDirectoryName current
+    current
+
+/// <summary>
+/// Takes a list of path components and appends them to
+/// the end of the source root for this solution.
+/// </summary>
+let fromRoot = combine << (@) [sourceRoot]

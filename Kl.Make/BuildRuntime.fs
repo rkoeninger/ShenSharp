@@ -1,18 +1,9 @@
 ﻿module Kl.Make.BuildRuntime
 
-open System
-open System.IO
 open Kl.Values
 open Loader
 open ShenSharp.Shared
 
-let findRoot () =
-    let mutable current = Environment.CurrentDirectory
-    while not <| current.EndsWith("ShenSharp") do
-        current <- Path.GetDirectoryName current
-    current
-let root = findRoot()
-let fromRoot = combine << (@) [root]
 let outputPath = fromRoot ["Artifacts"; BuildConfig]
 let sourcePath = fromRoot ["packages"; KernelFolderName; "klambda"]
 let sourceFiles = [
