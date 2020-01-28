@@ -1,91 +1,31 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>06344109-7314-4086-ad31-bff125f211f5</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Shen.Repl</RootNamespace>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <AssemblyName>Shen.Repl</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>Shen.Repl</Name>
+    <PackageId>Shen.Repl</PackageId>
+    <RootNamespace>Shen.Repl</RootNamespace>
+    <Description>Shen command-line REPL executable</Description>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\Shen.Repl.xml</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <Tailcalls>true</Tailcalls>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\Shen.Repl.xml</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup>
-    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
-  </PropertyGroup>
-  <Choose>
-    <When Condition="'$(VisualStudioVersion)' == '11.0'">
-      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </When>
-    <Otherwise>
-      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </Otherwise>
-  </Choose>
-  <Import Project="$(FSharpTargetsPath)" />
+
   <ItemGroup>
-    <None Include="App.config" />
-    <Content Include="packages.config" />
-    <Compile Include="$(SolutionDir)Shared.fs">
-      <Link>Properties\Shared.fs</Link>
-    </Compile>
-    <Compile Include="Properties\Metadata.fs" />
+    <Compile Include="..\Shared.fs" />
     <Compile Include="RunRepl.fs" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Shen.Api\Shen.Api.fsproj">
-      <Name>Shen.Api</Name>
-      <Project>{1885a119-975d-43f6-8a8d-8200c89a943c}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <Reference Include="FSharp.Core">
-      <HintPath>..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\Kl\Kl.fsproj" />
+    <ProjectReference Include="..\Shen.Api\Shen.Api.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="Shen.Language" Condition="'$(Configuration)'=='Debug'">
       <HintPath>..\Artifacts\Debug\Shen.Language.dll</HintPath>
     </Reference>
     <Reference Include="Shen.Language" Condition="'$(Configuration)'=='Release'">
       <HintPath>..\Artifacts\Release\Shen.Language.dll</HintPath>
     </Reference>
-    <ProjectReference Include="..\Kl\Kl.fsproj">
-      <Name>Kl</Name>
-      <Project>{24903340-789d-4419-ac4b-c2c1f8000c54}</Project>
-      <Private>True</Private>
-    </ProjectReference>
   </ItemGroup>
+
 </Project>

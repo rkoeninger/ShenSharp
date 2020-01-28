@@ -18,11 +18,11 @@ let main _ =
     printfn "Shen sources url: \"%s\"" url
     printfn "Local path: \"%s\"" zipPath
     printfn "Downloading sources package..."
+    Directory.CreateDirectory packages |> ignore
     use client = new WebClient()
     client.DownloadFile(url, zipPath)
     printfn "Extracting sources package..."
     safeDelete extractedFolderPath
-    Directory.CreateDirectory packages |> ignore
     ZipFile.ExtractToDirectory(zipPath, packages)
     File.Delete zipPath
     0

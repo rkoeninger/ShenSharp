@@ -113,7 +113,7 @@ type internal ConsoleReader() =
     let reader = new StreamReader(Console.OpenStandardInput())
     let mutable line: byte[] = [||]
     let mutable index = 0
-    member this.ReadByte() =
+    member _.ReadByte() =
         if index >= line.Length then
             line <- Encoding.ASCII.GetBytes(reader.ReadLine() + Environment.NewLine)
             index <- 0

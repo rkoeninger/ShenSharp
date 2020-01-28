@@ -1,7 +1,6 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl", "Kl\Kl.fsproj", "{24903340-789D-4419-AC4B-C2C1F8000C54}"
 EndProject
@@ -9,8 +8,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		.travis.yml = .travis.yml
-		appveyor.yml = appveyor.yml
 		CHANGELOG.md = CHANGELOG.md
+		Directory.Build.props = Directory.Build.props
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -19,8 +18,6 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.TestSuite", "Shen.TestSuite\Shen.TestSuite.fsproj", "{65484F8F-D542-4F87-99A9-23A6C50C35BF}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Tests", "Shen.Tests\Shen.Tests.fsproj", "{102D7F9D-771F-4C75-A4AE-93321C0C0D81}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Pack", "Shen.Pack\Shen.Pack.fsproj", "{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Api", "Shen.Api\Shen.Api.fsproj", "{1885A119-975D-43F6-8A8D-8200C89A943C}"
 EndProject
@@ -46,10 +43,6 @@ Global
 		{102D7F9D-771F-4C75-A4AE-93321C0C0D81}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{102D7F9D-771F-4C75-A4AE-93321C0C0D81}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{102D7F9D-771F-4C75-A4AE-93321C0C0D81}.Release|Any CPU.Build.0 = Release|Any CPU
-		{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{58EF0FB7-4D7C-45FA-BCB3-2EFEBD23CE12}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1885A119-975D-43F6-8A8D-8200C89A943C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1885A119-975D-43F6-8A8D-8200C89A943C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1885A119-975D-43F6-8A8D-8200C89A943C}.Release|Any CPU.ActiveCfg = Release|Any CPU

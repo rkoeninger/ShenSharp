@@ -1,10 +1,7 @@
 ﻿module internal Kl.Make.Compiler
 
-open System
-open System.Collections.Generic
 open Kl
 open Kl.Values
-open Reader
 open Syntax
 
 // All symbols from KL code need to be renamed so
@@ -167,7 +164,7 @@ and private buildExpr ((name, globals, locals) as context) (expr : Expr) =
         buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
     | klExpr -> failwithf "Unable to compile: %O" klExpr
 
-and private compileF ((name, globals) as context) locals paramz body =
+and private compileF (name, globals) locals paramz body =
     let arity = List.length paramz
     ((appIdExpr "Compiled"
         (tupleExpr
@@ -219,7 +216,7 @@ let private installDefun (name, f) =
                 [intExpr(functionArity f)
                  idExpr(rename name)]))]
 
-let rec private buildValue ((name, globals) as context) = function
+let rec private buildValue context = function
     | Empty -> idExpr "Empty"
     | Num x -> appIdExpr "Num" (decimalExpr x)
     | Str s -> appIdExpr "Str" (stringExpr s)
@@ -238,14 +235,14 @@ let rec private buildValue ((name, globals) as context) = function
     | Pipe io when io.Name = "Console" -> idExpr "console"
     | value -> failwithf "Can't build value: %A" value
 
-let private installSymbol ((name, globals) as context) (id, value) =
+let private installSymbol context (id, value) =
     appIdExprN "assign" [
         idExpr "globals"
         stringExpr id
         buildValue context value]
 
 let buildInstallationFile (name: string) globals =
-    let symbols = nonPrimitiveSymbols globals
+    //let symbols = nonPrimitiveSymbols globals
     let defuns = nonPrimitiveFunctions globals
     moduleFile (name.Split('.') |> Array.toList)
         [openDecl ["Kl"]
@@ -259,8 +256,10 @@ let buildInstallationFile (name: string) globals =
             [param "globals" "Globals"]
             (sequentialExpr
                 (List.concat
-                    [List.map (installSymbol (name, globals)) symbols
+                    [
+                     //List.map (installSymbol (name, globals)) symbols
                      List.map installDefun defuns
+                     [appExpr (idExpr "kl_shen.initialise") unitExpr]
                      [idExpr "globals"]]))]
 
 let buildMetadataFile name =

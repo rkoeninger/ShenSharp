@@ -4,8 +4,10 @@ open System
 open System.IO
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Text
+open Kl
 open Kl.Evaluator
 open Kl.Startup
+open Kl.Values
 open Reader
 open Compiler
 open ShenSharp.Shared
@@ -14,7 +16,7 @@ let private dllName = sprintf "%s.dll" generatedModule
 let private pdbName = sprintf "%s.pdb" generatedModule
 let private searchPattern = sprintf "%s.*" generatedModule
 let private deps = ["Kl.dll"]
-let private sharedMetadataPath = combine [".."; ".."; ".."; "Shared.fs"]
+let private sharedMetadataPath = combine [".."; ".."; ".."; ".."; "Shared.fs"]
 
 let private import sourcePath sourceFiles =
     let globals = baseGlobals()
@@ -26,6 +28,8 @@ let private import sourcePath sourceFiles =
             printf "."
             eval globals ast |> ignore
         printfn ""
+    printfn "shen.initialise..."
+    eval globals <| toCons [Sym "shen.initialise"] |> ignore
     printfn ""
     printfn "Applying post-import declarations..."
     postImport globals
