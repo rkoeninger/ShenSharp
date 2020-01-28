@@ -5,5 +5,5 @@ mono: none
 dotnet: 3.0
 script:
   #- cd src
-  - dotnet build
-  - dotnet test
+  - dotnet build Kl.sln
+  - dotnet test Kl.sln
