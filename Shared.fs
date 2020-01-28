@@ -1,8 +1,9 @@
 module ShenSharp.Shared
 
 open System.IO
-open System.Reflection
-open System.Runtime.InteropServices
+
+// TODO: fetch these from Directory.Build.props?
+//       remove unused ones
 
 [<Literal>]
 let Product = "ShenSharp"
@@ -17,7 +18,7 @@ let Author = "Robert Koeninger"
 let Copyright = "Copyright © 2015-2020 " + Author
 
 [<Literal>]
-let Revision = "0.9.6.0"
+let Revision = "0.10.0.0"
 
 [<Literal>]
 let KernelRevision = "22.2"
@@ -32,17 +33,6 @@ let BuildConfig = "Debug"
 [<Literal>]
 let BuildConfig = "Release"
 #endif
-
-[<assembly: AssemblyProduct(Product)>]
-[<assembly: AssemblyDescription(Description)>]
-[<assembly: AssemblyCompany(Author)>]
-[<assembly: AssemblyCopyright(Copyright)>]
-[<assembly: AssemblyVersion(Revision)>]
-[<assembly: AssemblyFileVersion(Revision)>]
-[<assembly: AssemblyInformationalVersion(Revision)>]
-[<assembly: AssemblyConfiguration(BuildConfig)>]
-[<assembly: ComVisible false>]
-do ()
 
 let generatedModule = "Shen.Language"
 

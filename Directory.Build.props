@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.10.0</Version>
+    <Authors>Robert Koeninger</Authors>
+    <Product>ShenSharp</Product>
+    <Copyright>Copyright © Robert Koeninger 2015-2020</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+</Project>

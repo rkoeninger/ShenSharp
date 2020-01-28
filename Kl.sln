@@ -1,24 +1,24 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl", "Kl\Kl.fsproj", "{24903340-789D-4419-AC4B-C2C1F8000C54}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Kl", "Kl\Kl.fsproj", "{24903340-789D-4419-AC4B-C2C1F8000C54}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl.Tests", "Kl.Tests\Kl.Tests.fsproj", "{8F843609-9DAD-4BC4-9A6D-C2465E7DE235}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Kl.Tests", "Kl.Tests\Kl.Tests.fsproj", "{8F843609-9DAD-4BC4-9A6D-C2465E7DE235}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4ED4DA60-F152-401A-ACFD-AC60CA8BC08C}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		.travis.yml = .travis.yml
-		appveyor.yml = appveyor.yml
 		CHANGELOG.md = CHANGELOG.md
+		Directory.Build.props = Directory.Build.props
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl.Make", "Kl.Make\Kl.Make.fsproj", "{5EA0DBC2-329B-4075-BEE2-EF83186C5529}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Kl.Make", "Kl.Make\Kl.Make.fsproj", "{5EA0DBC2-329B-4075-BEE2-EF83186C5529}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl.Get", "Kl.Get\Kl.Get.fsproj", "{079BBBB7-D9F5-4AC7-BC1A-A6F5F636EB91}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Kl.Get", "Kl.Get\Kl.Get.fsproj", "{079BBBB7-D9F5-4AC7-BC1A-A6F5F636EB91}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,5 +45,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E976272D-5205-4CB4-B9A2-23756BE568D5}
 	EndGlobalSection
 EndGlobal

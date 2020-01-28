@@ -1,9 +1,6 @@
 ﻿module Kl.Tests.``Tail Call Optimization``
 
 open NUnit.Framework
-open Kl
-open Kl.Values
-open Kl.Startup
 open Assertions
 
 let attempt body =

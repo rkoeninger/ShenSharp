@@ -2,10 +2,8 @@
 
 open System
 open System.IO
-open Microsoft.FSharp.Compiler
-open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
-open Microsoft.FSharp.Compiler.SourceCodeServices
-open Kl.Values
+open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.Text
 open Kl.Evaluator
 open Kl.Startup
 open Reader
@@ -36,23 +34,27 @@ let private raiseErrors messages =
     let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
     raise(Exception(String.Join("\r\n\r\n", Seq.map string errors)))
 
-let private parseFile file =
-    let input = File.ReadAllText file
-    let checker = FSharpChecker.Create()
-    let projOptions =
+let private parseFile (checker: FSharpChecker) file =
+    let input = SourceText.ofString(File.ReadAllText file)
+    let projOptions, projErrors =
         checker.GetProjectOptionsFromScript(file, input)
         |> Async.RunSynchronously
+    if not projErrors.IsEmpty then
+        raiseErrors projErrors
+    let parsingOptions, parsingErrors =
+        checker.GetParsingOptionsFromProjectOptions projOptions
+    if not parsingErrors.IsEmpty then
+        raiseErrors parsingErrors
     let result =
-        checker.ParseFileInProject(file, input, projOptions)
+        checker.ParseFile(file, input, parsingOptions)
         |> Async.RunSynchronously
     match result.ParseTree with
     | Some tree -> tree
     | None -> raiseErrors result.Errors
 
-let private emit asts =
-    let service = SimpleSourceCodeServices()
+let private emit (checker: FSharpChecker) asts =
     let (errors, returnCode) =
-        service.Compile(
+        checker.Compile(
             asts,
             generatedModule,
             dllName,
@@ -60,6 +62,7 @@ let private emit asts =
             pdbName,
             false,
             false)
+        |> Async.RunSynchronously
     if returnCode <> 0 then
         raiseErrors errors
 
@@ -70,13 +73,14 @@ let private copy source destination =
     File.WriteAllBytes(destination, File.ReadAllBytes source)
 
 let make sourcePath sourceFiles outputPath =
+    let checker = FSharpChecker.Create()
     let globals = import sourcePath sourceFiles
     printfn "Translating kernel..."
     let ast = buildInstallationFile generatedModule globals
-    let sharedAst = parseFile sharedMetadataPath
+    let sharedAst = parseFile checker sharedMetadataPath
     let metadataAst = buildMetadataFile generatedModule
     printfn "Compiling kernel..."
-    emit [ast; sharedAst; metadataAst]
+    emit checker [ast; sharedAst; metadataAst]
     printfn "Copying artifacts to output path..."
     for file in Directory.GetFiles(".", searchPattern) do
         copy file (combine [outputPath; file])

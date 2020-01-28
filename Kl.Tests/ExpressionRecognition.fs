@@ -3,7 +3,6 @@
 open NUnit.Framework
 open Kl.Values
 open Kl.Make.Reader
-open Assertions
 
 let check recognizer strings =
     let checkSample (some, s) =

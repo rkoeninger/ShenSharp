@@ -10,20 +10,24 @@
 module internal Kl.Make.Syntax
 
 open System
-open Microsoft.FSharp.Compiler.Ast
-open Microsoft.FSharp.Compiler.Range
+open FSharp.Compiler.Ast
+open FSharp.Compiler.Range
 
 let private fileName = "file.fs"
 // Picked large values for line, col because there will be an unpredictable
 // ArrayIndexOutOfBoundsException if the numbers are too small
 let private loc = mkRange fileName (mkPos 512 512) (mkPos 1024 1024)
-let attr target name value : SynAttribute =  {
+let attr target name value : SynAttribute = {
     TypeName = name
     ArgExpr = value
     Target = target
     AppliesToGetterAndSetter = false
     Range = loc
 }
+let attrs xs : SynAttributeList list = [{
+    Attributes = xs
+    Range = loc
+}]
 let ident s = new Ident(s, loc)
 let longIdent parts = List.map ident parts
 let longIdentWithDots parts =
@@ -41,7 +45,7 @@ let namePat s = SynPat.Named(wildPat, ident s, false, None, loc)
 let unparenTypedPat pat synType = SynPat.Typed(pat, synType, loc)
 let typedPat pat synType = SynPat.Paren(unparenTypedPat pat synType, loc)
 let listPat pats = SynPat.ArrayOrList(false, pats, loc)
-let tuplePat pats = SynPat.Paren(SynPat.Tuple(pats, loc), loc)
+let tuplePat pats = SynPat.Paren(SynPat.Tuple(false, pats, loc), loc)
 let appPat parts args =
     SynPat.LongIdent(
         longIdentWithDots parts,
@@ -237,6 +241,7 @@ let doExpr expr = SynExpr.Do(expr, loc)
 let tupleExpr vals =
     let expr =
         SynExpr.Tuple(
+            false,
             vals,
             List.replicate (List.length vals - 1) loc,
             loc)
@@ -280,7 +285,6 @@ let matchExpr key clauses =
         SequencePointInfoForBinding.SequencePointAtBinding loc,
         key,
         clauses,
-        false,
         loc)
 let openDecl parts = SynModuleDecl.Open(longIdentWithDots parts, loc)
 let letAttrsDecl attrs name paramz body =
@@ -292,7 +296,7 @@ let letDecl name paramz body =
 let letUnitAttrsDecl attrs name body =
     SynModuleDecl.Let(false, [letUnitBinding attrs name body], loc)
 let letMultiDecl bindings = SynModuleDecl.Let(true, bindings, loc)
-let assemblyAttrDecl name value = SynModuleDecl.Attributes([attr (Some(ident "assembly")) name value], loc)
+let assemblyAttrDecl name value = SynModuleDecl.Attributes(attrs [attr (Some(ident "assembly")) name value], loc)
 let moduleFile nameParts decls =
     ParsedInput.ImplFile(
         ParsedImplFileInput.ParsedImplFileInput(
@@ -304,7 +308,7 @@ let moduleFile nameParts decls =
             [SynModuleOrNamespace.SynModuleOrNamespace(
                 List.map ident nameParts,
                 false,
-                true,
+                SynModuleOrNamespaceKind.NamedModule,
                 decls,
                 PreXmlDoc.Empty,
                 [],
