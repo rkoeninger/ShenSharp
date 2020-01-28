@@ -1,7 +1,6 @@
 ﻿module Kl.Startup
 
 open System
-open System.Reflection
 open Values
 open Evaluator
 open Builtins
@@ -11,11 +10,9 @@ open ShenSharp.Shared
 /// Creates a new global scope with the KL primitives installed.
 /// </summary>
 let baseGlobals () =
-    let onMono = Type.GetType "Mono.Runtime" <> null
-    let fsVersion = typedefof<unit>.Assembly.GetName().Version
     let symbols = [
-        "*language*",       Str(sprintf "F# %i.%i" fsVersion.Minor fsVersion.MajorRevision)
-        "*implementation*", Str(if onMono then "Mono" else "Microsoft.NET")
+        "*language*",       Str "F#"
+        "*implementation*", Str "dotnet"
         "*release*",        Str(string Environment.Version)
         "*os*",             Str(string Environment.OSVersion.Platform)
         "*port*",           Str Revision
