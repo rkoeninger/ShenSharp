@@ -7,7 +7,7 @@ script:
   #- cd src
   - dotnet build Kl.sln
   - dotnet test Kl.sln
-  - dotnet run Kl.Get/Kl.Get.fsproj
-  - dotnet run Kl.Make/Kl.Make.fsproj
+  - dotnet run --project Kl.Get/Kl.Get.fsproj
+  - dotnet run --project Kl.Make/Kl.Make.fsproj
   - dotnet build Shen.sln
   - dotnet test Shen.sln
