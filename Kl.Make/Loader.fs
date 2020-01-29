@@ -34,24 +34,34 @@ let private import sourcePath sourceFiles =
     printfn "Applying post-import declarations..."
     postImport globals
 
+let private logWarnings messages =
+    messages
+    |> Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Warning)
+    |> Seq.iter (fun (m: FSharpErrorInfo) -> printfn "%O" m)
+
 let private raiseErrors messages =
     let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
     raise(Exception(String.Join("\r\n\r\n", Seq.map string errors)))
 
+let private handleResults (value, messages) =
+    logWarnings messages
+    if Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages |> Seq.length > 0
+        then raiseErrors messages
+        else value
+
 let private parseFile (checker: FSharpChecker) file =
     let input = SourceText.ofString(File.ReadAllText file)
-    let projOptions, projErrors =
+    let projOptions =
         checker.GetProjectOptionsFromScript(file, input)
         |> Async.RunSynchronously
-    if not projErrors.IsEmpty then
-        raiseErrors projErrors
-    let parsingOptions, parsingErrors =
+        |> handleResults
+    let parsingOptions =
         checker.GetParsingOptionsFromProjectOptions projOptions
-    if not parsingErrors.IsEmpty then
-        raiseErrors parsingErrors
+        |> handleResults
     let result =
         checker.ParseFile(file, input, parsingOptions)
         |> Async.RunSynchronously
+    logWarnings result.Errors
     match result.ParseTree with
     | Some tree -> tree
     | None -> raiseErrors result.Errors
