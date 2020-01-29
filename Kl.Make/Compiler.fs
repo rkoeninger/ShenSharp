@@ -285,4 +285,4 @@ let buildMetadataFile name =
             (stringExpr name)
          assemblyAttrDecl
             (longIdentWithDots ["TargetFramework"])
-            (stringExpr ".NETFramework,Version=v4.5")]
+            (stringExpr ".NETStandard,Version=v2.1")]
