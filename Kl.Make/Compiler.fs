@@ -38,6 +38,13 @@ let private toType targetType (fsExpr, currentType) =
     | _, FsUnit -> appIgnore fsExpr
     | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
+let rec private gatherConsElements = function
+    | Application(Constant(Sym "cons"), [x; y]) ->
+        match gatherConsElements y with
+        | xs, t -> x :: xs, t
+    | Constant(Empty) -> [], None
+    | x -> [], Some x
+
 let rec private buildApp ((name, globals, locals) as context) (f: Expr) args =
     match f with
     | Constant(Sym s) ->
@@ -160,6 +167,13 @@ and private buildExpr ((name, globals, locals) as context) (expr : Expr) =
         infixIdExpr "op_Equality" (xExpr |> toType t) (yExpr |> toType t), FsBoolean
     | GlobalCall({Name = id}, args) ->
         buildApp context (Constant(Sym id)) (List.map (buildExpr context >> toType KlValue) args), KlValue
+    | Application(Constant(Sym "cons"), [_; _]) ->
+        // toCons [x0; x1; x2 ... xN]
+        match gatherConsElements expr with
+        | xs, Some t ->
+            appIdExprN "toConsWithTail" [buildExpr context t |> fst; listExpr (List.map (buildExpr context >> fst) xs)], KlValue
+        | xs, _ ->
+            appIdExpr "toCons" (listExpr (List.map (buildExpr context >> fst) xs)), KlValue
     | Application(f, args) ->
         buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
     | klExpr -> failwithf "Unable to compile: %O" klExpr

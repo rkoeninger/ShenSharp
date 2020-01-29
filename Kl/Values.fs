@@ -175,9 +175,12 @@ let localInsert id locals =
 let localLookup x (locals: 'a list) =
     locals.[locals.Length - x - 1]
 
-let rec toCons = function
-    | [] -> Empty
-    | x :: xs -> Cons(x, toCons xs)
+let rec toConsWithTail t xs =
+    match xs with
+    | [] -> t
+    | x :: xs -> Cons(x, toConsWithTail t xs)
+
+let rec toCons = toConsWithTail Empty
 
 let rec toList = function
     | Empty -> []
