@@ -1,7 +1,6 @@
 ﻿module Shen.Repl
 
 open System
-open System.IO
 open Kl
 open Kl.Values
 open Kl.Evaluator

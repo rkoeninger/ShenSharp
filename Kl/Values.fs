@@ -21,6 +21,11 @@ let separateThread stackSize (f: unit -> unit) =
 /// </summary>
 let separateThread16MB = separateThread 16777216
 
+/// <summary>
+/// Runs continuation on separate thread with 16MB of stack space.
+/// </summary>
+let separateThread128MB = separateThread 134217728
+
 let rec removeAll keys m =
     match keys with
     | [] -> m
@@ -174,6 +179,10 @@ let localInsert id locals =
 
 let localLookup x (locals: 'a list) =
     locals.[locals.Length - x - 1]
+
+let isCons = function
+    | Cons _ -> true
+    | _ -> false
 
 let rec toConsWithTail t xs =
     match xs with

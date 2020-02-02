@@ -3,20 +3,8 @@ module ShenSharp.Shared
 open System
 open System.IO
 
-// TODO: fetch these from Directory.Build.props?
-//       remove unused ones
-
-[<Literal>]
-let Product = "ShenSharp"
-
-[<Literal>]
-let Description = "Shen for the Common Language Runtime"
-
 [<Literal>]
 let Author = "Robert Koeninger"
-
-[<Literal>]
-let Copyright = "Copyright © 2015-2020 " + Author
 
 [<Literal>]
 let Revision = "0.10.0.0"
@@ -35,7 +23,8 @@ let BuildConfig = "Debug"
 let BuildConfig = "Release"
 #endif
 
-let generatedModule = "Shen.Language"
+[<Literal>]
+let GeneratedModule = "Shen.Language"
 
 /// <summary>
 /// Combines file path fragments in platform specific way.
@@ -48,9 +37,9 @@ let rec combine = function
 /// <summary>
 /// Path to the source root where the .sln files are.
 /// </summary>
-let sourceRoot =
+let private sourceRoot =
     let mutable current = Environment.CurrentDirectory
-    while not <| current.EndsWith("ShenSharp") do
+    while not <| current.EndsWith "ShenSharp" do
         current <- Path.GetDirectoryName current
     current
 

@@ -239,13 +239,12 @@ let rec sequentialExpr = function
             loc)
 let doExpr expr = SynExpr.Do(expr, loc)
 let tupleExpr vals =
-    let expr =
-        SynExpr.Tuple(
+    parens
+        (SynExpr.Tuple(
             false,
             vals,
             List.replicate (List.length vals - 1) loc,
-            loc)
-    parens expr
+            loc))
 let listExpr vals = SynExpr.ArrayOrList(false, vals, loc)
 let arrayExpr vals = SynExpr.ArrayOrList(true, vals, loc)
 let rec lambdaExpr paramz body =

@@ -4,48 +4,34 @@ open System
 open System.IO
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Text
-open Kl
-open Kl.Evaluator
-open Kl.Startup
 open Kl.Values
 open Reader
 open Compiler
 open ShenSharp.Shared
 
-let private dllName = sprintf "%s.dll" generatedModule
-let private pdbName = sprintf "%s.pdb" generatedModule
-let private searchPattern = sprintf "%s.*" generatedModule
+let private dllName = sprintf "%s.dll" GeneratedModule
+let private pdbName = sprintf "%s.pdb" GeneratedModule
+let private searchPattern = sprintf "%s.*" GeneratedModule
 let private deps = ["Kl.dll"]
 let private sharedMetadataPath = fromRoot ["Shared.fs"]
 
 let private import sourcePath sourceFiles =
-    let globals = baseGlobals()
-    for file in sourceFiles do
-        printf "Loading %s " file
-        stdout.Flush()
-        let text = File.ReadAllText(combine [sourcePath; file])
-        for ast in readAll text do
-            printf "."
-            eval globals ast |> ignore
-        printfn ""
-    printfn "shen.initialise..."
-    eval globals <| toCons [Sym "shen.initialise"] |> ignore
-    printfn ""
-    printfn "Applying post-import declarations..."
-    postImport globals
+    sourceFiles
+    |> List.collect (fun f -> combine [sourcePath; f] |> File.ReadAllText |> readAll)
+    |> List.filter isCons
+
+let private filterMessages severity messages = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = severity) messages
 
 let private logWarnings messages =
-    messages
-    |> Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Warning)
-    |> Seq.iter (fun (m: FSharpErrorInfo) -> printfn "%O" m)
+    messages |> filterMessages FSharpErrorSeverity.Warning |> Seq.iter (fun (m: FSharpErrorInfo) -> printfn "%O" m)
 
 let private raiseErrors messages =
-    let errors = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages
+    let errors = filterMessages FSharpErrorSeverity.Error messages
     raise(Exception(String.Join("\r\n\r\n", Seq.map string errors)))
 
 let private handleResults (value, messages) =
     logWarnings messages
-    if Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = FSharpErrorSeverity.Error) messages |> Seq.length > 0
+    if filterMessages FSharpErrorSeverity.Error messages |> Seq.length > 0
         then raiseErrors messages
         else value
 
@@ -67,18 +53,17 @@ let private parseFile (checker: FSharpChecker) file =
     | None -> raiseErrors result.Errors
 
 let private emit (checker: FSharpChecker) asts =
-    let (errors, returnCode) =
+    let (errors, _) =
         checker.Compile(
             asts,
-            generatedModule,
+            GeneratedModule,
             dllName,
             deps,
             pdbName,
             false,
             false)
         |> Async.RunSynchronously
-    if returnCode <> 0 then
-        raiseErrors errors
+    handleResults ((), errors)
 
 let private copy source destination =
     if File.Exists destination then
@@ -88,11 +73,11 @@ let private copy source destination =
 
 let make sourcePath sourceFiles outputPath =
     let checker = FSharpChecker.Create()
-    let globals = import sourcePath sourceFiles
+    let exprs = import sourcePath sourceFiles
     printfn "Translating kernel..."
-    let ast = buildInstallationFile generatedModule globals
+    let ast = buildInstallationFile GeneratedModule exprs
     let sharedAst = parseFile checker sharedMetadataPath
-    let metadataAst = buildMetadataFile generatedModule
+    let metadataAst = buildMetadataFile GeneratedModule
     printfn "Compiling kernel..."
     emit checker [ast; sharedAst; metadataAst]
     printfn "Copying artifacts to output path..."

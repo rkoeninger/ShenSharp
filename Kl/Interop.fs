@@ -4,7 +4,6 @@ open System
 open System.IO
 open System.Reflection
 open Values
-open ShenSharp.Shared
 
 let private trim (s: string) = s.Trim()
 let private before i (s: string) = s.Substring(0, i)

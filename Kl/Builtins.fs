@@ -4,7 +4,6 @@ open System
 open System.Diagnostics
 open System.IO
 open System.Net
-open System.Reflection
 open Values
 open Interop
 open Evaluator
@@ -159,7 +158,6 @@ let console = Pipe {
 }
 
 let private epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-let private startTime = DateTime.UtcNow
 let private stopwatch = Stopwatch.StartNew()
 
 let ``kl_get-time`` _ = function

@@ -4,6 +4,12 @@ open Kl
 open Kl.Values
 open Syntax
 
+let private most = function
+    | _ :: xs -> xs
+    | [] -> []
+
+let private split (sep: char) (s: string) = s.Split sep |> Array.toList
+
 // All symbols from KL code need to be renamed so
 // they don't conflict with generated identifiers
 // or F# keywords
@@ -17,15 +23,11 @@ type private ExprType =
 
 let private simplestCommonType t0 t1 = if t0 = t1 then t0 else KlValue
 
-let private param id typeName = id, shortType typeName
-
 let private appIgnore expr =
+    // ~expr |> ignore
     infixIdExpr "op_PipeRight" expr (idExpr "ignore")
 
 let private idKl name = idExpr(rename name), KlValue
-
-let private appKl name args =
-    parens (appIdExprN (rename name) [idExpr "globals"; listExpr args])
 
 let private toType targetType (fsExpr, currentType) =
     match currentType, targetType with
@@ -38,251 +40,217 @@ let private toType targetType (fsExpr, currentType) =
     | _, FsUnit -> appIgnore fsExpr
     | _, _ -> failwithf "can't convert %O to %O" currentType targetType
 
+let rec private gatherDoExprs = function
+    | Form [Sym "do"; x; y] -> gatherDoExprs x @ gatherDoExprs y
+    | x -> [x]
+
 let rec private gatherConsElements = function
-    | Application(Constant(Sym "cons"), [x; y]) ->
-        match gatherConsElements y with
-        | xs, t -> x :: xs, t
-    | Constant(Empty) -> [], None
+    | Form [Sym "cons"; x; y] -> let xs, t = gatherConsElements y in x :: xs, t
+    | Empty -> [], None
     | x -> [], Some x
 
-let rec private buildApp ((name, globals, locals) as context) (f: Expr) args =
-    match f with
-    | Constant(Sym s) ->
-        // Apply local variable as function
-        if Set.contains s locals then
-            // apply globals (asFunction ~(rename s)) ~args
-            appIdExprN "apply"
-                [idExpr "globals"
-                 idKl s |> toType KlFunction
-                 listExpr args]
-        else
-            match !(intern globals s).Fun with
-            | Some systemf ->
-                let arity = functionArity systemf
-                // Curried application of overapplied function
-                if args.Length > arity then
-                    // apply globals (asFunction ~(buildApp context f args0)) args1
-                    let (args0, args1) = List.splitAt arity args
-                    appIdExprN "apply"
-                        [idExpr "globals"
-                         (buildApp context f args0, KlValue) |> toType KlFunction
-                         listExpr args1]
-                // Create partial application of native function
-                elif args.Length < arity then
-                    // Func(Partial(Compiled(~arity, ~(rename s)), ~args))
-                    (appIdExpr "Partial"
-                        (tupleExpr
-                            [appIdExpr "Compiled"
-                                (tupleExpr
-                                    [intExpr arity
-                                     idExpr(rename s)])
-                             listExpr args]), KlFunction) |> toType KlValue
-                // Apply native function directly
-                else
-                    // ~(rename s) globals ~args
-                    appKl s args
-            // Lookup and apply global function
-            | None ->
-                // apply globals (lookup globals ~s) ~args
-                appIdExprN "apply"
-                    [idExpr "globals"
-                     parens
-                        (appIdExprN "lookup"
-                            [idExpr "globals"
-                             stringExpr s])
-                     listExpr args]
-    // Apply function expression
-    | f ->
-        // apply globals (asFunction ~f) ~args
-        appIdExprN "apply"
-            [idExpr "globals"
-             buildExpr (name, globals, locals) f |> toType KlFunction
-             listExpr args]
+let private buildGlobalLookup s = parens (appIdExprN "lookup" [idExpr "globals"; stringExpr s])
 
-and private buildExpr ((name, globals, locals) as context) (expr : Expr) =
-    match expr with
-    | Constant Empty -> idExpr "Empty", KlValue
-    | Constant(Num x) -> appIdExpr "Num" (decimalExpr x), KlValue
-    | Constant(Str s) -> appIdExpr "Str" (stringExpr s), KlValue
-    | Constant(Bool b) -> boolExpr b, FsBoolean
-    | Constant(Sym s) ->
-        // ``kl_symbol-name`` OR Sym "symbol-name"
+let rec private buildApp (name, locals) f args =
+    let fExpr =
+        match f with
+        // apply globals (asFunction ~(rename s)) ~args
+        | Sym s when Set.contains s locals -> idKl s |> toType KlFunction
+        // apply globals (lookup globals ~s) ~args
+        | Sym s -> buildGlobalLookup s
+        // apply globals (asFunction ~f) ~args
+        | _ -> buildExpr (name, locals) f |> toType KlFunction
+    appIdExprN "apply" [idExpr "globals"; fExpr; listExpr args]
+
+and private buildExpr ((name, locals) as context) = function
+    | Empty -> idExpr "Empty", KlValue
+    | Num x -> appIdExpr "Num" (decimalExpr x), KlValue
+    | Str s -> appIdExpr "Str" (stringExpr s), KlValue
+    | Bool b -> boolExpr b, FsBoolean
+    | Sym s ->
         if Set.contains s locals
+            // ``kl_symbol-name``
             then idKl s
+            // Sym "symbol-name"
             else appIdExpr "Sym" (stringExpr s), KlValue
-    | Conjunction(left, right) ->
+    | CondForm clauses ->
+        let buildClause condition consequent rest =
+            match condition with
+            | Bool true -> consequent
+            | Bool false -> rest
+            | _ -> toCons [Sym "if"; condition; consequent; rest]
+        toCons [Sym "simple-error"; Str "No condition was true"]
+        |> List.foldBack (fun (condition, consequent) rest -> buildClause condition consequent rest) clauses
+        |> buildExpr context
+    | Form [Sym "and"; left; right] ->
         infixIdExpr "op_BooleanAnd"
             (parens (buildExpr context left  |> toType FsBoolean))
             (parens (buildExpr context right |> toType FsBoolean)), FsBoolean
-    | Disjunction(left, right) ->
+    | Form [Sym "or"; left; right] ->
         infixIdExpr "op_BooleanOr"
-                (parens (buildExpr context left  |> toType FsBoolean))
-                (parens (buildExpr context right |> toType FsBoolean)), FsBoolean
-    | Conditional(condition, consequent, alternative) ->
+            (parens (buildExpr context left  |> toType FsBoolean))
+            (parens (buildExpr context right |> toType FsBoolean)), FsBoolean
+    | Form [Sym "if"; condition; consequent; alternative] ->
         ifExpr
             (buildExpr context condition   |> toType FsBoolean)
             (buildExpr context consequent  |> toType KlValue)
             (buildExpr context alternative |> toType KlValue), KlValue
-    | Binding(param, binding, body) ->
+    | Form [Sym "let"; Sym param; binding; body] ->
         letExpr
             (rename param)
             (buildExpr context binding |> toType KlValue)
-            (buildExpr (name, globals, Set.add param locals) body |> toType KlValue), KlValue
-    | Anonymous(param, body) ->
-        compileF (name, globals) locals (Option.toList param) body, KlValue
-    | Catch(body, handler) ->
+            (buildExpr (name, Set.add param locals) body |> toType KlValue), KlValue
+    | Form [Sym "lambda"; Sym param; body] ->
+        buildFunction name locals [param] body
+    | Form [Sym "freeze"; body] ->
+        buildFunction name locals [] body
+    | Form [Sym "trap-error"; body; handler] ->
         let errExpr = appIdExpr "Err" (longIdExpr ["e"; "Message"])
         let handlerExpr =
             match handler with
-            | Anonymous(Some param, body) ->
+            | Form [Sym "lambda"; Sym param; body] ->
                 // let ~(rename param) = Err e.Message in ~body
-                (letExpr
+                letExpr
                     (rename param)
                     errExpr
-                    (buildExpr (name, globals, Set.add param locals) body |> toType KlValue))
-            | f -> buildApp context f [errExpr]
+                    (buildExpr (name, Set.add param locals) body |> toType KlValue)
+            | _ ->
+                buildApp context handler [errExpr]
         tryWithExpr (buildExpr context body |> toType KlValue) "e" handlerExpr, KlValue
-    | Sequential(exprs, last) ->
-        let builtExprs = List.map (buildExpr context >> toType FsUnit) exprs
-        let (lastExpr, lastType) = buildExpr context last
-        sequentialExpr(builtExprs @ [lastExpr]), lastType
-    | Definition _ ->
+    | Form [Sym "do"; _; _] as doExpr ->
+        let exprs = gatherDoExprs doExpr
+        let builtExprs = List.map (buildExpr context) exprs
+        let mostExprs = most builtExprs |> List.map (toType FsUnit)
+        let (lastExpr, lastType) = List.last builtExprs
+        sequentialExpr (mostExprs @ [lastExpr]), lastType
+    | Form [Sym "defun"; _; _; _] ->
         failwith "Can't compile defun not at top level"
-    | Assignment(symbol, expr) ->
-        appIdExprN (rename "set")
-            [idExpr "globals"
-             listExpr
-                [appIdExpr "Sym" (stringExpr symbol.Name)
-                 buildExpr context expr |> toType KlValue]], KlValue
-    | Retrieval symbol ->
-        appIdExprN (rename "value")
-            [idExpr "globals"
-             listExpr [appIdExpr "Sym" (stringExpr symbol.Name)]], KlValue
-    | GlobalCall({Name = "not"}, [expr]) ->
-        appIdExpr "not" (buildExpr context expr |> toType FsBoolean), FsBoolean
-    | GlobalCall({Name = "="}, [x; y]) ->
+    | Form [Sym "not"; arg] ->
+        appIdExpr "not" (buildExpr context arg |> toType FsBoolean), FsBoolean
+    | Form [Sym "="; x; y] ->
         let xExpr = buildExpr context x
         let yExpr = buildExpr context y
         let t = simplestCommonType (snd xExpr) (snd yExpr)
         infixIdExpr "op_Equality" (xExpr |> toType t) (yExpr |> toType t), FsBoolean
-    | GlobalCall({Name = id}, args) ->
-        buildApp context (Constant(Sym id)) (List.map (buildExpr context >> toType KlValue) args), KlValue
-    | Application(Constant(Sym "cons"), [_; _]) ->
+    | Form [Sym "cons"; _; _] as consExpr ->
         // toCons [x0; x1; x2 ... xN]
-        match gatherConsElements expr with
+        match gatherConsElements consExpr with
         | xs, Some t ->
-            appIdExprN "toConsWithTail" [buildExpr context t |> fst; listExpr (List.map (buildExpr context >> fst) xs)], KlValue
+            appIdExprN "toConsWithTail"
+                [
+                    buildExpr context t |> fst
+                    listExpr (List.map (buildExpr context >> fst) xs)
+                ], KlValue
         | xs, _ ->
             appIdExpr "toCons" (listExpr (List.map (buildExpr context >> fst) xs)), KlValue
-    | Application(f, args) ->
+    | Form(f :: args) ->
         buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
-    | klExpr -> failwithf "Unable to compile: %O" klExpr
+    | klExpr ->
+        failwithf "Unable to compile: %O" klExpr
 
-and private compileF (name, globals) locals paramz body =
+and private buildFunction name locals paramz body =
     let arity = List.length paramz
-    ((appIdExpr "Compiled"
+    // Compiled(
+    //      ~arity,
+    //      fun globals -> function
+    //          | [~@paramz] -> ~body
+    //          | args -> argsErr "Lambda@~name" ["value"; ...] args
+    // )
+    (appIdExpr "Compiled"
         (tupleExpr
-            [intExpr arity
-             (lambdaExpr
-                [param "globals" "Globals"]
-                (matchLambdaExpr
-                    [matchClause
-                        (listPat(List.map (rename >> namePat) paramz))
-                        (buildExpr
-                            (name, globals, Set.union locals (Set.ofList paramz))
-                            body |> toType KlValue)
-                     matchClause
-                        (namePat "args")
-                        (appIdExprN "argsErr"
-                            [stringExpr("Lambda@" + name)
-                             listExpr(List.replicate arity (stringExpr "value"))
-                             idExpr "args"])]))])), KlFunction) |> toType KlValue
+            [
+                intExpr arity
+                (lambdaExpr
+                    ["globals", shortType "Globals"]
+                    (matchLambdaExpr
+                        [
+                            matchClause
+                                (listPat (List.map (rename >> namePat) paramz))
+                                (buildExpr
+                                    (name, Set.union locals (Set.ofList paramz))
+                                    body |> toType KlValue)
+                            matchClause
+                                (namePat "args")
+                                (appIdExprN "argsErr"
+                                    [
+                                        stringExpr ("Lambda@" + name)
+                                        listExpr (List.replicate arity (stringExpr "value"))
+                                        idExpr "args"
+                                    ])
+                        ]))
+            ])), KlFunction
 
-let private compileDefun globals (name, f) =
+let private argName = function
+    | Sym name -> name
+    | _ -> failwith "defun arg name must be a symbol"
+
+let private compileDefun = function
     // and ~(rename name) (globals: Globals) = function
     //     | [~@(map rename paramz)] -> ~body
     //     | args -> argsErr ~name ~(replicate arity "value") args
-    match f with
-    | Interpreted(paramz, body) ->
-        let arity = List.length paramz
+    | Form [Sym "defun"; Sym name; Form args; body] ->
+        let arity = List.length args
+        let argNames = List.map argName args
         letBinding
             (rename name)
-            [param "globals" "Globals"]
+            ["globals", shortType "Globals"]
             (matchLambdaExpr
-                [matchClause
-                    (listPat(List.map (rename >> namePat) paramz))
-                    (buildExpr (name, globals, Set.ofList paramz) body |> toType KlValue)
-                 matchClause
-                    (namePat "args")
-                    (appIdExprN "argsErr"
-                        [stringExpr name
-                         listExpr(List.replicate arity (stringExpr "value"))
-                         idExpr "args"])])
-    | _ -> failwith "Can't compile functions other than interpreted defuns"
+                [
+                    matchClause
+                        (listPat (List.map (rename >> namePat) argNames))
+                        (buildExpr (name, Set.ofList argNames) body |> toType KlValue)
+                    matchClause
+                        (namePat "args")
+                        (appIdExprN "argsErr"
+                            [
+                                stringExpr name
+                                listExpr (List.replicate arity (stringExpr "value"))
+                                idExpr "args"
+                            ])
+                ])
+    | _ -> failwith "Can't compile top-level forms other than defuns"
 
-let private installDefun (name, f) =
+let private installDefun = function
     // define globals ~name (Compiled(~argcount, ~(rename name)))
-    appIdExprN "define"
-        [idExpr "globals"
-         stringExpr name
-         (appIdExpr "Compiled"
-            (tupleExpr
-                [intExpr(functionArity f)
-                 idExpr(rename name)]))]
+    | Form [Sym "defun"; Sym name; Form args; _] ->
+        appIdExprN "define"
+            [
+                idExpr "globals"
+                stringExpr name
+                (appIdExpr "Compiled"
+                    (tupleExpr
+                        [
+                            intExpr args.Length
+                            idExpr (rename name)
+                        ]))
+            ]
+    | _ -> failwith "Can't install a non-defun expression"
 
-let rec private buildValue context = function
-    | Empty -> idExpr "Empty"
-    | Num x -> appIdExpr "Num" (decimalExpr x)
-    | Str s -> appIdExpr "Str" (stringExpr s)
-    | Sym s -> appIdExpr "Sym" (stringExpr s)
-    | Cons(x, y) ->
-        appIdExpr "Cons"
-            (tupleExpr
-                [buildValue context x
-                 buildValue context y])
-    | Vec array ->
-        appIdExpr "Vec"
-            (arrayExpr(List.map (buildValue context) (Seq.toList array)))
-    | Err s -> appIdExpr "Err" (stringExpr s)
-    | Func(Interpreted(paramz, body)) ->
-        compileF context Set.empty paramz body
-    | Pipe io when io.Name = "Console" -> idExpr "console"
-    | value -> failwithf "Can't build value: %A" value
-
-let private installSymbol context (id, value) =
-    appIdExprN "assign" [
-        idExpr "globals"
-        stringExpr id
-        buildValue context value]
-
-let buildInstallationFile (name: string) globals =
-    //let symbols = nonPrimitiveSymbols globals
-    let defuns = nonPrimitiveFunctions globals
-    moduleFile (name.Split('.') |> Array.toList)
-        [openDecl ["Kl"]
-         openDecl ["Kl"; "Values"]
-         openDecl ["Kl"; "Evaluator"]
-         openDecl ["Kl"; "Builtins"]
-         openDecl ["Kl"; "Startup"]
-         letMultiDecl(List.map (compileDefun globals) defuns)
-         letDecl
-            "install"
-            [param "globals" "Globals"]
-            (sequentialExpr
-                (List.concat
-                    [
-                     //List.map (installSymbol (name, globals)) symbols
-                     List.map installDefun defuns
-                     [appExpr (idExpr "kl_shen.initialise") unitExpr]
-                     [idExpr "globals"]]))]
+let buildInstallationFile name exprs =
+    moduleFile (split '.' name)
+        [
+            openDecl ["Kl"]
+            openDecl ["Kl"; "Values"]
+            openDecl ["Kl"; "Evaluator"]
+            openDecl ["Kl"; "Builtins"]
+            openDecl ["Kl"; "Startup"]
+            letMultiDecl (List.map compileDefun exprs)
+            letDecl
+                "install"
+                ["globals", shortType "Globals"]
+                (sequentialExpr
+                    (List.concat
+                        [
+                            List.map installDefun exprs
+                            [appExpr (idExpr "kl_shen.initialise") unitExpr]
+                            [idExpr "globals"]
+                        ]))
+        ]
 
 let buildMetadataFile name =
+    let meta key value = assemblyAttrDecl (longIdentWithDots key) (stringExpr value)
     moduleFile ["ShenSharp"; "Metadata"]
-        [openDecl ["System"; "Reflection"]
-         openDecl ["System"; "Runtime"; "Versioning"]
-         assemblyAttrDecl
-            (longIdentWithDots ["AssemblyTitle"])
-            (stringExpr name)
-         assemblyAttrDecl
-            (longIdentWithDots ["TargetFramework"])
-            (stringExpr ".NETStandard,Version=v2.1")]
+        [
+            meta ["System"; "Reflection"; "AssemblyTitle"] name
+            meta ["System"; "Runtime"; "Versioning"; "TargetFramework"] ".NETStandard,Version=v2.1"
+        ]
