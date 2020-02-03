@@ -74,13 +74,13 @@ and private buildExpr ((name, locals) as context) = function
             // Sym "symbol-name"
             else appIdExpr "Sym" (stringExpr s), KlValue
     | CondForm clauses ->
-        let buildClause condition consequent rest =
+        let buildClause (condition, consequent) rest =
             match condition with
             | Bool true -> consequent
             | Bool false -> rest
             | _ -> toCons [Sym "if"; condition; consequent; rest]
         toCons [Sym "simple-error"; Str "No condition was true"]
-        |> List.foldBack (fun (condition, consequent) rest -> buildClause condition consequent rest) clauses
+        |> List.foldBack buildClause clauses
         |> buildExpr context
     | Form [Sym "and"; left; right] ->
         infixIdExpr "op_BooleanAnd"
@@ -101,9 +101,9 @@ and private buildExpr ((name, locals) as context) = function
             (buildExpr context binding |> toType KlValue)
             (buildExpr (name, Set.add param locals) body |> toType KlValue), KlValue
     | Form [Sym "lambda"; Sym param; body] ->
-        buildFunction name locals [param] body
+        buildFunction name locals [param] body, KlValue
     | Form [Sym "freeze"; body] ->
-        buildFunction name locals [] body
+        buildFunction name locals [] body, KlValue
     | Form [Sym "trap-error"; body; handler] ->
         let errExpr = appIdExpr "Err" (longIdExpr ["e"; "Message"])
         let handlerExpr =
@@ -127,36 +127,36 @@ and private buildExpr ((name, locals) as context) = function
         failwith "Can't compile defun not at top level"
     | Form [Sym "not"; arg] ->
         appIdExpr "not" (buildExpr context arg |> toType FsBoolean), FsBoolean
-    | Form [Sym "="; x; y] ->
-        let xExpr = buildExpr context x
-        let yExpr = buildExpr context y
-        let t = simplestCommonType (snd xExpr) (snd yExpr)
-        infixIdExpr "op_Equality" (xExpr |> toType t) (yExpr |> toType t), FsBoolean
+    | Form [Sym "="; left; right] ->
+        let leftExpr = buildExpr context left
+        let rightExpr = buildExpr context right
+        let t = simplestCommonType (snd leftExpr) (snd rightExpr)
+        infixIdExpr "op_Equality" (leftExpr |> toType t) (rightExpr |> toType t), FsBoolean
     | Form [Sym "cons"; _; _] as consExpr ->
-        // toCons [x0; x1; x2 ... xN]
         match gatherConsElements consExpr with
         | xs, Some t ->
+            // toConsWithTail ~t [~@xs]
             appIdExprN "toConsWithTail"
                 [
                     buildExpr context t |> fst
                     listExpr (List.map (buildExpr context >> fst) xs)
                 ], KlValue
         | xs, _ ->
+            // toCons [~@xs]
             appIdExpr "toCons" (listExpr (List.map (buildExpr context >> fst) xs)), KlValue
     | Form(f :: args) ->
         buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
-    | klExpr ->
-        failwithf "Unable to compile: %O" klExpr
+    | expr ->
+        failwithf "Unable to compile: %O" expr
 
 and private buildFunction name locals paramz body =
     let arity = List.length paramz
     // Compiled(
     //      ~arity,
     //      fun globals -> function
-    //          | [~@paramz] -> ~body
-    //          | args -> argsErr "Lambda@~name" ["value"; ...] args
-    // )
-    (appIdExpr "Compiled"
+    //          | [~@(map rename paramz)] -> ~body
+    //          | args -> argsErr ("Lambda@" + ~name) ~(replicate arity "value") args)
+    ((appIdExpr "Compiled"
         (tupleExpr
             [
                 intExpr arity
@@ -178,7 +178,7 @@ and private buildFunction name locals paramz body =
                                         idExpr "args"
                                     ])
                         ]))
-            ])), KlFunction
+            ])), KlFunction) |> toType KlValue
 
 let private argName = function
     | Sym name -> name
@@ -242,7 +242,7 @@ let buildInstallationFile name exprs =
                     (List.concat
                         [
                             List.map installDefun exprs
-                            [appExpr (idExpr "kl_shen.initialise") unitExpr]
+                            [appExprN (idExpr "kl_shen.initialise") [(idExpr "globals"); (listExpr [])] |> appIgnore]
                             [idExpr "globals"]
                         ]))
         ]
