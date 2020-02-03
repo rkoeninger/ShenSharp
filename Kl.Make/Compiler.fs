@@ -138,12 +138,12 @@ and private buildExpr ((name, locals) as context) = function
             // toConsWithTail ~t [~@xs]
             appIdExprN "toConsWithTail"
                 [
-                    buildExpr context t |> fst
-                    listExpr (List.map (buildExpr context >> fst) xs)
+                    buildExpr context t |> toType KlValue
+                    listExpr (List.map (buildExpr context >> toType KlValue) xs)
                 ], KlValue
         | xs, _ ->
             // toCons [~@xs]
-            appIdExpr "toCons" (listExpr (List.map (buildExpr context >> fst) xs)), KlValue
+            appIdExpr "toCons" (listExpr (List.map (buildExpr context >> toType KlValue) xs)), KlValue
     | Form(f :: args) ->
         buildApp context f (List.map (buildExpr context >> toType KlValue) args), KlValue
     | expr ->
@@ -179,6 +179,8 @@ and private buildFunction name locals paramz body =
                                     ])
                         ]))
             ])), KlFunction) |> toType KlValue
+
+// TODO: clean up this (ast, type) approach with a fabr type like in ShenScript
 
 let private argName = function
     | Sym name -> name
