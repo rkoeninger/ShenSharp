@@ -52,6 +52,8 @@ let private parseFile (checker: FSharpChecker) file =
     | Some tree -> tree
     | None -> raiseErrors result.Errors
 
+// TODO: specify arguments to exclude mscorlib.dll
+
 let private emit (checker: FSharpChecker) asts =
     let (errors, _) =
         checker.Compile(

@@ -249,6 +249,9 @@ let buildInstallationFile name exprs =
                         ]))
         ]
 
+// TODO: get TargetFramework from Kl.dll
+// TODO: specify BuildConfig
+
 let buildMetadataFile name =
     let meta key value = assemblyAttrDecl (longIdentWithDots key) (stringExpr value)
     moduleFile ["ShenSharp"; "Metadata"]
