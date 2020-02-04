@@ -68,7 +68,7 @@ let rec private parse ((globals, locals) as env) = function
             | Form(Sym "do" :: exprs) -> List.collect flattenDo exprs
             | expr -> [expr]
         let exprs = List.map (parse env) (flattenDo expr)
-        Sequential(butLast exprs, List.last exprs)
+        Sequential(most exprs, List.last exprs)
     | DefunForm(name, paramz, body) ->
         Definition(intern globals name, paramz, parse (globals, Set.union (Set.ofList paramz) locals) body)
     | Form [Sym "set"; Sym id; value] when not(Set.contains id locals) ->

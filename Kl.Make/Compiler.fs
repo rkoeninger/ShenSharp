@@ -4,13 +4,6 @@ open Kl
 open Kl.Values
 open Syntax
 
-let rec private most = function
-    | [] -> []
-    | [x; _] -> [x]
-    | x :: xs -> x :: most xs
-
-let private split (sep: char) (s: string) = s.Split sep |> Array.toList
-
 // All symbols from KL code need to be renamed so
 // they don't conflict with generated identifiers
 // or F# keywords
@@ -183,17 +176,13 @@ and private buildFunction name locals paramz body =
 
 // TODO: clean up this (ast, type) approach with a fabr type like in ShenScript
 
-let private argName = function
-    | Sym name -> name
-    | _ -> failwith "defun arg name must be a symbol"
-
 let private compileDefun = function
     // and ~(rename name) (globals: Globals) = function
     //     | [~@(map rename paramz)] -> ~body
     //     | args -> argsErr ~name ~(replicate arity "value") args
     | Form [Sym "defun"; Sym name; Form args; body] ->
         let arity = List.length args
-        let argNames = List.map argName args
+        let argNames = List.map param args
         letBinding
             (rename name)
             ["globals", shortType "Globals"]

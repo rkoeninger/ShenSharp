@@ -31,14 +31,16 @@ let rec removeAll keys m =
     | [] -> m
     | k :: ks -> removeAll ks (Map.remove k m)
 
-let rec butLast = function
+let rec most = function
     | [] | [_] -> []
-    | x :: xs -> x :: butLast xs
+    | x :: xs -> x :: most xs
 
-let rec filterSome = function
+let rec sift = function
     | [] -> []
-    | Some x :: xs -> x :: filterSome xs
-    | None :: xs -> filterSome xs
+    | Some x :: xs -> x :: sift xs
+    | None :: xs -> sift xs
+
+let split (sep: char) (s: string) = s.Split sep |> Array.toList
 
 // Booleans are just these two particular symbols.
 let True = Sym "true"
@@ -107,22 +109,23 @@ let nonPrimitiveSymbols (globals: Globals) =
         if !kv.Value.IsProtected
             then None
             else Option.map (fun value -> (kv.Key, value)) !kv.Value.Val
-    filterSome(Seq.toList(Seq.map ps globals.Symbols))
+    sift (Seq.toList(Seq.map ps globals.Symbols))
 
 let nonPrimitiveFunctions (globals: Globals) =
     let pf (kv: KeyValuePair<_, _>) =
         if !kv.Value.IsProtected
             then None
             else Option.map (fun f -> (kv.Key, f)) !kv.Value.Fun
-    filterSome(Seq.toList(Seq.map pf globals.Symbols))
+    sift (Seq.toList(Seq.map pf globals.Symbols))
 
 let intern (globals: Globals) id =
     globals.Symbols.GetOrAdd(id,
-        fun _ ->
-            {Name = id
-             IsProtected = ref false
-             Val = ref None
-             Fun = ref None})
+        fun _ -> {
+            Name = id
+            IsProtected = ref false
+            Val = ref None
+            Fun = ref None
+        })
 
 let unprotectAll (globals: Globals) =
     for kv in globals.Symbols do
@@ -264,11 +267,13 @@ let (|CondForm|_|) = function
     | Form(Sym "cond" :: CondClauses clauses) -> Some clauses
     | _ -> None
 
-let private param = function
+let private paramOption = function
     | Sym s -> Some s
     | _ -> None
 
-let private (|ParamList|_|) = toListOption >> Option.bind (List.map param >> sequenceOption)
+let param = paramOption >> Option.defaultWith (fun () -> failwith "defun param must be a symbol")
+
+let private (|ParamList|_|) = toListOption >> Option.bind (List.map paramOption >> sequenceOption)
 
 let (|DefunForm|_|) = function
     | Form [Sym "defun"; Sym name; ParamList paramz; body] -> Some(name, paramz, body)
