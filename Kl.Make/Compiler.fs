@@ -43,18 +43,19 @@ let rec private gatherConsElements = function
     | Empty -> [], None
     | x -> [], Some x
 
-let private buildGlobalLookup s = parens (appIdExprN "lookup" [idExpr "globals"; stringExpr s])
+let private appApply f args = appIdExprN "apply" [idExpr "globals"; f; listExpr args]
 
 let rec private buildApp (name, locals) f args =
-    let fExpr =
-        match f with
-        // apply globals (asFunction ~(rename s)) ~args
-        | Sym s when Set.contains s locals -> idKl s |> toType KlFunction
-        // apply globals (lookup globals ~s) ~args
-        | Sym s -> buildGlobalLookup s
-        // apply globals (asFunction ~f) ~args
-        | _ -> buildExpr (name, locals) f |> toType KlFunction
-    appIdExprN "apply" [idExpr "globals"; fExpr; listExpr args]
+    match f with
+    // apply globals (asFunction ~(rename s)) ~args
+    | Sym s when Set.contains s locals ->
+        appApply (idKl s |> toType KlFunction) args
+    // apply globals (lookup globals ~s) ~args
+    | Sym s ->
+        appExprN (idKl s |> fst) [idExpr "globals"; listExpr args]
+    // apply globals (asFunction ~f) ~args
+    | _ ->
+        appApply (buildExpr (name, locals) f |> toType KlFunction) args
 
 and private buildExpr ((name, locals) as context) = function
     | Empty -> idExpr "Empty", KlValue
