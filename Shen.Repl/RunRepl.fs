@@ -46,13 +46,12 @@ let rec private evalOptions globals = function
         evalOptions globals rest
 
 let private runRepl args () =
-    let globals = newRuntime()
-    assign globals "*argv*" (toCons (List.map Str args))
     try
+        let globals = newRuntime ()
         if evalOptions globals args then
-            eval globals (toCons [Sym "shen.shen"]) |> ignore
+            toCons [Sym "shen.repl"] |> eval globals |> ignore
     with
         e -> printfn "Unhandled error: %s" e.Message
 
 [<EntryPoint>]
-let main args = separateThread16MB(runRepl(Array.toList args))
+let main args = separateThread16MB (runRepl (Array.toList args))
