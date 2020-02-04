@@ -24,7 +24,7 @@ let BuildConfig = "Release"
 #endif
 
 [<Literal>]
-let GeneratedModule = "Shen.Language"
+let GeneratedModule = "Shen.Kernel"
 
 /// <summary>
 /// Combines file path fragments in platform specific way.
