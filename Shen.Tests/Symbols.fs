@@ -1,34 +1,37 @@
 ﻿module Shen.Tests.Symbols
 
 open NUnit.Framework
+open Shen.Runtime
 open Assertions
+
+let private globals = newRuntime ()
 
 [<Test>]
 let ``the symbols 'true and 'false should be recognized as booleans``() =
-    assertTrue "(boolean? (intern \"true\"))"
-    assertTrue "(boolean? (intern \"false\"))"
-    assertTrue "(boolean? true)"
-    assertTrue "(boolean? false)"
-    assertTrue "(boolean? (= 0 0))"
-    assertTrue "(boolean? (= 0 1))"
-    assertFalse "(boolean? abc)"
-    assertFalse "(boolean? (intern \"abc\"))"
+    assertTrue globals "(boolean? (intern \"true\"))"
+    assertTrue globals "(boolean? (intern \"false\"))"
+    assertTrue globals "(boolean? true)"
+    assertTrue globals "(boolean? false)"
+    assertTrue globals "(boolean? (= 0 0))"
+    assertTrue globals "(boolean? (= 0 1))"
+    assertFalse globals "(boolean? abc)"
+    assertFalse globals "(boolean? (intern \"abc\"))"
 
 [<Test>]
 let ``only non-boolean symbols should be recognized as symbols``() =
-    assertFalse "(symbol? ())"
-    assertFalse "(symbol? (cons 0 ()))"
-    assertFalse "(symbol? 0)"
-    assertFalse "(symbol? \"abc\")"
-    assertFalse "(symbol? true)"
-    assertFalse "(symbol? false)"
-    assertFalse "(symbol? (intern \"true\"))"
-    assertFalse "(symbol? (intern \"false\"))"
-    assertFalse "(symbol? (/. X X))"
-    assertFalse "(symbol? (freeze 0))"
-    assertFalse "(symbol? (stinput))"
-    assertFalse "(symbol? (vector 0))"
-    assertTrue "(symbol? abc)"
-    assertTrue "(symbol? (intern \"abc\"))"
-    assertTrue "(symbol? u87.dfg)"
-    assertTrue "(symbol? (intern \"fsdf{}.$%2\"))"
+    assertFalse globals "(symbol? ())"
+    assertFalse globals "(symbol? (cons 0 ()))"
+    assertFalse globals "(symbol? 0)"
+    assertFalse globals "(symbol? \"abc\")"
+    assertFalse globals "(symbol? true)"
+    assertFalse globals "(symbol? false)"
+    assertFalse globals "(symbol? (intern \"true\"))"
+    assertFalse globals "(symbol? (intern \"false\"))"
+    assertFalse globals "(symbol? (/. X X))"
+    assertFalse globals "(symbol? (freeze 0))"
+    assertFalse globals "(symbol? (stinput))"
+    assertFalse globals "(symbol? (vector 0))"
+    assertTrue globals "(symbol? abc)"
+    assertTrue globals "(symbol? (intern \"abc\"))"
+    assertTrue globals "(symbol? u87.dfg)"
+    assertTrue globals "(symbol? (intern \"fsdf{}.$%2\"))"

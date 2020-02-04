@@ -4,9 +4,10 @@ open Kl
 open Kl.Values
 open Syntax
 
-let private most = function
-    | _ :: xs -> xs
+let rec private most = function
     | [] -> []
+    | [x; _] -> [x]
+    | x :: xs -> x :: most xs
 
 let private split (sep: char) (s: string) = s.Split sep |> Array.toList
 

@@ -19,6 +19,7 @@ let baseGlobals () =
         "*porters*",        Str Author
         "*stinput*",        console
         "*stoutput*",       console
+        "*sterror*",        console
         "*home-directory*", Str Environment.CurrentDirectory
     ]
     let functions = [

@@ -4,10 +4,8 @@ open NUnit.Framework
 open Kl.Values
 open Shen.Runtime
 
-let assertTrue syntax =
-    let globals = newRuntime ()
+let assertTrue globals syntax =
     Assert.IsTrue((True = evalSyntax globals syntax))
 
-let assertFalse syntax =
-    let globals = newRuntime ()
+let assertFalse globals syntax =
     Assert.IsTrue((False = evalSyntax globals syntax))
