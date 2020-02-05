@@ -1,6 +1,6 @@
 [![Shen Version](https://img.shields.io/badge/shen-22.2-blue.svg)](https://github.com/Shen-Language)
 [![Latest Nuget](https://img.shields.io/nuget/v/ShenSharp.svg)](https://www.nuget.org/packages/ShenSharp)
-[![Build Status](https://img.shields.io/travis/rkoeninger/ShenSharp/master.svg?label=mono)](https://travis-ci.org/rkoeninger/ShenSharp)
+[![Build Status](https://img.shields.io/travis/rkoeninger/ShenSharp/master.svg?label=build)](https://travis-ci.org/rkoeninger/ShenSharp)
 
 # Shen for the Common Language Runtime
 
