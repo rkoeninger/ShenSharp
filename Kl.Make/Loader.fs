@@ -4,6 +4,7 @@ open System
 open System.IO
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Text
+open Kl
 open Kl.Values
 open Reader
 open Compiler
@@ -18,7 +19,6 @@ let private sharedMetadataPath = fromRoot ["Shared.fs"]
 let private import sourcePath sourceFiles =
     sourceFiles
     |> List.collect (fun f -> combine [sourcePath; f] |> File.ReadAllText |> readAll)
-    |> List.filter isCons
 
 let private filterMessages severity messages = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = severity) messages
 
@@ -73,9 +73,15 @@ let private copy source destination =
     Directory.CreateDirectory(Path.GetDirectoryName destination) |> ignore
     File.WriteAllBytes(destination, File.ReadAllBytes source)
 
+let private filterDefuns excluded =
+    let filter = function
+        | Form [Sym "defun"; Sym name; _; _] -> List.contains name excluded |> not
+        | _ -> false // Exclude all non-defuns too
+    List.filter filter
+
 let make sourcePath sourceFiles outputPath =
     let checker = FSharpChecker.Create()
-    let exprs = import sourcePath sourceFiles
+    let exprs = import sourcePath sourceFiles |> filterDefuns ["cd"]
     printfn "Translating kernel..."
     let ast = buildInstallationFile GeneratedModule exprs
     let sharedAst = parseFile checker sharedMetadataPath

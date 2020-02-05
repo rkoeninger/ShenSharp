@@ -27,6 +27,13 @@ type ExtensionMethods() =
         load globals path
 
     /// <summary>
+    /// Changes working directory to given path.
+    /// </summary>
+    [<Extension>]
+    static member ChangeDirectory(globals, path) =
+        changeDirectory globals path
+
+    /// <summary>
     /// Defines a zero-parameter native function.
     /// </summary>
     [<Extension>]

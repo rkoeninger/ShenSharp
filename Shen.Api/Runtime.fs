@@ -2,6 +2,7 @@
 
 open Kl
 open Kl.Values
+open Kl.Builtins
 open Kl.Startup
 open Shen.Kernel
 
@@ -22,6 +23,12 @@ let evalSyntax globals syntax = kl_eval globals [kl_read globals [pipeString syn
 /// </summary>
 [<CompiledName "Load">]
 let load globals path = kl_load globals [Str path] |> ignore
+
+/// <summary>
+/// Changes working directory to given path.
+/// </summary>
+[<CompiledName "ChangeDirectory">]
+let changeDirectory globals path = kl_cd globals [Str path] |> ignore
 
 /// <summary>
 /// Defines a zero-parameter native function.
