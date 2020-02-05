@@ -240,13 +240,17 @@ let buildInstallationFile name exprs =
                         ]))
         ]
 
-// TODO: get TargetFramework from Kl.dll
-// TODO: specify BuildConfig
-
-let buildMetadataFile name =
+let buildMetadataFile name copyright version config =
     let meta key value = assemblyAttrDecl (longIdentWithDots key) (stringExpr value)
     moduleFile ["ShenSharp"; "Metadata"]
         [
             meta ["System"; "Reflection"; "AssemblyTitle"] name
+            meta ["System"; "Reflection"; "AssemblyDescription"] "Pre-compiled Shen kernel"
+            meta ["System"; "Reflection"; "AssemblyProduct"] "ShenSharp"
+            meta ["System"; "Reflection"; "AssemblyCopyright"] copyright
+            meta ["System"; "Reflection"; "AssemblyVersion"] version
+            meta ["System"; "Reflection"; "AssemblyFileVersion"] version
+            meta ["System"; "Reflection"; "AssemblyInformationalVersion"] <| version.Substring(0, version.Length - 2)
+            meta ["System"; "Reflection"; "AssemblyConfiguration"] config
             meta ["System"; "Runtime"; "Versioning"; "TargetFramework"] ".NETStandard,Version=v2.1"
         ]

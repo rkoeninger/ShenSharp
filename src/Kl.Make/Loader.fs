@@ -84,7 +84,7 @@ let make sourcePath sourceFiles outputPath =
     printfn "Translating kernel..."
     let ast = buildInstallationFile GeneratedModule exprs
     let sharedAst = parseFile checker sharedMetadataPath
-    let metadataAst = buildMetadataFile GeneratedModule
+    let metadataAst = buildMetadataFile GeneratedModule Copyright Revision BuildConfig
     printfn "Compiling kernel..."
     emit checker [ast; sharedAst; metadataAst]
     printfn "Copying artifacts to output path..."

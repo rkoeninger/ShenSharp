@@ -7,6 +7,9 @@ open System.IO
 let Author = "Robert Koeninger"
 
 [<Literal>]
+let Copyright = "Copyright © Robert Koeninger 2015-2020"
+
+[<Literal>]
 let Revision = "0.10.0.0"
 
 [<Literal>]
