@@ -1,8 +1,7 @@
-packages/
+/kernel/
 TestResults/
 *.user
 *.suo
 .vs/
 bin/
 obj/
-Artifacts/

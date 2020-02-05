@@ -2,16 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <AssemblyName>Shen.TestSuite</AssemblyName>
-    <PackageId>Shen.TestSuite</PackageId>
-    <RootNamespace>Shen.TestSuite</RootNamespace>
-    <Description>Shen kernel test suite executable</Description>
+    <AssemblyName>Shen.Repl</AssemblyName>
+    <PackageId>Shen.Repl</PackageId>
+    <RootNamespace>Shen.Repl</RootNamespace>
+    <Description>Shen command-line REPL executable</Description>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="..\Shared.fs" />
-    <Compile Include="RunTestSuite.fs" />
+    <Compile Include="RunRepl.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <Reference Include="Shen.Kernel">
-      <HintPath>..\Artifacts\$(Configuration)\Shen.Kernel.dll</HintPath>
+      <HintPath>..\..\kernel\dotnet\$(Configuration)\Shen.Kernel.dll</HintPath>
     </Reference>
   </ItemGroup>
 

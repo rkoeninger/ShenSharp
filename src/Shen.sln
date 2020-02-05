@@ -6,11 +6,12 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Kl", "Kl\Kl.fsproj", "{2490
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4ED4DA60-F152-401A-ACFD-AC60CA8BC08C}"
 	ProjectSection(SolutionItems) = preProject
-		.gitignore = .gitignore
-		.travis.yml = .travis.yml
-		CHANGELOG.md = CHANGELOG.md
+		..\.gitignore = ..\.gitignore
+		..\.travis.yml = ..\.travis.yml
+		..\CHANGELOG.md = ..\CHANGELOG.md
 		Directory.Build.props = Directory.Build.props
-		README.md = README.md
+		..\LICENSE.txt = ..\LICENSE.txt
+		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Repl", "Shen.Repl\Shen.Repl.fsproj", "{06344109-7314-4086-AD31-BFF125F211F5}"

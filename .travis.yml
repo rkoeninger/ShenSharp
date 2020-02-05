@@ -4,7 +4,7 @@ language: csharp
 mono: none
 dotnet: 3.1
 script:
-  #- cd src
+  - cd src
   - dotnet build Kl.sln
   - dotnet test Kl.sln
   - dotnet run --project Kl.Get/Kl.Get.fsproj

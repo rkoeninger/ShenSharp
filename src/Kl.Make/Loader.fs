@@ -14,11 +14,10 @@ let private dllName = sprintf "%s.dll" GeneratedModule
 let private pdbName = sprintf "%s.pdb" GeneratedModule
 let private searchPattern = sprintf "%s.*" GeneratedModule
 let private deps = ["Kl.dll"]
-let private sharedMetadataPath = fromRoot ["Shared.fs"]
+let private sharedMetadataPath = fromRoot ["src"; "Shared.fs"]
 
-let private import sourcePath sourceFiles =
-    sourceFiles
-    |> List.collect (fun f -> combine [sourcePath; f] |> File.ReadAllText |> readAll)
+let private import sourcePath =
+    List.collect (fun f -> combine [sourcePath; f] |> File.ReadAllText |> readAll)
 
 let private filterMessages severity messages = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = severity) messages
 

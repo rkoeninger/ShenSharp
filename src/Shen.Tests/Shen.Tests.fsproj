@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <Reference Include="Shen.Kernel">
-      <HintPath>..\Artifacts\$(Configuration)\Shen.Kernel.dll</HintPath>
+      <HintPath>..\..\kernel\dotnet\$(Configuration)\Shen.Kernel.dll</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -7,7 +7,7 @@ open Kl.Values
 open Shen.Runtime
 open ShenSharp.Shared
 
-let testFolder = fromRoot ["packages"; KernelFolderName; "tests"]
+let testFolder = fromRoot ["kernel"; "tests"]
 
 let runTestSuite () =
     let globals = newRuntime ()
