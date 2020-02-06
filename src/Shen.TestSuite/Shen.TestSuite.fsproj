@@ -19,10 +19,4 @@
     <ProjectReference Include="..\Shen\Shen.fsproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="Shen.Kernel">
-      <HintPath>..\..\kernel\dotnet\$(Configuration)\Shen.Kernel.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 </Project>
