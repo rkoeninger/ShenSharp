@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FParsec" Version="1.1.1-RC" />
+    <PackageReference Include="FParsec" Version="1.1.1" />
     <PackageReference Include="FSharp.Compiler.Service" Version="33.0.1" />
   </ItemGroup>
 
