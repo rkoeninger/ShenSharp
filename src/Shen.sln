@@ -20,7 +20,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.TestSuite", "Shen.Test
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Tests", "Shen.Tests\Shen.Tests.fsproj", "{102D7F9D-771F-4C75-A4AE-93321C0C0D81}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen.Api", "Shen.Api\Shen.Api.fsproj", "{1885A119-975D-43F6-8A8D-8200C89A943C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shen", "Shen\Shen.fsproj", "{1885A119-975D-43F6-8A8D-8200C89A943C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

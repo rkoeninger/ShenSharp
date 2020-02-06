@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>Shen.Api</AssemblyName>
-    <PackageId>Shen.Api</PackageId>
-    <RootNamespace>Shen.Api</RootNamespace>
+    <AssemblyName>Shen</AssemblyName>
+    <PackageId>Shen</PackageId>
+    <RootNamespace>Shen</RootNamespace>
     <Description>Shen environment management API</Description>
   </PropertyGroup>
 

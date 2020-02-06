@@ -25,7 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kl\Kl.fsproj" />
-    <ProjectReference Include="..\Shen.Api\Shen.Api.fsproj" />
+    <ProjectReference Include="..\Shen\Shen.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
