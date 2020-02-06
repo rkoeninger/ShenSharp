@@ -12,7 +12,6 @@ open ShenSharp.Shared
 
 let private dllName = sprintf "%s.dll" GeneratedModule
 let private pdbName = sprintf "%s.pdb" GeneratedModule
-let private searchPattern = sprintf "%s.*" GeneratedModule
 let private deps = ["Kl.dll"]
 let private sharedMetadataPath = fromRoot ["src"; "Shared.fs"]
 
@@ -66,11 +65,11 @@ let private emit (checker: FSharpChecker) asts =
         |> Async.RunSynchronously
     handleResults ((), errors)
 
-let private copy source destination =
+let private move source destination =
     if File.Exists destination then
         File.Delete destination
     Directory.CreateDirectory(Path.GetDirectoryName destination) |> ignore
-    File.WriteAllBytes(destination, File.ReadAllBytes source)
+    File.Move(source, destination)
 
 let private filterDefuns excluded =
     let filter = function
@@ -88,6 +87,5 @@ let make sourcePath sourceFiles outputPath =
     printfn "Compiling kernel..."
     emit checker [ast; sharedAst; metadataAst]
     printfn "Copying artifacts to output path..."
-    for file in Directory.GetFiles(".", searchPattern) do
-        copy file (combine [outputPath; file])
+    move dllName (combine [outputPath; dllName])
     printfn "Done."
