@@ -61,7 +61,7 @@ let private emit (checker: FSharpChecker) asts =
             deps,
             pdbName,
             false,
-            true)
+            false)
         |> Async.RunSynchronously
     handleResults ((), errors)
 
