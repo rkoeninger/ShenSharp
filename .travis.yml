@@ -1,5 +1,9 @@
 notifications:
   email: false
+os:
+  - linux
+  - osx
+  - windows
 language: csharp
 mono: none
 dotnet: 3.1
@@ -11,3 +15,4 @@ script:
   - dotnet run --project Kl.Make
   - dotnet build Shen.sln
   - dotnet test Shen.sln
+  - dotnet run --project Shen.TestSuite
