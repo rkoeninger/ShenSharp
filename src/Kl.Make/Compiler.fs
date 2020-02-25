@@ -18,8 +18,8 @@ type private ExprType =
 let private simplestCommonType t0 t1 = if t0 = t1 then t0 else KlValue
 
 let private appIgnore expr =
-    // ~expr |> ignore
-    infixIdExpr "op_PipeRight" expr (idExpr "ignore")
+    // ignore ~expr
+    appIdExpr "ignore" expr
 
 let private idKl name = idExpr(rename name), KlValue
 
