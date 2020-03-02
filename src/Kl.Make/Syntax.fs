@@ -46,14 +46,6 @@ let unparenTypedPat pat synType = SynPat.Typed(pat, synType, loc)
 let typedPat pat synType = SynPat.Paren(unparenTypedPat pat synType, loc)
 let listPat pats = SynPat.ArrayOrList(false, pats, loc)
 let tuplePat pats = SynPat.Paren(SynPat.Tuple(false, pats, loc), loc)
-let appPat parts args =
-    SynPat.LongIdent(
-        longIdentWithDots parts,
-        None,
-        None,
-        SynConstructorArgs.Pats args,
-        None,
-        loc)
 let unitPat = SynPat.Paren(SynPat.Const(SynConst.Unit, loc), loc)
 let matchClause pat body =
     SynMatchClause.Clause(
@@ -237,7 +229,6 @@ let rec sequentialExpr = function
             expr,
             sequentialExpr rest,
             loc)
-let doExpr expr = SynExpr.Do(expr, loc)
 let tupleExpr vals =
     parens
         (SynExpr.Tuple(
@@ -246,7 +237,6 @@ let tupleExpr vals =
             List.replicate (List.length vals - 1) loc,
             loc))
 let listExpr vals = SynExpr.ArrayOrList(false, vals, loc)
-let arrayExpr vals = SynExpr.ArrayOrList(true, vals, loc)
 let rec lambdaExpr paramz body =
     let expr =
         match paramz with
@@ -278,12 +268,6 @@ let matchLambdaExpr clauses =
         loc,
         clauses,
         SequencePointInfoForBinding.SequencePointAtBinding loc,
-        loc)
-let matchExpr key clauses =
-    SynExpr.Match(
-        SequencePointInfoForBinding.SequencePointAtBinding loc,
-        key,
-        clauses,
         loc)
 let openDecl parts = SynModuleDecl.Open(longIdentWithDots parts, loc)
 let letAttrsDecl attrs name paramz body =
