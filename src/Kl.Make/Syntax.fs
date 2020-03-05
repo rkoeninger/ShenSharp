@@ -129,7 +129,6 @@ let letBindingAccessWithAttrs attrs access name paramz body =
         SequencePointInfoForBinding.SequencePointAtBinding loc)
 let letAttrsBinding attrs = letBindingAccessWithAttrs attrs None
 let letBinding = letAttrsBinding []
-let letBindingPrivate = letBindingAccessWithAttrs [] (Some SynAccess.Private)
 let letUnitBinding attrs name body =
     SynBinding.Binding(
         None,

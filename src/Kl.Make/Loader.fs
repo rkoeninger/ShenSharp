@@ -8,6 +8,7 @@ open Kl
 open Kl.Values
 open Reader
 open Compiler
+open Writer
 open ShenSharp.Shared
 
 let private dllName = sprintf "%s.dll" GeneratedModule
@@ -82,6 +83,7 @@ let make sourcePath sourceFiles outputPath =
     let exprs = import sourcePath sourceFiles |> filterDefuns ["cd"]
     printfn "Translating kernel..."
     let ast = buildInstallationFile GeneratedModule exprs
+    File.WriteAllText("Kernel.fs", writeFile ast)
     let sharedAst = parseFile checker sharedMetadataPath
     let metadataAst = buildMetadataFile GeneratedModule Copyright Revision BuildConfig
     printfn "Compiling kernel..."
