@@ -8,20 +8,20 @@
     <Description>Shen environment management API</Description>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OtherFlags>$(OtherFlags) --stackReserveSize:100000000</OtherFlags>
+    <NoWarn>FS0075</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="..\Shared.fs" />
+    <Compile Include="..\..\kernel\dotnet\Kernel.fs" />
     <Compile Include="Runtime.fs" />
     <Compile Include="ExtensionMethods.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Kl\Kl.fsproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Shen.Kernel">
-      <HintPath>..\..\kernel\dotnet\$(Configuration)\Shen.Kernel.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>

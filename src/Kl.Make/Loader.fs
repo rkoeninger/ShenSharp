@@ -83,11 +83,12 @@ let make sourcePath sourceFiles outputPath =
     let exprs = import sourcePath sourceFiles |> filterDefuns ["cd"]
     printfn "Translating kernel..."
     let ast = buildInstallationFile GeneratedModule exprs
-    File.WriteAllText("Kernel.fs", writeFile ast)
     let sharedAst = parseFile checker sharedMetadataPath
     let metadataAst = buildMetadataFile GeneratedModule Copyright Revision BuildConfig
-    printfn "Compiling kernel..."
-    emit checker [ast; sharedAst; metadataAst]
-    printfn "Copying artifacts to output path..."
-    move dllName (combine [outputPath; dllName])
+    printfn "Writing kernel..."
+    File.WriteAllText(combine [outputPath; "Kernel.fs"], writeFile ast)
+    //printfn "Compiling kernel..."
+    //emit checker [ast; sharedAst; metadataAst]
+    //printfn "Copying artifacts to output path..."
+    //move dllName (combine [outputPath; dllName])
     printfn "Done."

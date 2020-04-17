@@ -2,6 +2,10 @@
 
 open FSharp.Compiler.Ast
 
+let rec private partition n = function
+    | xs when List.length xs <= n -> [xs]
+    | xs -> List.take n xs :: partition n (List.skip n xs)
+
 let private join (sep: string) (strings: string list) = System.String.Join(sep, strings |> List.toArray)
 
 let private writeIdent (x: Ident) = if String.forall (System.Char.IsLetter) x.idText then x.idText else sprintf "``%s``" x.idText
@@ -34,11 +38,19 @@ let rec private writeSimplePat = function
     | _ -> failwith "SynSimplePat case not supported"
 
 let rec private writePat = function
+    | SynPat.LongIdent(id, _, _, SynConstructorArgs.Pats pats, _, _) -> sprintf "%s %s" (writeLongIdent id) (List.map writePat pats |> join " ")
     | SynPat.LongIdent(x, _, _, _, _, _) -> writeLongIdent x
     | SynPat.Named(_, ident, _, _, _) -> writeIdent ident
     | SynPat.Paren(x, _) -> writePat x |> sprintf "(%s)"
+    | SynPat.Typed(pat, t, _) -> sprintf "%s: %s" (writePat pat) (writeType t)
     | SynPat.ArrayOrList(false, pats, _) -> List.map writePat pats |> join "; " |> sprintf "[%s]"
     | x -> failwithf "SynPat case not supported: %O" x
+
+let private writeInfixOp = function
+    | "``op_Equality``" -> "="
+    | "``op_BooleanAnd``" -> "&&"
+    | "``op_BooleanOr``" -> "||"
+    | _ -> failwith "infix op name not supported"
 
 let rec private writeExpr = function
     | SynExpr.Paren(x, _, _, _) -> writeExpr x |> sprintf "(%s)"
@@ -46,7 +58,10 @@ let rec private writeExpr = function
     | SynExpr.LongIdent(_, x, _, _) -> writeLongIdent x
     | SynExpr.Const(x, _) -> writeConst x
     | SynExpr.Tuple(false, xs, _, _) -> List.map writeExpr xs |> join ", " |> sprintf "(%s)"
-    | SynExpr.ArrayOrList(false, xs, _) -> List.map writeExpr xs |> join "; " |> sprintf "[%s]"
+    | SynExpr.ArrayOrList(false, xs, _) ->
+        if xs.Length > 8 then
+            partition 8 xs |> List.map (List.map writeExpr >> join "; " >> sprintf "[%s]") |> join "; " |> sprintf "(List.concat [%s])" |> ignore
+        List.map writeExpr xs |> join "; " |> sprintf "[%s]"
     | SynExpr.Sequential(_, _, x, y, _) -> sprintf "(%s; %s)" (writeExpr x) (writeExpr y)
     | SynExpr.LetOrUse(_, _, [SynBinding.Binding(_, _, _, _, _, _, _, pat, _, value, _, _)], body, _) ->
         sprintf "(let %s = %s in %s)" (writePat pat) (writeExpr value) (writeExpr body)
@@ -57,7 +72,7 @@ let rec private writeExpr = function
     | SynExpr.MatchLambda(_, _, clauses, _, _) -> List.map writeClause clauses |> join "; " |> sprintf "(function %s)"
     | SynExpr.Lambda(_, _, SynSimplePats.SimplePats([], _), body, _) -> sprintf "(fun () -> %s)" (writeExpr body)
     | SynExpr.Lambda(_, _, SynSimplePats.SimplePats(pats, _), body, _) -> sprintf "(fun %s -> %s)" (List.map writeSimplePat pats |> join " ") (writeExpr body)
-    | SynExpr.App(_, true, f, x, _) -> sprintf "%s %s" (writeExpr x) (writeExpr f)
+    | SynExpr.App(_, true, f, x, _) -> sprintf "%s %s" (writeExpr x) (writeExpr f |> writeInfixOp)
     | SynExpr.App(_, _, f, x, _) -> sprintf "(%s %s)" (writeExpr f) (writeExpr x)
     | x -> failwithf "SynExpr case not supported: %O" x
 
@@ -76,7 +91,7 @@ let private writeDecl = function
 
 let private writeModule = function
     | SynModuleOrNamespace.SynModuleOrNamespace(_, _, _, decls, _, _, _, _) ->
-        sprintf "module Shen.Kernel\r\n\r\n%s" (List.map writeDecl decls |> join "\r\n\r\n")
+        sprintf "module Shen.Kernel\r\n#nowarn \"1104\"\r\n%s" (List.map writeDecl decls |> join "\r\n")
 
 let writeFile = function
     | ParsedInput.ImplFile(
@@ -88,5 +103,5 @@ let writeFile = function
                                 _,
                                 modules,
                                 _)) ->
-        List.map writeModule modules |> join "\r\n\r\n"
+        List.map writeModule modules |> join "\r\n"
     | _ -> failwith "ParsedInput case not supported"
