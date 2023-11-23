@@ -1,6 +1,6 @@
 ﻿module internal Writer
 
-open FSharp.Compiler.SyntaxTree
+open FSharp.Compiler.Syntax
 
 let private join (sep: string) (strings: string list) = System.String.Join(sep, strings |> List.toArray)
 
@@ -23,7 +23,7 @@ let private writeConst = function
     | SynConst.Bool false -> "false"
     | SynConst.Int32 x -> sprintf "%i" x
     | SynConst.Decimal x -> sprintf "%Mm" x
-    | SynConst.String(x, _) -> writeString x
+    | SynConst.String(x, _, _) -> writeString x
     | _ -> failwith "SynConst case not supported"
 
 let private writeType = function
@@ -50,11 +50,11 @@ let rec private writeExpr = function
     | SynExpr.Tuple(false, xs, _, _) -> List.map writeExpr xs |> join ", " |> sprintf "(%s)"
     | SynExpr.ArrayOrList(false, xs, _) -> List.map writeExpr xs |> join "; " |> sprintf "[%s]"
     | SynExpr.Sequential(_, _, x, y, _) -> sprintf "(%s; %s)" (writeExpr x) (writeExpr y)
-    | SynExpr.LetOrUse(_, _, [SynBinding.Binding(_, _, _, _, _, _, _, pat, _, value, _, _)], body, _) ->
+    | SynExpr.LetOrUse(_, _, [SynBinding.SynBinding(_, _, _, _, _, _, _, pat, _, value, _, _)], body, _) ->
         sprintf "(let %s = %s in %s)" (writePat pat) (writeExpr value) (writeExpr body)
     | SynExpr.IfThenElse(ifExpr, thenExpr, Some elseExpr, _, _, _, _) ->
         sprintf "(if (%s) then (%s) else (%s))" (writeExpr ifExpr) (writeExpr thenExpr) (writeExpr elseExpr)
-    | SynExpr.TryWith(body, _, [SynMatchClause.Clause(pat, _, handler, _, _)], _, _, _, _) ->
+    | SynExpr.TryWith(body, _, [SynMatchClause.SynMatchClause(pat, _, handler, _, _)], _, _, _, _) ->
         sprintf "(try %s; with %s -> %s)" (writeExpr body) (writePat pat) (writeExpr handler)
     | SynExpr.MatchLambda(_, _, clauses, _, _) -> List.map writeClause clauses |> join "; " |> sprintf "(function %s)"
     | SynExpr.Lambda(_, _, SynSimplePats.SimplePats([], _), body, _, _) -> sprintf "(fun () -> %s)" (writeExpr body)
@@ -64,10 +64,10 @@ let rec private writeExpr = function
     | x -> failwithf "SynExpr case not supported: %O" x
 
 and private writeClause = function
-    | SynMatchClause.Clause(pat, _, body, _, _) -> sprintf "| %s -> %s" (writePat pat) (writeExpr body)
+    | SynMatchClause.SynMatchClause(pat, _, body, _, _) -> sprintf "| %s -> %s" (writePat pat) (writeExpr body)
 
 let private writeBinding = function
-    | SynBinding.Binding(_, _, _, _, _, _, _, pat, _, value, _, _) ->
+    | SynBinding.SynBinding(_, _, _, _, _, _, _, pat, _, value, _, _) ->
         sprintf "%s = %s" (writePat pat) (writeExpr value)
 
 let private writeDecl = function

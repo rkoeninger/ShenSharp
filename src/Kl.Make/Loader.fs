@@ -2,7 +2,8 @@
 
 open System
 open System.IO
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open Kl
 open Kl.Values
@@ -46,10 +47,8 @@ let private parseFile (checker: FSharpChecker) file =
     let result =
         checker.ParseFile(file, input, parsingOptions)
         |> Async.RunSynchronously
-    logWarnings result.Errors
-    match result.ParseTree with
-    | Some tree -> tree
-    | None -> raiseErrors result.Errors
+    logWarnings result.Diagnostics
+    result.ParseTree
 
 // TODO: specify arguments to exclude mscorlib.dll
 

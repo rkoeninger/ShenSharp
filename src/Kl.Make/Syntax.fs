@@ -10,10 +10,10 @@
 module internal Kl.Make.Syntax
 
 open System
-open FSharp.Compiler.SyntaxTree
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.Xml
 open FSharp.Compiler.Text.Range
-open FSharp.Compiler.Text.Pos
-open FSharp.Compiler.XmlDoc
+open FSharp.Compiler.Text.Position
 
 let private fileName = "file.fs"
 // Picked large values for line, col because there will be an unpredictable
@@ -50,7 +50,7 @@ let listPat pats = SynPat.ArrayOrList(false, pats, loc)
 let tuplePat pats = SynPat.Paren(SynPat.Tuple(false, pats, loc), loc)
 let unitPat = SynPat.Paren(SynPat.Const(SynConst.Unit, loc), loc)
 let matchClause pat body =
-    SynMatchClause.Clause(
+    SynMatchClause.SynMatchClause(
         pat,
         None,
         body,
@@ -62,9 +62,9 @@ let nameTypeSimplePat s synType =
         synType,
         loc)
 let simpleBinding pat value =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         None,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         [],
@@ -77,12 +77,11 @@ let simpleBinding pat value =
         None,
         value,
         loc,
-        DebugPointForBinding
-.NoDebugPointAtLetBinding)
+        DebugPointAtBinding.NoneAtLet)
 let letAttrsMultiParamBinding attrs name paramz body =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         None,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         attrs,
@@ -105,12 +104,11 @@ let letAttrsMultiParamBinding attrs name paramz body =
         None,
         body,
         loc,
-        DebugPointForBinding
-.DebugPointAtBinding loc)
+        DebugPointAtBinding.Yes loc)
 let letBindingAccessWithAttrs attrs access name paramz body =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         access,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         attrs,
@@ -130,14 +128,13 @@ let letBindingAccessWithAttrs attrs access name paramz body =
         None,
         body,
         loc,
-        DebugPointForBinding
-.DebugPointAtBinding loc)
+        DebugPointAtBinding.Yes loc)
 let letAttrsBinding attrs = letBindingAccessWithAttrs attrs None
 let letBinding = letAttrsBinding []
 let letUnitBinding attrs name body =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         None,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         attrs,
@@ -156,8 +153,7 @@ let letUnitBinding attrs name body =
         None,
         body,
         loc,
-        DebugPointForBinding
-.DebugPointAtBinding loc)
+        DebugPointAtBinding.Yes loc)
 let parenExpr expr = SynExpr.Paren(expr, loc, None, loc)
 let parens = function
     | SynExpr.Paren _ as e -> e
@@ -166,7 +162,7 @@ let unitExpr = SynExpr.Const(SynConst.Unit, loc)
 let boolExpr b = SynExpr.Const(SynConst.Bool b, loc)
 let intExpr n = SynExpr.Const(SynConst.Int32 n, loc)
 let decimalExpr n = SynExpr.Const(SynConst.Decimal n, loc)
-let stringExpr s = SynExpr.Const(SynConst.String(s, loc), loc)
+let stringExpr s = SynExpr.Const(SynConst.String(s, SynStringKind.Regular, loc), loc)
 let idExpr s = SynExpr.Ident(ident s)
 let longIdExpr parts = SynExpr.LongIdent(false, longIdentWithDots parts, None, loc)
 let indexSetExpr obj index value =
@@ -198,8 +194,7 @@ let ifExpr condition consequent alternative =
             condition,
             consequent,
             Some alternative,
-            DebugPointForBinding
-.NoDebugPointAtInvisibleBinding,
+            DebugPointAtBinding.NoneAtInvisible,
             false,
             loc,
             loc)
@@ -215,7 +210,7 @@ let tryWithExpr body e handler =
     SynExpr.TryWith(
         body,
         loc,
-        [SynMatchClause.Clause(
+        [SynMatchClause.SynMatchClause(
             namePat e,
             None,
             handler,
@@ -276,8 +271,7 @@ let matchLambdaExpr clauses =
         false,
         loc,
         clauses,
-        DebugPointForBinding
-.DebugPointAtBinding loc,
+        DebugPointAtBinding.Yes loc,
         loc)
 let openDecl parts = SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(longIdent parts, loc), loc)
 let letAttrsDecl attrs name paramz body =
