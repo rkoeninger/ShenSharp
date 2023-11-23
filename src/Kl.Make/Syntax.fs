@@ -278,7 +278,7 @@ let matchLambdaExpr clauses =
         DebugPointForBinding
 .DebugPointAtBinding loc,
         loc)
-let openDecl parts = SynModuleDecl.Open(longIdentWithDots parts, loc)
+let openDecl parts = SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(longIdent parts, loc), loc)
 let letAttrsDecl attrs name paramz body =
     SynModuleDecl.Let(false, [letAttrsBinding attrs name paramz body], loc)
 let letAttrsUncurriedDecl attrs name paramz body =

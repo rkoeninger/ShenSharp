@@ -6,7 +6,9 @@ let private join (sep: string) (strings: string list) = System.String.Join(sep, 
 
 let private writeIdent (x: Ident) = if String.forall (System.Char.IsLetter) x.idText then x.idText else sprintf "``%s``" x.idText
 
-let private writeLongIdent (x: LongIdentWithDots) = List.map writeIdent x.Lid |> join "."
+let private writeLongIdent (x: LongIdent) = List.map writeIdent x |> join "."
+
+let private writeLongIdentWithDots (x: LongIdentWithDots) = List.map writeIdent x.Lid |> join "."
 
 let private escapeChar = function
     | x when x < ' ' -> int x |> sprintf "\\u%02x"
@@ -25,7 +27,7 @@ let private writeConst = function
     | _ -> failwith "SynConst case not supported"
 
 let private writeType = function
-    | SynType.LongIdent x -> writeLongIdent x
+    | SynType.LongIdent x -> writeLongIdentWithDots x
     | _ -> failwith "SynType case not supported"
 
 let rec private writeSimplePat = function
@@ -34,7 +36,7 @@ let rec private writeSimplePat = function
     | _ -> failwith "SynSimplePat case not supported"
 
 let rec private writePat = function
-    | SynPat.LongIdent(x, _, _, _, _, _) -> writeLongIdent x
+    | SynPat.LongIdent(x, _, _, _, _, _) -> writeLongIdentWithDots x
     | SynPat.Named(_, ident, _, _, _) -> writeIdent ident
     | SynPat.Paren(x, _) -> writePat x |> sprintf "(%s)"
     | SynPat.ArrayOrList(false, pats, _) -> List.map writePat pats |> join "; " |> sprintf "[%s]"
@@ -43,7 +45,7 @@ let rec private writePat = function
 let rec private writeExpr = function
     | SynExpr.Paren(x, _, _, _) -> writeExpr x |> sprintf "(%s)"
     | SynExpr.Ident x -> writeIdent x
-    | SynExpr.LongIdent(_, x, _, _) -> writeLongIdent x
+    | SynExpr.LongIdent(_, x, _, _) -> writeLongIdentWithDots x
     | SynExpr.Const(x, _) -> writeConst x
     | SynExpr.Tuple(false, xs, _, _) -> List.map writeExpr xs |> join ", " |> sprintf "(%s)"
     | SynExpr.ArrayOrList(false, xs, _) -> List.map writeExpr xs |> join "; " |> sprintf "[%s]"
@@ -69,7 +71,7 @@ let private writeBinding = function
         sprintf "%s = %s" (writePat pat) (writeExpr value)
 
 let private writeDecl = function
-    | SynModuleDecl.Open(x, _) -> writeLongIdent x |> sprintf "open %s"
+    | SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(x, _), _) -> writeLongIdent x |> sprintf "open %s"
     | SynModuleDecl.Let(recursive, binding :: bindings, _) ->
         sprintf "let%s %s%s" (if recursive then " rec" else "") (writeBinding binding) (List.map (writeBinding >> sprintf "\r\nand %s") bindings |> join "")
     | _ -> failwith "SynModuleDecl case not supported"
