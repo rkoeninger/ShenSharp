@@ -251,6 +251,7 @@ let rec lambdaExpr paramz body =
                 false,
                 SynSimplePats.SimplePats([], loc),
                 body,
+                None,
                 loc)
         | [s, synType] ->
             SynExpr.Lambda(
@@ -258,6 +259,7 @@ let rec lambdaExpr paramz body =
                 false,
                 SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
                 body,
+                None,
                 loc)
         | (s, synType) :: paramz ->
             SynExpr.Lambda(
@@ -265,6 +267,7 @@ let rec lambdaExpr paramz body =
                 false,
                 SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
                 lambdaExpr paramz body,
+                None,
                 loc)
     parens expr
 let matchLambdaExpr clauses =
