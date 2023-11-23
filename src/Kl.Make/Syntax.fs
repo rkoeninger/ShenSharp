@@ -10,8 +10,9 @@
 module internal Kl.Make.Syntax
 
 open System
-open FSharp.Compiler.Ast
+open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.Range
+open FSharp.Compiler.XmlDoc
 
 let private fileName = "file.fs"
 // Picked large values for line, col because there will be an unpredictable
@@ -53,7 +54,7 @@ let matchClause pat body =
         None,
         body,
         loc,
-        SequencePointInfoForTarget.SequencePointAtTarget)
+        DebugPointForTarget.Yes)
 let nameTypeSimplePat s synType =
     SynSimplePat.Typed(
         SynSimplePat.Id(ident s, None, true, false, false, loc),
@@ -75,7 +76,8 @@ let simpleBinding pat value =
         None,
         value,
         loc,
-        SequencePointInfoForBinding.NoSequencePointAtLetBinding)
+        DebugPointForBinding
+.NoDebugPointAtLetBinding)
 let letAttrsMultiParamBinding attrs name paramz body =
     SynBinding.Binding(
         None,
@@ -92,7 +94,7 @@ let letAttrsMultiParamBinding attrs name paramz body =
             longIdentWithDots [name],
             None,
             None,
-            SynConstructorArgs.Pats(
+            SynArgPats.Pats(
                 [tuplePat
                     (List.map
                         (fun (s, synType) -> unparenTypedPat (namePat s) synType)
@@ -102,7 +104,8 @@ let letAttrsMultiParamBinding attrs name paramz body =
         None,
         body,
         loc,
-        SequencePointInfoForBinding.SequencePointAtBinding loc)
+        DebugPointForBinding
+.DebugPointAtBinding loc)
 let letBindingAccessWithAttrs attrs access name paramz body =
     SynBinding.Binding(
         access,
@@ -119,14 +122,15 @@ let letBindingAccessWithAttrs attrs access name paramz body =
             longIdentWithDots [name],
             None,
             None,
-            SynConstructorArgs.Pats(
+            SynArgPats.Pats(
                 List.map (fun (s, synType) -> typedPat (namePat s) synType) paramz),
             None,
             loc),
         None,
         body,
         loc,
-        SequencePointInfoForBinding.SequencePointAtBinding loc)
+        DebugPointForBinding
+.DebugPointAtBinding loc)
 let letAttrsBinding attrs = letBindingAccessWithAttrs attrs None
 let letBinding = letAttrsBinding []
 let letUnitBinding attrs name body =
@@ -145,13 +149,14 @@ let letUnitBinding attrs name body =
             longIdentWithDots [name],
             None,
             None,
-            SynConstructorArgs.Pats [unitPat],
+            SynArgPats.Pats [unitPat],
             None,
             loc),
         None,
         body,
         loc,
-        SequencePointInfoForBinding.SequencePointAtBinding loc)
+        DebugPointForBinding
+.DebugPointAtBinding loc)
 let parenExpr expr = SynExpr.Paren(expr, loc, None, loc)
 let parens = function
     | SynExpr.Paren _ as e -> e
@@ -192,7 +197,8 @@ let ifExpr condition consequent alternative =
             condition,
             consequent,
             Some alternative,
-            SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
+            DebugPointForBinding
+.NoDebugPointAtInvisibleBinding,
             false,
             loc,
             loc)
@@ -213,17 +219,17 @@ let tryWithExpr body e handler =
             None,
             handler,
             loc,
-            SequencePointInfoForTarget.SequencePointAtTarget)],
+            DebugPointForTarget.Yes)],
         loc,
         loc,
-        SequencePointInfoForTry.SequencePointAtTry loc,
-        SequencePointInfoForWith.SequencePointAtWith loc)
+        DebugPointAtTry.Yes loc,
+        DebugPointAtWith.Yes loc)
 let rec sequentialExpr = function
     | [] -> failwith "sequential cannot be empty"
     | [expr] -> expr
     | expr :: rest ->
         SynExpr.Sequential(
-            SequencePointInfoForSeq.SequencePointsAtSeq,
+            DebugPointAtSequential.Both,
             true,
             expr,
             sequentialExpr rest,
@@ -266,7 +272,8 @@ let matchLambdaExpr clauses =
         false,
         loc,
         clauses,
-        SequencePointInfoForBinding.SequencePointAtBinding loc,
+        DebugPointForBinding
+.DebugPointAtBinding loc,
         loc)
 let openDecl parts = SynModuleDecl.Open(longIdentWithDots parts, loc)
 let letAttrsDecl attrs name paramz body =

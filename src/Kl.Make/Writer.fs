@@ -1,6 +1,6 @@
 ﻿module internal Writer
 
-open FSharp.Compiler.Ast
+open FSharp.Compiler.SyntaxTree
 
 let private join (sep: string) (strings: string list) = System.String.Join(sep, strings |> List.toArray)
 
