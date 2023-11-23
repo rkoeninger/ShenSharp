@@ -11,7 +11,8 @@ module internal Kl.Make.Syntax
 
 open System
 open FSharp.Compiler.SyntaxTree
-open FSharp.Compiler.Range
+open FSharp.Compiler.Text.Range
+open FSharp.Compiler.Text.Pos
 open FSharp.Compiler.XmlDoc
 
 let private fileName = "file.fs"
