@@ -3,7 +3,7 @@
 open System
 open System.Diagnostics
 open System.IO
-open System.Net
+open System.Net.Http
 open Values
 open Interop
 open Evaluator
@@ -339,12 +339,16 @@ let ``kl_shen-sharp.globals`` globals = function
 
 let ``kl_shen-sharp.http-post`` _ = function
     | [Str url; Str payload] ->
-        use client = new WebClient()
-        Str(client.UploadString(url, payload))
+        async {
+            use client = new HttpClient()
+            use payload = new StringContent(payload)
+            let! resp = client.PostAsync(url, payload) |> Async.AwaitTask
+            return! resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+        } |> Async.RunSynchronously |> Str
     | args -> argsErr "shen-sharp.http-post" ["string"] args
 
 let ``kl_shen-sharp.curl`` _ = function
     | [Str url] ->
-        use client = new WebClient()
-        Str(client.DownloadString(url))
+        use client = new HttpClient()
+        client.GetStringAsync(url) |> Async.AwaitTask |> Async.RunSynchronously |> Str
     | args -> argsErr "shen-sharp.curl" ["string"] args

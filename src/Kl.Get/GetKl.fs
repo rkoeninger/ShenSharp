@@ -3,7 +3,7 @@
 open System
 open System.IO
 open System.IO.Compression
-open System.Net
+open System.Net.Http
 open ShenSharp.Shared
 
 let url = sprintf "https://github.com/Shen-Language/shen-sources/releases/download/shen-%s/%s.zip" KernelRevision KernelFolderName
@@ -22,8 +22,12 @@ let main _ =
     printfn "Extracted folder: \"%s\"" extractedFolder
     printfn "Kernel folder: \"%s\"" kernelFolder
     printfn "Downloading sources package..."
-    use client = new WebClient()
-    client.DownloadFile(url, zipPath)
+    async {
+        use client = new HttpClient()
+        use zip = new FileStream(zipPath, FileMode.Create)
+        let! req = client.GetStreamAsync url |> Async.AwaitTask
+        do! req.CopyToAsync zip |> Async.AwaitTask
+    } |> Async.RunSynchronously
     printfn "Extracting sources package..."
     safeDelete kernelFolder
     ZipFile.ExtractToDirectory(zipPath, root)

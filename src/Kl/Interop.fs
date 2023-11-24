@@ -160,7 +160,7 @@ let reference globals (name: string) =
     if File.Exists name then
         AppDomain.CurrentDomain.Load(name)
     else
-        let mscorlibPath = UriBuilder(typedefof<obj>.Assembly.CodeBase).Uri.LocalPath
+        let mscorlibPath = UriBuilder(typedefof<obj>.Assembly.Location).Uri.LocalPath
         let standardPathRoot = Path.GetDirectoryName(mscorlibPath)
         let inStandardPath = Path.Combine(standardPathRoot, name)
         if File.Exists name
