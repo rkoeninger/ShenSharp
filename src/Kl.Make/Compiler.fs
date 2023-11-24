@@ -252,5 +252,5 @@ let buildMetadataFile name copyright version config =
             meta ["System"; "Reflection"; "AssemblyFileVersion"] version
             meta ["System"; "Reflection"; "AssemblyInformationalVersion"] <| version.Substring(0, version.Length - 2)
             meta ["System"; "Reflection"; "AssemblyConfiguration"] config
-            meta ["System"; "Runtime"; "Versioning"; "TargetFramework"] ".NETStandard,Version=v2.1"
+            meta ["System"; "Runtime"; "Versioning"; "TargetFramework"] ".NETCoreApp,Version=v6.0"
         ]
