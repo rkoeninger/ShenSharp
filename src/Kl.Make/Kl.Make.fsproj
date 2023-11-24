@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="FParsec" Version="1.1.1" />
-    <PackageReference Include="FSharp.Compiler.Service" Version="40.0.0" />
+    <PackageReference Include="FSharp.Compiler.Service" Version="41.0.7" />
   </ItemGroup>
 
   <ItemGroup>

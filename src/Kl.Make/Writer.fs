@@ -8,7 +8,7 @@ let private writeIdent (x: Ident) = if String.forall (System.Char.IsLetter) x.id
 
 let private writeLongIdent (x: LongIdent) = List.map writeIdent x |> join "."
 
-let private writeLongIdentWithDots (x: LongIdentWithDots) = List.map writeIdent x.Lid |> join "."
+let private writeSynLongIdent (x: SynLongIdent) = List.map writeIdent x.LongIdent |> join "."
 
 let private escapeChar = function
     | x when x < ' ' -> int x |> sprintf "\\u%02x"
@@ -27,7 +27,7 @@ let private writeConst = function
     | _ -> failwith "SynConst case not supported"
 
 let private writeType = function
-    | SynType.LongIdent x -> writeLongIdentWithDots x
+    | SynType.LongIdent x -> writeSynLongIdent x
     | _ -> failwith "SynType case not supported"
 
 let rec private writeSimplePat = function
@@ -36,8 +36,8 @@ let rec private writeSimplePat = function
     | _ -> failwith "SynSimplePat case not supported"
 
 let rec private writePat = function
-    | SynPat.LongIdent(x, _, _, _, _, _) -> writeLongIdentWithDots x
-    | SynPat.Named(_, ident, _, _, _) -> writeIdent ident
+    | SynPat.LongIdent(x, _, _, _, _, _) -> writeSynLongIdent x
+    | SynPat.Named(SynIdent(ident, _), _, _, _) -> writeIdent ident
     | SynPat.Paren(x, _) -> writePat x |> sprintf "(%s)"
     | SynPat.ArrayOrList(false, pats, _) -> List.map writePat pats |> join "; " |> sprintf "[%s]"
     | x -> failwithf "SynPat case not supported: %O" x
@@ -45,29 +45,29 @@ let rec private writePat = function
 let rec private writeExpr = function
     | SynExpr.Paren(x, _, _, _) -> writeExpr x |> sprintf "(%s)"
     | SynExpr.Ident x -> writeIdent x
-    | SynExpr.LongIdent(_, x, _, _) -> writeLongIdentWithDots x
+    | SynExpr.LongIdent(_, x, _, _) -> writeSynLongIdent x
     | SynExpr.Const(x, _) -> writeConst x
     | SynExpr.Tuple(false, xs, _, _) -> List.map writeExpr xs |> join ", " |> sprintf "(%s)"
     | SynExpr.ArrayOrList(false, xs, _) -> List.map writeExpr xs |> join "; " |> sprintf "[%s]"
     | SynExpr.Sequential(_, _, x, y, _) -> sprintf "(%s; %s)" (writeExpr x) (writeExpr y)
-    | SynExpr.LetOrUse(_, _, [SynBinding.SynBinding(_, _, _, _, _, _, _, pat, _, value, _, _)], body, _) ->
+    | SynExpr.LetOrUse(_, _, [SynBinding.SynBinding(_, _, _, _, _, _, _, pat, _, value, _, _, _)], body, _, _) ->
         sprintf "(let %s = %s in %s)" (writePat pat) (writeExpr value) (writeExpr body)
     | SynExpr.IfThenElse(ifExpr, thenExpr, Some elseExpr, _, _, _, _) ->
         sprintf "(if (%s) then (%s) else (%s))" (writeExpr ifExpr) (writeExpr thenExpr) (writeExpr elseExpr)
-    | SynExpr.TryWith(body, _, [SynMatchClause.SynMatchClause(pat, _, handler, _, _)], _, _, _, _) ->
+    | SynExpr.TryWith(body, [SynMatchClause.SynMatchClause(pat, _, handler, _, _, _)], _, _, _, _) ->
         sprintf "(try %s; with %s -> %s)" (writeExpr body) (writePat pat) (writeExpr handler)
     | SynExpr.MatchLambda(_, _, clauses, _, _) -> List.map writeClause clauses |> join "; " |> sprintf "(function %s)"
-    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats([], _), body, _, _) -> sprintf "(fun () -> %s)" (writeExpr body)
-    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats(pats, _), body, _, _) -> sprintf "(fun %s -> %s)" (List.map writeSimplePat pats |> join " ") (writeExpr body)
+    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats([], _), body, _, _, _) -> sprintf "(fun () -> %s)" (writeExpr body)
+    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats(pats, _), body, _, _, _) -> sprintf "(fun %s -> %s)" (List.map writeSimplePat pats |> join " ") (writeExpr body)
     | SynExpr.App(_, true, f, x, _) -> sprintf "%s %s" (writeExpr x) (writeExpr f)
     | SynExpr.App(_, _, f, x, _) -> sprintf "(%s %s)" (writeExpr f) (writeExpr x)
     | x -> failwithf "SynExpr case not supported: %O" x
 
 and private writeClause = function
-    | SynMatchClause.SynMatchClause(pat, _, body, _, _) -> sprintf "| %s -> %s" (writePat pat) (writeExpr body)
+    | SynMatchClause.SynMatchClause(pat, _, body, _, _, _) -> sprintf "| %s -> %s" (writePat pat) (writeExpr body)
 
 let private writeBinding = function
-    | SynBinding.SynBinding(_, _, _, _, _, _, _, pat, _, value, _, _) ->
+    | SynBinding.SynBinding(_, _, _, _, _, _, _, pat, _, value, _, _, _) ->
         sprintf "%s = %s" (writePat pat) (writeExpr value)
 
 let private writeDecl = function
@@ -77,7 +77,7 @@ let private writeDecl = function
     | _ -> failwith "SynModuleDecl case not supported"
 
 let private writeModule = function
-    | SynModuleOrNamespace.SynModuleOrNamespace(_, _, _, decls, _, _, _, _) ->
+    | SynModuleOrNamespace.SynModuleOrNamespace(_, _, _, decls, _, _, _, _, _) ->
         sprintf "module Shen.Kernel\r\n\r\n%s" (List.map writeDecl decls |> join "\r\n\r\n")
 
 let writeFile = function
@@ -89,6 +89,7 @@ let writeFile = function
                                 _,
                                 _,
                                 modules,
+                                _,
                                 _)) ->
         List.map writeModule modules |> join "\r\n\r\n"
     | _ -> failwith "ParsedInput case not supported"

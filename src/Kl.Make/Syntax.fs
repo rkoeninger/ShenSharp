@@ -33,9 +33,10 @@ let attrs xs : SynAttributeList list = [{
 let ident s = new Ident(s, loc)
 let longIdent parts = List.map ident parts
 let longIdentWithDots parts =
-    LongIdentWithDots.LongIdentWithDots(
+    SynLongIdent.SynLongIdent(
         List.map ident parts,
-        List.replicate (List.length parts - 1) loc)
+        List.replicate (List.length parts - 1) loc,
+        [])
 let argInfo s = SynArgInfo.SynArgInfo([], false, Some(ident s))
 let nullArgInfo = SynArgInfo.SynArgInfo([], false, None)
 let anonType = SynType.Anon loc
@@ -43,7 +44,7 @@ let longType parts = SynType.LongIdent(longIdentWithDots parts)
 let shortType s = longType [s]
 let listType t = SynType.App(shortType "list", None, [t], [], None, true, loc)
 let wildPat = SynPat.Wild loc
-let namePat s = SynPat.Named(wildPat, ident s, false, None, loc)
+let namePat s = SynPat.Named(SynIdent(ident s, None), false, None, loc)
 let unparenTypedPat pat synType = SynPat.Typed(pat, synType, loc)
 let typedPat pat synType = SynPat.Paren(unparenTypedPat pat synType, loc)
 let listPat pats = SynPat.ArrayOrList(false, pats, loc)
@@ -55,7 +56,8 @@ let matchClause pat body =
         None,
         body,
         loc,
-        DebugPointForTarget.Yes)
+        DebugPointAtTarget.Yes,
+        {ArrowRange = Some loc; BarRange = Some loc})
 let nameTypeSimplePat s synType =
     SynSimplePat.Typed(
         SynSimplePat.Id(ident s, None, true, false, false, loc),
@@ -77,7 +79,8 @@ let simpleBinding pat value =
         None,
         value,
         loc,
-        DebugPointAtBinding.NoneAtLet)
+        DebugPointAtBinding.NoneAtLet,
+        {EqualsRange = Some loc; LetKeyword = Some loc})
 let letAttrsMultiParamBinding attrs name paramz body =
     SynBinding.SynBinding(
         None,
@@ -104,7 +107,8 @@ let letAttrsMultiParamBinding attrs name paramz body =
         None,
         body,
         loc,
-        DebugPointAtBinding.Yes loc)
+        DebugPointAtBinding.Yes loc,
+        {EqualsRange = Some loc; LetKeyword = Some loc})
 let letBindingAccessWithAttrs attrs access name paramz body =
     SynBinding.SynBinding(
         access,
@@ -128,7 +132,8 @@ let letBindingAccessWithAttrs attrs access name paramz body =
         None,
         body,
         loc,
-        DebugPointAtBinding.Yes loc)
+        DebugPointAtBinding.Yes loc,
+        {EqualsRange = Some loc; LetKeyword = Some loc})
 let letAttrsBinding attrs = letBindingAccessWithAttrs attrs None
 let letBinding = letAttrsBinding []
 let letUnitBinding attrs name body =
@@ -153,7 +158,8 @@ let letUnitBinding attrs name body =
         None,
         body,
         loc,
-        DebugPointAtBinding.Yes loc)
+        DebugPointAtBinding.Yes loc,
+        {EqualsRange = Some loc; LetKeyword = Some loc})
 let parenExpr expr = SynExpr.Paren(expr, loc, None, loc)
 let parens = function
     | SynExpr.Paren _ as e -> e
@@ -168,7 +174,7 @@ let longIdExpr parts = SynExpr.LongIdent(false, longIdentWithDots parts, None, l
 let indexSetExpr obj index value =
     SynExpr.DotIndexedSet(
         obj,
-        [SynIndexerArg.One index],
+        index,
         value,
         loc,
         loc,
@@ -197,7 +203,7 @@ let ifExpr condition consequent alternative =
             DebugPointAtBinding.NoneAtInvisible,
             false,
             loc,
-            loc)
+            {IfKeyword = loc; IsElif = false; ElseKeyword = None; ThenKeyword = loc; IfToThenRange = loc})
     parens expr
 let letExpr symbol value body =
     SynExpr.LetOrUse(
@@ -205,27 +211,28 @@ let letExpr symbol value body =
         false,
         [simpleBinding (namePat symbol) value],
         body,
-        loc)
+        loc,
+        {InKeyword = Some loc})
 let tryWithExpr body e handler =
     SynExpr.TryWith(
         body,
-        loc,
         [SynMatchClause.SynMatchClause(
             namePat e,
             None,
             handler,
             loc,
-            DebugPointForTarget.Yes)],
-        loc,
+            DebugPointAtTarget.Yes,
+            {ArrowRange = Some loc; BarRange = Some loc})],
         loc,
         DebugPointAtTry.Yes loc,
-        DebugPointAtWith.Yes loc)
+        DebugPointAtWith.Yes loc,
+        {TryKeyword = loc; TryToWithRange = loc; WithKeyword = loc; WithToEndRange = loc})
 let rec sequentialExpr = function
     | [] -> failwith "sequential cannot be empty"
     | [expr] -> expr
     | expr :: rest ->
         SynExpr.Sequential(
-            DebugPointAtSequential.Both,
+            DebugPointAtSequential.SuppressNeither,
             true,
             expr,
             sequentialExpr rest,
@@ -248,7 +255,8 @@ let rec lambdaExpr paramz body =
                 SynSimplePats.SimplePats([], loc),
                 body,
                 None,
-                loc)
+                loc,
+                {ArrowRange = Some loc})
         | [s, synType] ->
             SynExpr.Lambda(
                 false,
@@ -256,7 +264,8 @@ let rec lambdaExpr paramz body =
                 SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
                 body,
                 None,
-                loc)
+                loc,
+                {ArrowRange = Some loc})
         | (s, synType) :: paramz ->
             SynExpr.Lambda(
                 false,
@@ -264,7 +273,8 @@ let rec lambdaExpr paramz body =
                 SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
                 lambdaExpr paramz body,
                 None,
-                loc)
+                loc,
+                {ArrowRange = Some loc})
     parens expr
 let matchLambdaExpr clauses =
     SynExpr.MatchLambda(
@@ -300,5 +310,7 @@ let moduleFile nameParts decls =
                 PreXmlDoc.Empty,
                 [],
                 None,
-                loc)],
-            (false, false)))
+                loc,
+                {ModuleKeyword = Some loc; NamespaceKeyword = Some loc})],
+            (false, false),
+            {CodeComments = []; ConditionalDirectives = []}))
