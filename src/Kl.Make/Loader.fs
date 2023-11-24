@@ -14,7 +14,7 @@ open ShenSharp.Shared
 
 let private dllName = sprintf "%s.dll" GeneratedModule
 let private pdbName = sprintf "%s.pdb" GeneratedModule
-let private deps = ["Kl.dll"; "System.Runtime"; "System.Runtime.Numerics"; "System.Collections"; "System.Net.Requests"; "System.Net.WebClient"]
+let private deps = ["Kl"; "System.Runtime"; "System.Runtime.Numerics"; "System.Collections"; "System.Net.Requests"; "System.Net.WebClient"]
 let private sharedMetadataPath = fromRoot ["src"; "Shared.fs"]
 
 let private import sourcePath =
