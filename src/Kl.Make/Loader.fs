@@ -87,8 +87,6 @@ let make sourcePath sourceFiles outputPath =
     let metadataAst = buildMetadataFile GeneratedModule Copyright Revision BuildConfig
     printfn "Compiling kernel..."
     emit checker [ast; sharedAst; metadataAst]
-    // let (errors, _) = checker.Compile([|"fsc.exe"; "-a"; "Kernel.fs"; $"-o:%s{dllName}"; "--targetprofile:netcore"; "--target:library"|]) |> Async.RunSynchronously
-    // handleResults ((), errors)
     printfn "Copying artifacts to output path..."
     move dllName (combine [outputPath; dllName])
     printfn "Done."
