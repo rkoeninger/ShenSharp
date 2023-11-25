@@ -60,7 +60,6 @@ let rec private writeExpr = function
     | SynExpr.MatchLambda(_, _, clauses, _, _) -> List.map writeClause clauses |> join "; " |> sprintf "(function %s)"
     | SynExpr.Lambda(_, _, SynSimplePats.SimplePats([], _), body, _, _, _) -> sprintf "(fun () -> %s)" (writeExpr body)
     | SynExpr.Lambda(_, _, SynSimplePats.SimplePats(pats, _), body, _, _, _) -> sprintf "(fun %s -> %s)" (List.map writeSimplePat pats |> join " ") (writeExpr body)
-    | SynExpr.App(_, true, f, x, _) -> sprintf "%s %s" (writeExpr x) (writeExpr f)
     | SynExpr.App(_, _, f, x, _) -> sprintf "(%s %s)" (writeExpr f) (writeExpr x)
     | x -> failwithf "SynExpr case not supported: %O" x
 
