@@ -36,8 +36,9 @@ let rec private writeSimplePat = function
     | _ -> failwith "SynSimplePat case not supported"
 
 let rec private writePat = function
-    | SynPat.LongIdent(x, _, _, _, _, _) -> writeSynLongIdent x
+    | SynPat.LongIdent(x, _, _, pats, _, _) -> sprintf "%s %s" (writeSynLongIdent x) (List.map writePat pats.Patterns |> join " ")
     | SynPat.Named(SynIdent(ident, _), _, _, _) -> writeIdent ident
+    | SynPat.Typed(pat, typ, _) -> sprintf "%s: %s" (writePat pat) (writeType typ)
     | SynPat.Paren(x, _) -> writePat x |> sprintf "(%s)"
     | SynPat.ArrayOrList(false, pats, _) -> List.map writePat pats |> join "; " |> sprintf "[%s]"
     | x -> failwithf "SynPat case not supported: %O" x
