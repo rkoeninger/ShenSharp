@@ -339,16 +339,20 @@ let ``kl_shen-sharp.globals`` globals = function
 
 let ``kl_shen-sharp.http-post`` _ = function
     | [Str url; Str payload] ->
-        async {
+        task {
             use client = new HttpClient()
             use payload = new StringContent(payload)
-            let! resp = client.PostAsync(url, payload) |> Async.AwaitTask
-            return! resp.Content.ReadAsStringAsync() |> Async.AwaitTask
-        } |> Async.RunSynchronously |> Str
+            let! resp = client.PostAsync(url, payload)
+            let! content = resp.Content.ReadAsStringAsync()
+            return content |> Str
+        } |> Async.AwaitTask |> Async.RunSynchronously
     | args -> argsErr "shen-sharp.http-post" ["string"] args
 
 let ``kl_shen-sharp.curl`` _ = function
     | [Str url] ->
-        use client = new HttpClient()
-        client.GetStringAsync(url) |> Async.AwaitTask |> Async.RunSynchronously |> Str
+        task {
+            use client = new HttpClient()
+            let! content = client.GetStringAsync(url)
+            return content |> Str
+        } |> Async.AwaitTask |> Async.RunSynchronously
     | args -> argsErr "shen-sharp.curl" ["string"] args

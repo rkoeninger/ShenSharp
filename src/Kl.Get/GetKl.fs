@@ -22,12 +22,12 @@ let main _ =
     printfn "Extracted folder: \"%s\"" extractedFolder
     printfn "Kernel folder: \"%s\"" kernelFolder
     printfn "Downloading sources package..."
-    async {
+    (task {
         use client = new HttpClient()
         use zip = new FileStream(zipPath, FileMode.Create)
-        let! req = client.GetStreamAsync url |> Async.AwaitTask
-        do! req.CopyToAsync zip |> Async.AwaitTask
-    } |> Async.RunSynchronously
+        let! req = client.GetStreamAsync url
+        do! req.CopyToAsync zip
+    }).Wait ()
     printfn "Extracting sources package..."
     safeDelete kernelFolder
     ZipFile.ExtractToDirectory(zipPath, root)
