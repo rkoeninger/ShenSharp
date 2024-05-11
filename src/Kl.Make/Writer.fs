@@ -58,8 +58,8 @@ let rec private writeExpr = function
     | SynExpr.TryWith(body, [SynMatchClause.SynMatchClause(pat, _, handler, _, _, _)], _, _, _, _) ->
         sprintf "(try %s; with %s -> %s)" (writeExpr body) (writePat pat) (writeExpr handler)
     | SynExpr.MatchLambda(_, _, clauses, _, _) -> List.map writeClause clauses |> join "; " |> sprintf "(function %s)"
-    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats([], _), body, _, _, _) -> sprintf "(fun () -> %s)" (writeExpr body)
-    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats(pats, _), body, _, _, _) -> sprintf "(fun %s -> %s)" (List.map writeSimplePat pats |> join " ") (writeExpr body)
+    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats([], _, _), body, _, _, _) -> sprintf "(fun () -> %s)" (writeExpr body)
+    | SynExpr.Lambda(_, _, SynSimplePats.SimplePats(pats, _, _), body, _, _, _) -> sprintf "(fun %s -> %s)" (List.map writeSimplePat pats |> join " ") (writeExpr body)
     | SynExpr.App(_, _, f, x, _) -> sprintf "(%s %s)" (writeExpr f) (writeExpr x)
     | x -> failwithf "SynExpr case not supported: %O" x
 
@@ -71,7 +71,7 @@ let private writeBinding = function
         sprintf "%s = %s" (writePat pat) (writeExpr value)
 
 let private writeDecl = function
-    | SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(x, _), _) -> writeLongIdent x |> sprintf "open %s"
+    | SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(x, _), _) -> writeSynLongIdent x |> sprintf "open %s"
     | SynModuleDecl.Let(recursive, binding :: bindings, _) ->
         sprintf "let%s %s%s" (if recursive then " rec" else "") (writeBinding binding) (List.map (writeBinding >> sprintf "\r\nand %s") bindings |> join "")
     | _ -> failwith "SynModuleDecl case not supported"
@@ -89,6 +89,7 @@ let writeFile = function
                                 _,
                                 _,
                                 modules,
+                                _,
                                 _,
                                 _)) ->
         List.map writeModule modules |> join "\r\n\r\n"

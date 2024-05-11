@@ -11,6 +11,7 @@ module internal Kl.Make.Syntax
 
 open System
 open FSharp.Compiler.Syntax
+open FSharp.Compiler.SyntaxTrivia
 open FSharp.Compiler.Xml
 open FSharp.Compiler.Text.Range
 open FSharp.Compiler.Text.Position
@@ -31,7 +32,6 @@ let attrs xs : SynAttributeList list = [{
     Range = loc
 }]
 let ident s = new Ident(s, loc)
-let longIdent parts = List.map ident parts
 let longIdentWithDots parts =
     SynLongIdent.SynLongIdent(
         List.map ident parts,
@@ -48,7 +48,7 @@ let namePat s = SynPat.Named(SynIdent(ident s, None), false, None, loc)
 let unparenTypedPat pat synType = SynPat.Typed(pat, synType, loc)
 let typedPat pat synType = SynPat.Paren(unparenTypedPat pat synType, loc)
 let listPat pats = SynPat.ArrayOrList(false, pats, loc)
-let tuplePat pats = SynPat.Paren(SynPat.Tuple(false, pats, loc), loc)
+let tuplePat pats = SynPat.Paren(SynPat.Tuple(false, pats, [], loc), loc)
 let unitPat = SynPat.Paren(SynPat.Const(SynConst.Unit, loc), loc)
 let matchClause pat body =
     SynMatchClause.SynMatchClause(
@@ -80,7 +80,7 @@ let simpleBinding pat value =
         value,
         loc,
         DebugPointAtBinding.NoneAtLet,
-        {EqualsRange = Some loc; LetKeyword = Some loc})
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let letAttrsMultiParamBinding attrs name paramz body =
     SynBinding.SynBinding(
         None,
@@ -108,7 +108,7 @@ let letAttrsMultiParamBinding attrs name paramz body =
         body,
         loc,
         DebugPointAtBinding.Yes loc,
-        {EqualsRange = Some loc; LetKeyword = Some loc})
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let letBindingAccessWithAttrs attrs access name paramz body =
     SynBinding.SynBinding(
         access,
@@ -133,7 +133,7 @@ let letBindingAccessWithAttrs attrs access name paramz body =
         body,
         loc,
         DebugPointAtBinding.Yes loc,
-        {EqualsRange = Some loc; LetKeyword = Some loc})
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let letAttrsBinding attrs = letBindingAccessWithAttrs attrs None
 let letBinding = letAttrsBinding []
 let letUnitBinding attrs name body =
@@ -159,7 +159,7 @@ let letUnitBinding attrs name body =
         body,
         loc,
         DebugPointAtBinding.Yes loc,
-        {EqualsRange = Some loc; LetKeyword = Some loc})
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let parenExpr expr = SynExpr.Paren(expr, loc, None, loc)
 let parens = function
     | SynExpr.Paren _ as e -> e
@@ -252,7 +252,7 @@ let rec lambdaExpr paramz body =
             SynExpr.Lambda(
                 false,
                 false,
-                SynSimplePats.SimplePats([], loc),
+                SynSimplePats.SimplePats([], [], loc),
                 body,
                 None,
                 loc,
@@ -261,7 +261,7 @@ let rec lambdaExpr paramz body =
             SynExpr.Lambda(
                 false,
                 false,
-                SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
+                SynSimplePats.SimplePats([nameTypeSimplePat s synType], [], loc),
                 body,
                 None,
                 loc,
@@ -270,7 +270,7 @@ let rec lambdaExpr paramz body =
             SynExpr.Lambda(
                 false,
                 false,
-                SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
+                SynSimplePats.SimplePats([nameTypeSimplePat s synType], [], loc),
                 lambdaExpr paramz body,
                 None,
                 loc,
@@ -283,7 +283,7 @@ let matchLambdaExpr clauses =
         clauses,
         DebugPointAtBinding.Yes loc,
         loc)
-let openDecl parts = SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(longIdent parts, loc), loc)
+let openDecl parts = SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(longIdentWithDots parts, loc), loc)
 let letAttrsDecl attrs name paramz body =
     SynModuleDecl.Let(false, [letAttrsBinding attrs name paramz body], loc)
 let letAttrsUncurriedDecl attrs name paramz body =
@@ -311,6 +311,7 @@ let moduleFile nameParts decls =
                 [],
                 None,
                 loc,
-                {ModuleKeyword = Some loc; NamespaceKeyword = Some loc})],
+                {LeadingKeyword = SynModuleOrNamespaceLeadingKeyword.Module loc})],
             (false, false),
-            {CodeComments = []; ConditionalDirectives = []}))
+            {CodeComments = []; ConditionalDirectives = []},
+            Set.empty))
