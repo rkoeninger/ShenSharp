@@ -11,7 +11,7 @@ let private writeLongIdent (x: LongIdent) = List.map writeIdent x |> join "."
 let private writeSynLongIdent (x: SynLongIdent) = List.map writeIdent x.LongIdent |> join "."
 
 let private escapeChar = function
-    | x when x < ' ' -> int x |> sprintf "\\u%02x"
+    | x when x < ' ' -> int x |> sprintf "\\u%04x"
     | x when x > '~' -> int x |> sprintf "\\u%04x"
     | x -> sprintf "%c" x
 
