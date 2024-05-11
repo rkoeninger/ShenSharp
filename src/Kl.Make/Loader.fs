@@ -50,21 +50,6 @@ let private parseFile (checker: FSharpChecker) file =
     logWarnings result.Diagnostics
     result.ParseTree
 
-// TODO: specify arguments to exclude mscorlib.dll
-
-let private emit (checker: FSharpChecker) asts =
-    let (errors, _) =
-        checker.Compile(
-            asts,
-            GeneratedModule,
-            dllName,
-            deps,
-            pdbName,
-            false,
-            true)
-        |> Async.RunSynchronously
-    handleResults ((), errors)
-
 let private move source destination =
     if File.Exists destination then
         File.Delete destination
@@ -77,16 +62,10 @@ let private filterDefuns excluded =
         | _ -> false // Exclude all non-defuns too
     List.filter filter
 
-let make sourcePath sourceFiles outputPath =
+let make sourcePath sourceFiles =
     let checker = FSharpChecker.Create()
     let exprs = import sourcePath sourceFiles |> filterDefuns ["cd"]
     printfn "Translating kernel..."
     let ast = buildInstallationFile GeneratedModule exprs
     File.WriteAllText("Kernel.fs", writeFile ast)
-    let sharedAst = parseFile checker sharedMetadataPath
-    let metadataAst = buildMetadataFile GeneratedModule Copyright Revision BuildConfig
-    printfn "Compiling kernel..."
-    emit checker [ast; sharedAst; metadataAst]
-    printfn "Copying artifacts to output path..."
-    move dllName (combine [outputPath; dllName])
     printfn "Done."

@@ -4,7 +4,6 @@ open Kl.Values
 open Loader
 open ShenSharp.Shared
 
-let outputPath = fromRoot ["kernel"; "dotnet"; BuildConfig]
 let sourcePath = fromRoot ["kernel"; "klambda"]
 let sourceFiles = [
     "toplevel.kl"
@@ -25,7 +24,7 @@ let sourceFiles = [
     "init.kl"
 ]
 
-let buildRuntime () = make sourcePath sourceFiles outputPath
+let buildRuntime () = make sourcePath sourceFiles
 
 [<EntryPoint>]
 let main _ = separateThread128MB buildRuntime
