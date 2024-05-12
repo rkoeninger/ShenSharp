@@ -226,6 +226,18 @@ let kl_exit _ = function
     | [Int x] -> exit x
     | args -> argsErr "exit" ["integer"] args
 
+let ``kl_shen.char-stoutput?`` _ = function
+    | [Pipe _] -> False
+    | args -> argsErr "shen.char-stoutput?" ["stream"] args
+
+let ``kl_shen.char-stinput?`` _ = function
+    | [Pipe _] -> False
+    | args -> argsErr "shen.char-stinput?" ["stream"] args
+
+let ``kl_shen.write-string`` _ = failwith "write-string not implemented"
+
+let ``kl_shen.read-unit-string`` _ = failwith "read-unit-string not implemented"
+
 let ``kl_clr.alias`` globals = function
     | [Str alias; Str original] ->
         setAlias globals alias original
