@@ -22,7 +22,7 @@ let baseGlobals () =
         "*sterror*",        console
         "*home-directory*", Str Environment.CurrentDirectory
         "*hush*",           False
-        "*version*",        Str "38.1"
+        "*version*",        Str "38.2"
         "shen.*tc*",        False
         "shen.*history*",   Empty
         "shen.*package*",   Empty
