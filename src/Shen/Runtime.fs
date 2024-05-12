@@ -78,4 +78,4 @@ let defineMacro globals name native =
     let f _ = function
         | [x] -> native x
         | args -> argsErr name ["value"] args
-    ``kl_shen.add-macro`` globals [Func <| Compiled(1, f)] |> ignore
+    ``kl_shen.record-macro`` globals [Str name; Func <| Compiled(1, f)] |> ignore
