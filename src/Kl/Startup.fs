@@ -21,6 +21,15 @@ let baseGlobals () =
         "*stoutput*",       console
         "*sterror*",        console
         "*home-directory*", Str Environment.CurrentDirectory
+        "*hush*",           False
+        "*version*",        Str "38.1"
+        "shen.*tc*",        False
+        "shen.*history*",   Empty
+        "shen.*package*",   Empty
+        "*macros*",         Empty
+        "shen.*special*",      Empty
+        "shen.*extraspecial*", Empty
+        "*maximum-print-sequence-size*", Int 20
     ]
     let functions = [
         "if",                           Compiled(3, kl_if)
