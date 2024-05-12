@@ -6,22 +6,20 @@ open ShenSharp.Shared
 
 let sourcePath = fromRoot ["kernel"; "klambda"]
 let sourceFiles = [
-    "toplevel.kl"
-    "core.kl"
-    "sys.kl"
-    "dict.kl"
-    "sequent.kl"
-    "yacc.kl"
-    "reader.kl"
-    "prolog.kl"
-    "track.kl"
-    "load.kl"
-    "writer.kl"
-    "macros.kl"
-    "declarations.kl"
-    "types.kl"
-    "t-star.kl"
-    "init.kl"
+   "sys.kl"
+   "writer.kl"
+   "core.kl" 
+   "reader.kl"
+   "declarations.kl" 
+   "toplevel.kl"
+   "macros.kl"
+   "load.kl" 
+   "prolog.kl"
+   "sequent.kl"
+   "track.kl" 
+   "t-star.kl"
+   "yacc.kl"
+   "types.kl"
 ]
 
 let buildRuntime () = make sourcePath sourceFiles
