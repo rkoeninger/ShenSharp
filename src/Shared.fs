@@ -13,7 +13,7 @@ let Copyright = "Copyright © Robert Koeninger 2015-2020"
 let Revision = "0.10.0.0"
 
 [<Literal>]
-let KernelRevision = "38.2"
+let KernelRevision = "38.3"
 
 [<Literal>]
 let KernelFolderName = "ShenOSKernel-" + KernelRevision
