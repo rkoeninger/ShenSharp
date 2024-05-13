@@ -10,7 +10,7 @@ open Shen.Kernel
 /// Creates a new Shen runtime environment.
 /// </summary>
 [<CompiledName "NewRuntime">]
-let newRuntime = baseGlobals >> install
+let newRuntime = baseGlobals >> install >> postImport
 
 /// <summary>
 /// Evaluates given Shen syntax and returns result as KL Value.

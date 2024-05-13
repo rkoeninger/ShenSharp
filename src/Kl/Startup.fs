@@ -117,6 +117,7 @@ let postImport globals =
         declareArity "clr.invoke-static" 3
         declareType "shen-sharp.http-post" [Sym "string"; Sym "string"] (Sym "string")
         declareType "shen-sharp.curl" [Sym "string"] (Sym "string")
+        declareArity "exit" 1
     ]
     List.iter (eval globals >> ignore) declarations
     globals
