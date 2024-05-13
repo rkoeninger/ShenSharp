@@ -49,7 +49,7 @@ let private runRepl args () =
     try
         let globals = newRuntime ()
         if evalOptions globals args then
-            toCons [Sym "shen.shen"] |> eval globals |> ignore
+            toCons [Sym "shen.repl"] |> eval globals |> ignore
     with
         e -> printfn "Unhandled error: %s" e.Message
 
