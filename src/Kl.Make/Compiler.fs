@@ -235,6 +235,7 @@ let buildInstallationFile name exprs =
                     (List.concat
                         [
                             List.map installDefun exprs
+                            [appExprN (idExpr "kl_shen.initialise") [(idExpr "globals"); (listExpr [])] |> appIgnore]
                             [idExpr "globals"]
                         ]))
         ]
