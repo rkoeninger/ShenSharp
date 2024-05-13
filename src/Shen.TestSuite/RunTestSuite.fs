@@ -14,8 +14,7 @@ let runTestSuite () =
     define globals "y-or-n?" (Compiled(0, fun _ _ -> Environment.Exit 1; Empty))
     changeDirectory globals testFolder
     let stopwatch = Stopwatch.StartNew()
-    load globals "README.shen"
-    load globals "tests.shen"
+    load globals "runme.shen"
     printfn ""
     printfn "%O" stopwatch.Elapsed
     printfn ""
