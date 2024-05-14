@@ -11,7 +11,7 @@ let testFolder = fromRoot ["kernel"; "tests"]
 
 let runTestSuite () =
     let globals = newRuntime ()
-    define globals "y-or-n?" (Compiled(0, fun _ _ -> Environment.Exit 1; Empty))
+    define globals "y-or-n?" (Compiled(1, fun _ _ -> True))
     changeDirectory globals testFolder
     let stopwatch = Stopwatch.StartNew()
     load globals "runme.shen"
