@@ -236,7 +236,8 @@ let rec sequentialExpr = function
             true,
             expr,
             sequentialExpr rest,
-            loc)
+            loc,
+            SynExprSequentialTrivia.Zero)
 let tupleExpr vals =
     parens
         (SynExpr.Tuple(

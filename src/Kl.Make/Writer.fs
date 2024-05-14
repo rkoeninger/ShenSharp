@@ -50,7 +50,7 @@ let rec private writeExpr = function
     | SynExpr.Const(x, _) -> writeConst x
     | SynExpr.Tuple(false, xs, _, _) -> List.map writeExpr xs |> join ", " |> sprintf "(%s)"
     | SynExpr.ArrayOrList(false, xs, _) -> List.map writeExpr xs |> join "; " |> sprintf "[%s]"
-    | SynExpr.Sequential(_, _, x, y, _) -> sprintf "(%s; %s)" (writeExpr x) (writeExpr y)
+    | SynExpr.Sequential(_, _, x, y, _, _) -> sprintf "(%s; %s)" (writeExpr x) (writeExpr y)
     | SynExpr.LetOrUse(_, _, [SynBinding.SynBinding(_, _, _, _, _, _, _, pat, _, value, _, _, _)], body, _, _) ->
         sprintf "(let %s = %s in %s)" (writePat pat) (writeExpr value) (writeExpr body)
     | SynExpr.IfThenElse(ifExpr, thenExpr, Some elseExpr, _, _, _, _) ->
