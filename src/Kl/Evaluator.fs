@@ -11,7 +11,7 @@ let rec private scope locals = function
 
     // Bindings, Lambdas and Definintions recur excluding their paramters.
     | Binding(param, value, body) ->
-        Binding(param, scope locals value, scope (Map.remove param locals) value)
+        Binding(param, scope locals value, scope (Map.remove param locals) body)
     | Anonymous(Some param, body) ->
         Anonymous(Some param, scope (Map.remove param locals) body)
     | Definition(name, paramz, body) ->
