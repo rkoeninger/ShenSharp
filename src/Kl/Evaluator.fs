@@ -75,6 +75,8 @@ let rec private parse ((globals, locals) as env) = function
         Assignment(intern globals id, parse env value)
     | Form [Sym "value"; Sym id] when not(Set.contains id locals) ->
         Retrieval(intern globals id)
+    | Form [Sym "type"; expr; _] ->
+        parse env expr
     | Form(Sym id :: args) when not(Set.contains id locals) ->
         GlobalCall(intern globals id, List.map (parse env) args)
     | Form(f :: args) ->
