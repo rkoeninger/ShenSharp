@@ -1,6 +1,5 @@
-[![Shen Version](https://img.shields.io/badge/shen-22.2-blue.svg)](https://github.com/Shen-Language)
+[![Shen Version](https://img.shields.io/badge/shen-38.3-blue.svg)](https://github.com/Shen-Language)
 [![Latest Nuget](https://img.shields.io/nuget/v/ShenSharp.svg)](https://www.nuget.org/packages/ShenSharp)
-[![Build Status](https://img.shields.io/travis/rkoeninger/ShenSharp/master.svg?label=build)](https://travis-ci.org/rkoeninger/ShenSharp)
 
 # Shen for the Common Language Runtime
 
@@ -14,7 +13,7 @@ ShenSharp is built by loading the Shen kernel as Kλ and translating the resulti
 
 This port passes all tests in the Shen standard test suite, making this a certifiable implementation.
 
-Refer to the CI build script ([`.travis.yml`](https://github.com/rkoeninger/ShenSharp/blob/master/.travis.yml)) for build instructions.
+Refer to the CI build script ([`build.yml`](https://github.com/rkoeninger/ShenSharp/blob/master/.github/workflows/build.yml)) for the build process. In order to build, the pre-built Kλ needs to be fetched and the two solutions built in order. The build script runs through all of these steps.
 
 ### Shen Resources
   * [Open Source Implementations](http://www.shenlanguage.org/download_form.html)
@@ -24,7 +23,7 @@ Refer to the CI build script ([`.travis.yml`](https://github.com/rkoeninger/Shen
   * [Mailing List](https://groups.google.com/forum/#!forum/qilang)
 
 ### CLR Platform Support Status
-  * .NET Standard 2.1, .NET Core 3.1
+  * .NET 8
 
 ### Guided Tour of the Code
   * [Types](https://github.com/rkoeninger/ShenSharp/blob/master/src/Kl/Types.fs) -
