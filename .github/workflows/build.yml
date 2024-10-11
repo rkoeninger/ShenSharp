@@ -1,0 +1,53 @@
+name: "Build"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - "*"
+
+jobs:
+  build:
+    name: "Build"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner:
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: "8.0.x"
+
+    - name: Move to src directory
+      run: cd src
+
+    - name: Build Kl.sln
+      run: dotnet build Kl.sln
+
+    - name: Test Kl.sln
+      run: dotnet test Kl.sln
+
+    - name: Run Kl.Get
+      run: dotnet run --project Kl.Get
+
+    - name: Run Kl.Make
+      run: dotnet run --project Kl.Make
+
+    - name: Build Shen.sln
+      run: dotnet build Shen.sln
+
+    - name: Build Shen.sln
+      run: dotnet test Shen.sln
+
+    - name: Run Shen.TestSuite
+      run: dotnet run --project Shen.TestSuite
