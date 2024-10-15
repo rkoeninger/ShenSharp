@@ -31,7 +31,7 @@ let ``only non-boolean symbols should be recognized as symbols``() =
     assertFalse globals "(symbol? (freeze 0))"
     assertFalse globals "(symbol? (stinput))"
     assertFalse globals "(symbol? (vector 0))"
+    assertFalse globals "(symbol? (intern \"fsdf{}.$%2\"))"
     assertTrue globals "(symbol? abc)"
     assertTrue globals "(symbol? (intern \"abc\"))"
     assertTrue globals "(symbol? u87.dfg)"
-    assertTrue globals "(symbol? (intern \"fsdf{}.$%2\"))"
