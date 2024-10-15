@@ -1,4 +1,4 @@
-[![Shen Version](https://img.shields.io/badge/shen-38.3-blue.svg)](https://github.com/Shen-Language)
+[![Shen Version](https://img.shields.io/badge/shen-39.0-blue.svg)](https://github.com/Shen-Language)
 [![Latest Nuget](https://img.shields.io/nuget/v/ShenSharp.svg)](https://www.nuget.org/packages/ShenSharp)
 
 # Shen for the Common Language Runtime
