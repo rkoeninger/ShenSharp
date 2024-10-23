@@ -10,7 +10,7 @@ open Shen.Kernel
 /// Creates a new Shen runtime environment.
 /// </summary>
 [<CompiledName "NewRuntime">]
-let newRuntime = baseGlobals >> install
+let newRuntime = baseGlobals >> install >> postImport
 
 /// <summary>
 /// Evaluates given Shen syntax and returns result as KL Value.
@@ -78,4 +78,4 @@ let defineMacro globals name native =
     let f _ = function
         | [x] -> native x
         | args -> argsErr name ["value"] args
-    ``kl_shen.add-macro`` globals [Func <| Compiled(1, f)] |> ignore
+    ``kl_shen.record-macro`` globals [Str name; Func <| Compiled(1, f)] |> ignore

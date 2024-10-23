@@ -3,7 +3,7 @@
 open System
 open System.Diagnostics
 open System.IO
-open System.Net
+open System.Net.Http
 open Values
 open Interop
 open Evaluator
@@ -226,6 +226,18 @@ let kl_exit _ = function
     | [Int x] -> exit x
     | args -> argsErr "exit" ["integer"] args
 
+let ``kl_shen.char-stoutput?`` _ = function
+    | [Pipe _] -> False
+    | args -> argsErr "shen.char-stoutput?" ["stream"] args
+
+let ``kl_shen.char-stinput?`` _ = function
+    | [Pipe _] -> False
+    | args -> argsErr "shen.char-stinput?" ["stream"] args
+
+let ``kl_shen.write-string`` _ = failwith "write-string not implemented"
+
+let ``kl_shen.read-unit-string`` _ = failwith "read-unit-string not implemented"
+
 let ``kl_clr.alias`` globals = function
     | [Str alias; Str original] ->
         setAlias globals alias original
@@ -339,12 +351,20 @@ let ``kl_shen-sharp.globals`` globals = function
 
 let ``kl_shen-sharp.http-post`` _ = function
     | [Str url; Str payload] ->
-        use client = new WebClient()
-        Str(client.UploadString(url, payload))
+        task {
+            use client = new HttpClient()
+            use payload = new StringContent(payload)
+            let! resp = client.PostAsync(url, payload)
+            let! content = resp.Content.ReadAsStringAsync()
+            return content |> Str
+        } |> Async.AwaitTask |> Async.RunSynchronously
     | args -> argsErr "shen-sharp.http-post" ["string"] args
 
 let ``kl_shen-sharp.curl`` _ = function
     | [Str url] ->
-        use client = new WebClient()
-        Str(client.DownloadString(url))
+        task {
+            use client = new HttpClient()
+            let! content = client.GetStringAsync(url)
+            return content |> Str
+        } |> Async.AwaitTask |> Async.RunSynchronously
     | args -> argsErr "shen-sharp.curl" ["string"] args

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Shen</AssemblyName>
     <PackageId>Shen</PackageId>
     <RootNamespace>Shen</RootNamespace>
@@ -16,12 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kl\Kl.fsproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Shen.Kernel">
-      <HintPath>..\..\kernel\dotnet\$(Configuration)\Shen.Kernel.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\Shen.Kernel\Shen.Kernel.fsproj" />
   </ItemGroup>
 
 </Project>

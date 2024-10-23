@@ -10,8 +10,11 @@
 module internal Kl.Make.Syntax
 
 open System
-open FSharp.Compiler.Ast
-open FSharp.Compiler.Range
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.SyntaxTrivia
+open FSharp.Compiler.Xml
+open FSharp.Compiler.Text.Range
+open FSharp.Compiler.Text.Position
 
 let private fileName = "file.fs"
 // Picked large values for line, col because there will be an unpredictable
@@ -29,11 +32,11 @@ let attrs xs : SynAttributeList list = [{
     Range = loc
 }]
 let ident s = new Ident(s, loc)
-let longIdent parts = List.map ident parts
 let longIdentWithDots parts =
-    LongIdentWithDots.LongIdentWithDots(
+    SynLongIdent.SynLongIdent(
         List.map ident parts,
-        List.replicate (List.length parts - 1) loc)
+        List.replicate (List.length parts - 1) loc,
+        [])
 let argInfo s = SynArgInfo.SynArgInfo([], false, Some(ident s))
 let nullArgInfo = SynArgInfo.SynArgInfo([], false, None)
 let anonType = SynType.Anon loc
@@ -41,28 +44,29 @@ let longType parts = SynType.LongIdent(longIdentWithDots parts)
 let shortType s = longType [s]
 let listType t = SynType.App(shortType "list", None, [t], [], None, true, loc)
 let wildPat = SynPat.Wild loc
-let namePat s = SynPat.Named(wildPat, ident s, false, None, loc)
+let namePat s = SynPat.Named(SynIdent(ident s, None), false, None, loc)
 let unparenTypedPat pat synType = SynPat.Typed(pat, synType, loc)
 let typedPat pat synType = SynPat.Paren(unparenTypedPat pat synType, loc)
 let listPat pats = SynPat.ArrayOrList(false, pats, loc)
-let tuplePat pats = SynPat.Paren(SynPat.Tuple(false, pats, loc), loc)
+let tuplePat pats = SynPat.Paren(SynPat.Tuple(false, pats, [], loc), loc)
 let unitPat = SynPat.Paren(SynPat.Const(SynConst.Unit, loc), loc)
 let matchClause pat body =
-    SynMatchClause.Clause(
+    SynMatchClause.SynMatchClause(
         pat,
         None,
         body,
         loc,
-        SequencePointInfoForTarget.SequencePointAtTarget)
+        DebugPointAtTarget.Yes,
+        {ArrowRange = Some loc; BarRange = Some loc})
 let nameTypeSimplePat s synType =
     SynSimplePat.Typed(
         SynSimplePat.Id(ident s, None, true, false, false, loc),
         synType,
         loc)
 let simpleBinding pat value =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         None,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         [],
@@ -75,11 +79,12 @@ let simpleBinding pat value =
         None,
         value,
         loc,
-        SequencePointInfoForBinding.NoSequencePointAtLetBinding)
+        DebugPointAtBinding.NoneAtLet,
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let letAttrsMultiParamBinding attrs name paramz body =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         None,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         attrs,
@@ -92,7 +97,7 @@ let letAttrsMultiParamBinding attrs name paramz body =
             longIdentWithDots [name],
             None,
             None,
-            SynConstructorArgs.Pats(
+            SynArgPats.Pats(
                 [tuplePat
                     (List.map
                         (fun (s, synType) -> unparenTypedPat (namePat s) synType)
@@ -102,11 +107,12 @@ let letAttrsMultiParamBinding attrs name paramz body =
         None,
         body,
         loc,
-        SequencePointInfoForBinding.SequencePointAtBinding loc)
+        DebugPointAtBinding.Yes loc,
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let letBindingAccessWithAttrs attrs access name paramz body =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         access,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         attrs,
@@ -119,20 +125,21 @@ let letBindingAccessWithAttrs attrs access name paramz body =
             longIdentWithDots [name],
             None,
             None,
-            SynConstructorArgs.Pats(
+            SynArgPats.Pats(
                 List.map (fun (s, synType) -> typedPat (namePat s) synType) paramz),
             None,
             loc),
         None,
         body,
         loc,
-        SequencePointInfoForBinding.SequencePointAtBinding loc)
+        DebugPointAtBinding.Yes loc,
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let letAttrsBinding attrs = letBindingAccessWithAttrs attrs None
 let letBinding = letAttrsBinding []
 let letUnitBinding attrs name body =
-    SynBinding.Binding(
+    SynBinding.SynBinding(
         None,
-        SynBindingKind.NormalBinding,
+        SynBindingKind.Normal,
         false,
         false,
         attrs,
@@ -145,13 +152,14 @@ let letUnitBinding attrs name body =
             longIdentWithDots [name],
             None,
             None,
-            SynConstructorArgs.Pats [unitPat],
+            SynArgPats.Pats [unitPat],
             None,
             loc),
         None,
         body,
         loc,
-        SequencePointInfoForBinding.SequencePointAtBinding loc)
+        DebugPointAtBinding.Yes loc,
+        {EqualsRange = Some loc; InlineKeyword = Some loc; LeadingKeyword = SynLeadingKeyword.Let loc})
 let parenExpr expr = SynExpr.Paren(expr, loc, None, loc)
 let parens = function
     | SynExpr.Paren _ as e -> e
@@ -160,13 +168,13 @@ let unitExpr = SynExpr.Const(SynConst.Unit, loc)
 let boolExpr b = SynExpr.Const(SynConst.Bool b, loc)
 let intExpr n = SynExpr.Const(SynConst.Int32 n, loc)
 let decimalExpr n = SynExpr.Const(SynConst.Decimal n, loc)
-let stringExpr s = SynExpr.Const(SynConst.String(s, loc), loc)
+let stringExpr s = SynExpr.Const(SynConst.String(s, SynStringKind.Regular, loc), loc)
 let idExpr s = SynExpr.Ident(ident s)
 let longIdExpr parts = SynExpr.LongIdent(false, longIdentWithDots parts, None, loc)
 let indexSetExpr obj index value =
     SynExpr.DotIndexedSet(
         obj,
-        [SynIndexerArg.One index],
+        index,
         value,
         loc,
         loc,
@@ -192,10 +200,10 @@ let ifExpr condition consequent alternative =
             condition,
             consequent,
             Some alternative,
-            SequencePointInfoForBinding.NoSequencePointAtInvisibleBinding,
+            DebugPointAtBinding.NoneAtInvisible,
             false,
             loc,
-            loc)
+            {IfKeyword = loc; IsElif = false; ElseKeyword = None; ThenKeyword = loc; IfToThenRange = loc})
     parens expr
 let letExpr symbol value body =
     SynExpr.LetOrUse(
@@ -203,31 +211,33 @@ let letExpr symbol value body =
         false,
         [simpleBinding (namePat symbol) value],
         body,
-        loc)
+        loc,
+        {InKeyword = Some loc})
 let tryWithExpr body e handler =
     SynExpr.TryWith(
         body,
-        loc,
-        [SynMatchClause.Clause(
+        [SynMatchClause.SynMatchClause(
             namePat e,
             None,
             handler,
             loc,
-            SequencePointInfoForTarget.SequencePointAtTarget)],
+            DebugPointAtTarget.Yes,
+            {ArrowRange = Some loc; BarRange = Some loc})],
         loc,
-        loc,
-        SequencePointInfoForTry.SequencePointAtTry loc,
-        SequencePointInfoForWith.SequencePointAtWith loc)
+        DebugPointAtTry.Yes loc,
+        DebugPointAtWith.Yes loc,
+        {TryKeyword = loc; TryToWithRange = loc; WithKeyword = loc; WithToEndRange = loc})
 let rec sequentialExpr = function
     | [] -> failwith "sequential cannot be empty"
     | [expr] -> expr
     | expr :: rest ->
         SynExpr.Sequential(
-            SequencePointInfoForSeq.SequencePointsAtSeq,
+            DebugPointAtSequential.SuppressNeither,
             true,
             expr,
             sequentialExpr rest,
-            loc)
+            loc,
+            SynExprSequentialTrivia.Zero)
 let tupleExpr vals =
     parens
         (SynExpr.Tuple(
@@ -243,32 +253,38 @@ let rec lambdaExpr paramz body =
             SynExpr.Lambda(
                 false,
                 false,
-                SynSimplePats.SimplePats([], loc),
+                SynSimplePats.SimplePats([], [], loc),
                 body,
-                loc)
+                None,
+                loc,
+                {ArrowRange = Some loc})
         | [s, synType] ->
             SynExpr.Lambda(
                 false,
                 false,
-                SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
+                SynSimplePats.SimplePats([nameTypeSimplePat s synType], [], loc),
                 body,
-                loc)
+                None,
+                loc,
+                {ArrowRange = Some loc})
         | (s, synType) :: paramz ->
             SynExpr.Lambda(
                 false,
                 false,
-                SynSimplePats.SimplePats([nameTypeSimplePat s synType], loc),
+                SynSimplePats.SimplePats([nameTypeSimplePat s synType], [], loc),
                 lambdaExpr paramz body,
-                loc)
+                None,
+                loc,
+                {ArrowRange = Some loc})
     parens expr
 let matchLambdaExpr clauses =
     SynExpr.MatchLambda(
         false,
         loc,
         clauses,
-        SequencePointInfoForBinding.SequencePointAtBinding loc,
+        DebugPointAtBinding.Yes loc,
         loc)
-let openDecl parts = SynModuleDecl.Open(longIdentWithDots parts, loc)
+let openDecl parts = SynModuleDecl.Open(SynOpenDeclTarget.ModuleOrNamespace(longIdentWithDots parts, loc), loc)
 let letAttrsDecl attrs name paramz body =
     SynModuleDecl.Let(false, [letAttrsBinding attrs name paramz body], loc)
 let letAttrsUncurriedDecl attrs name paramz body =
@@ -295,5 +311,8 @@ let moduleFile nameParts decls =
                 PreXmlDoc.Empty,
                 [],
                 None,
-                loc)],
-            (false, false)))
+                loc,
+                {LeadingKeyword = SynModuleOrNamespaceLeadingKeyword.Module loc})],
+            (false, false),
+            {CodeComments = []; ConditionalDirectives = []},
+            Set.empty))

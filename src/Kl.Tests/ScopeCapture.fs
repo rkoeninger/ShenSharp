@@ -57,3 +57,11 @@ let ``inner function scope should override outer lexical scope``() =
 [<Test>]
 let ``inner lexical scope should override outer lexical scope``() =
     assertEq (Int 2) (run "(let X 1 (let X 2 X))")
+
+[<Test>]
+let ``let should work in lambda``() =
+    assertEq (Int 2) (run "((lambda X (let Y 1 (+ X Y))) 1)")
+
+[<Test>]
+let ``let should work in freeze``() =
+    assertTrue "((freeze (let X false true)))"

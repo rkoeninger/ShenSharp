@@ -11,7 +11,7 @@ let rec private scope locals = function
 
     // Bindings, Lambdas and Definintions recur excluding their paramters.
     | Binding(param, value, body) ->
-        Binding(param, scope locals value, scope (Map.remove param locals) value)
+        Binding(param, scope locals value, scope (Map.remove param locals) body)
     | Anonymous(Some param, body) ->
         Anonymous(Some param, scope (Map.remove param locals) body)
     | Definition(name, paramz, body) ->
@@ -75,6 +75,8 @@ let rec private parse ((globals, locals) as env) = function
         Assignment(intern globals id, parse env value)
     | Form [Sym "value"; Sym id] when not(Set.contains id locals) ->
         Retrieval(intern globals id)
+    | Form [Sym "type"; expr; _] ->
+        parse env expr
     | Form(Sym id :: args) when not(Set.contains id locals) ->
         GlobalCall(intern globals id, List.map (parse env) args)
     | Form(f :: args) ->

@@ -2,7 +2,8 @@
 
 open System
 open System.IO
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text
 open Kl
 open Kl.Values
@@ -13,24 +14,24 @@ open ShenSharp.Shared
 
 let private dllName = sprintf "%s.dll" GeneratedModule
 let private pdbName = sprintf "%s.pdb" GeneratedModule
-let private deps = ["Kl.dll"]
+let private deps = ["Kl"; "System.Runtime"; "System.Runtime.Numerics"; "System.Collections"; "System.Net.Requests"; "System.Net.WebClient"]
 let private sharedMetadataPath = fromRoot ["src"; "Shared.fs"]
 
 let private import sourcePath =
     List.collect (fun f -> combine [sourcePath; f] |> File.ReadAllText |> readAll)
 
-let private filterMessages severity messages = Seq.filter (fun (m: FSharpErrorInfo) -> m.Severity = severity) messages
+let private filterMessages severity messages = Seq.filter (fun (m: FSharpDiagnostic) -> m.Severity = severity) messages
 
 let private logWarnings messages =
-    messages |> filterMessages FSharpErrorSeverity.Warning |> Seq.iter (fun (m: FSharpErrorInfo) -> printfn "%O" m)
+    messages |> filterMessages FSharpDiagnosticSeverity.Warning |> Seq.iter (fun (m: FSharpDiagnostic) -> printfn "%O" m)
 
 let private raiseErrors messages =
-    let errors = filterMessages FSharpErrorSeverity.Error messages
+    let errors = filterMessages FSharpDiagnosticSeverity.Error messages
     raise(Exception(String.Join("\r\n\r\n", Seq.map string errors)))
 
 let private handleResults (value, messages) =
     logWarnings messages
-    if filterMessages FSharpErrorSeverity.Error messages |> Seq.length > 0
+    if filterMessages FSharpDiagnosticSeverity.Error messages |> Seq.length > 0
         then raiseErrors messages
         else value
 
@@ -46,25 +47,8 @@ let private parseFile (checker: FSharpChecker) file =
     let result =
         checker.ParseFile(file, input, parsingOptions)
         |> Async.RunSynchronously
-    logWarnings result.Errors
-    match result.ParseTree with
-    | Some tree -> tree
-    | None -> raiseErrors result.Errors
-
-// TODO: specify arguments to exclude mscorlib.dll
-
-let private emit (checker: FSharpChecker) asts =
-    let (errors, _) =
-        checker.Compile(
-            asts,
-            GeneratedModule,
-            dllName,
-            deps,
-            pdbName,
-            false,
-            true)
-        |> Async.RunSynchronously
-    handleResults ((), errors)
+    logWarnings result.Diagnostics
+    result.ParseTree
 
 let private move source destination =
     if File.Exists destination then
@@ -78,16 +62,10 @@ let private filterDefuns excluded =
         | _ -> false // Exclude all non-defuns too
     List.filter filter
 
-let make sourcePath sourceFiles outputPath =
+let make sourcePath sourceFiles =
     let checker = FSharpChecker.Create()
     let exprs = import sourcePath sourceFiles |> filterDefuns ["cd"]
     printfn "Translating kernel..."
     let ast = buildInstallationFile GeneratedModule exprs
     File.WriteAllText("Kernel.fs", writeFile ast)
-    let sharedAst = parseFile checker sharedMetadataPath
-    let metadataAst = buildMetadataFile GeneratedModule Copyright Revision BuildConfig
-    printfn "Compiling kernel..."
-    emit checker [ast; sharedAst; metadataAst]
-    printfn "Copying artifacts to output path..."
-    move dllName (combine [outputPath; dllName])
     printfn "Done."

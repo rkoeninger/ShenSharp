@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Kl.Make</AssemblyName>
     <PackageId>Kl.Make</PackageId>
     <RootNamespace>Kl</RootNamespace>
@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="FParsec" Version="1.1.1" />
-    <PackageReference Include="FSharp.Compiler.Service" Version="34.0.1" />
+    <PackageReference Include="FSharp.Compiler.Service" Version="43.8.300" />
   </ItemGroup>
 
   <ItemGroup>
