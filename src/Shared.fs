@@ -7,7 +7,7 @@ open System.IO
 let Author = "Robert Koeninger"
 
 [<Literal>]
-let Copyright = "Copyright © Robert Koeninger 2015-2020"
+let Copyright = "Copyright Â© Robert Koeninger 2015-2024"
 
 [<Literal>]
 let Revision = "0.10.0.0"
